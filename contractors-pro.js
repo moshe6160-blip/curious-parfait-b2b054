@@ -227,6 +227,49 @@
       #contractorsProScreen .kpi b.green,#contractorsProScreen .mini b.green{color:#73e29b!important;}
       #contractorsProScreen .kpi,#contractorsProScreen .mini{background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;}
 
+
+      /* V246 - contractor detail windows match Suppliers labels and PRO Dashboard number colors */
+      #contractorsProScreen .mini span,
+      #contractorsProScreen .kpi span,
+      #contractorsProScreen .proTile span{
+        color:#cfd2db!important;
+        opacity:1!important;
+        font-size:12px!important;
+        font-weight:900!important;
+        text-transform:none!important;
+        letter-spacing:.01em!important;
+      }
+      #contractorsProScreen .mini b,
+      #contractorsProScreen .kpi b{font-size:20px!important;font-weight:950!important;color:#f5f5f7!important;}
+
+      #contractorsProScreen .kpis .kpi:nth-child(1) b{color:#64a8ff!important;}
+      #contractorsProScreen .kpis .kpi:nth-child(2) b{color:#e8c79a!important;}
+      #contractorsProScreen .kpis .kpi:nth-child(3) b{color:#f5c15d!important;}
+      #contractorsProScreen .kpis .kpi:nth-child(4) b{color:#73e29b!important;}
+      #contractorsProScreen .kpis .kpi:nth-child(5) b{color:#ff8d8d!important;}
+      #contractorsProScreen .kpis .kpi:nth-child(6) b{color:#ff6b6b!important;}
+
+      #contractorsProScreen .grid6 .mini:nth-child(1) b{color:#64a8ff!important;}
+      #contractorsProScreen .grid6 .mini:nth-child(2) b{color:#e8c79a!important;}
+      #contractorsProScreen .grid6 .mini:nth-child(3) b{color:#e8c79a!important;}
+      #contractorsProScreen .grid6 .mini:nth-child(4) b{color:#f5c15d!important;}
+      #contractorsProScreen .grid6 .mini:nth-child(5) b{color:#73e29b!important;}
+      #contractorsProScreen .grid6 .mini:nth-child(6) b{color:#ff8d8d!important;}
+
+      #contractorsProScreen .grid4 .mini:nth-child(1) b{color:#64a8ff!important;}
+      #contractorsProScreen .grid4 .mini:nth-child(2) b{color:#64a8ff!important;}
+      #contractorsProScreen .grid4 .mini:nth-child(3) b{color:#ff6b6b!important;}
+      #contractorsProScreen .grid4 .mini:nth-child(4) b{color:#e8c79a!important;}
+      #contractorsProScreen .grid4 + .grid4 .mini:nth-child(1) b{color:#73e29b!important;}
+      #contractorsProScreen .grid4 + .grid4 .mini:nth-child(2) b{color:#ff8d8d!important;}
+      #contractorsProScreen .grid4 + .grid4 .mini:nth-child(3) b{color:#e8c79a!important;}
+      #contractorsProScreen .grid4 + .grid4 .mini:nth-child(4) b{color:#e8c79a!important;}
+
+      #contractorsProScreen b.contractColor{color:#64a8ff!important;}
+      #contractorsProScreen b.retentionColor{color:#e8c79a!important;}
+      #contractorsProScreen b.claimedColor{color:#f5c15d!important;}
+      #contractorsProScreen b.paidColor{color:#73e29b!important;}
+      #contractorsProScreen b.outstandingColor,#contractorsProScreen b.overColor{color:#ff8d8d!important;}
       @media(max-width:920px){#contractorsProScreen .layout{grid-template-columns:1fr!important;}#contractorsProScreen .kpis{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .grid6,#contractorsProScreen .grid4,#contractorsProScreen .grid2,#contractorsProScreen .actions{grid-template-columns:1fr!important;}#contractorsProScreen h1{font-size:25px!important;}.vpcon-float{left:10px!important;right:10px!important}.vpcon-float button{font-size:14px!important;min-height:54px!important}}
     `;
     document.head.appendChild(s);
