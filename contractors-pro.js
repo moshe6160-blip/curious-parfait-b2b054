@@ -1,6 +1,6 @@
 (function(){
-  if (window.__VP_CONTRACTORS_PRO_V244__) return;
-  window.__VP_CONTRACTORS_PRO_V244__ = true;
+  if (window.__VP_CONTRACTORS_PRO_V247__) return;
+  window.__VP_CONTRACTORS_PRO_V247__ = true;
 
   const KEY = 'vp_contractors_pro_v233'; // keep same key so your old contractor data stays
   const OLD_KEYS = ['vp_contractors_pro_v236','vp_contractors_pro_v235','vp_contractors_pro_v234','vp_contractors_pro_v231','vp_contractors_pro_v230','vp_contractors_pro_v229','vp_contractors_pro_v226','vp_contractors_pro_v225','vp_contractors_pro_v224'];
@@ -270,7 +270,24 @@
       #contractorsProScreen b.claimedColor{color:#f5c15d!important;}
       #contractorsProScreen b.paidColor{color:#73e29b!important;}
       #contractorsProScreen b.outstandingColor,#contractorsProScreen b.overColor{color:#ff8d8d!important;}
-      @media(max-width:920px){#contractorsProScreen .layout{grid-template-columns:1fr!important;}#contractorsProScreen .kpis{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .grid6,#contractorsProScreen .grid4,#contractorsProScreen .grid2,#contractorsProScreen .actions{grid-template-columns:1fr!important;}#contractorsProScreen h1{font-size:25px!important;}.vpcon-float{left:10px!important;right:10px!important}.vpcon-float button{font-size:14px!important;min-height:54px!important}}
+
+      #contractorsProScreen .projectBar{display:grid!important;grid-template-columns:1fr auto 1fr!important;gap:10px!important;align-items:center!important;margin:14px 0!important;}
+      #contractorsProScreen .projectBar select{margin:0!important;min-height:54px!important;font-weight:900!important;}
+      #contractorsProScreen .projectBar .btn{min-height:54px!important;}
+      #contractorsProScreen .sideTitle{font-size:18px!important;letter-spacing:.01em!important;margin-bottom:10px!important;}
+      #contractorsProScreen .contractorListPanel h2{font-size:18px!important;}
+      #contractorsProScreen .contractorListPanel .card{padding:12px!important;border-radius:20px!important;}
+      #contractorsProScreen .contractorListPanel .card h3{font-size:15px!important;line-height:1.15!important;}
+      #contractorsProScreen .contractorListPanel .line{font-size:12px!important;margin:7px 0!important;}
+      #contractorsProScreen .contractorListPanel .line span{font-size:11px!important;color:#cfd2db!important;}
+      #contractorsProScreen .contractorListPanel .line b{font-size:12px!important;font-weight:950!important;}
+      #contractorsProScreen .formBox .actions{gap:7px!important;}
+      #contractorsProScreen .formBox .actions .btn{font-size:12px!important;padding:9px 10px!important;min-height:38px!important;border-radius:13px!important;}
+      #contractorsProScreen .formBox h3{font-size:16px!important;}
+      #contractorsProScreen .formBox .muted,#contractorsProScreen .formBox .note{font-size:12px!important;line-height:1.35!important;}
+      #contractorsProScreen .mini span,#contractorsProScreen .kpi span{color:#cfd2db!important;}
+      #contractorsProScreen .mini b,#contractorsProScreen .kpi b{font-size:19px!important;}
+      @media(max-width:920px){#contractorsProScreen .layout{grid-template-columns:1fr!important;}#contractorsProScreen .projectBar{grid-template-columns:1fr!important;}#contractorsProScreen .kpis{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .grid6,#contractorsProScreen .grid4,#contractorsProScreen .grid2,#contractorsProScreen .actions{grid-template-columns:1fr!important;}#contractorsProScreen h1{font-size:25px!important;}.vpcon-float{left:10px!important;right:10px!important}.vpcon-float button{font-size:14px!important;min-height:54px!important}}
     `;
     document.head.appendChild(s);
   }
@@ -315,9 +332,10 @@
     return opts.join('');
   }
   function cards(data){
-    if (!data.length) return '<div class="empty">No contractors yet. Choose a contractor from the existing supplier list and click Create/Open.</div>';
-    return data.map(c=>{ const t=totals(c); const alert=t.overOriginalContract>0?`<div class="line"><span class="red">Above original contract</span><b class="red">${money(t.overOriginalContract)} · ${t.progress.toFixed(1)}%</b></div>`:''; return `<div class="card ${c.id===activeId?'active':''}" data-vpcard="${esc((c.name+' '+c.trade+' '+c.project).toLowerCase())}" onclick="vpConSelect('${c.id}')"><h3 style="margin:0 0 8px!important">${esc(c.name)}</h3><div class="line"><span>${esc(c.trade||'Sub Contractor')}</span><b>${money(c.contract)}</b></div><div class="line"><span>Approved Budget</span><b>${money(t.approvedBudget)}</b></div><div class="line"><span>Claimed</span><b>${money(t.claimed)}</b></div><div class="line"><span>Outstanding</span><b class="${t.outstanding>0?'red':'green'}">${money(t.outstanding)}</b></div>${alert}<div class="progress"><i style="width:${Math.min(100,t.budgetProgress)}%"></i></div></div>`; }).join('');
+    if (!data.length) return '<div class="empty">No contractors for this project.</div>';
+    return data.map(c=>{ const t=totals(c); const alert=t.overOriginalContract>0?`<div class="line"><span class="red">Above original contract</span><b class="overColor">${money(t.overOriginalContract)} · ${t.progress.toFixed(1)}%</b></div>`:''; return `<div class="card ${c.id===activeId?'active':''}" data-vpcard="${esc((c.name+' '+c.trade+' '+c.project).toLowerCase())}" onclick="vpConSelect('${c.id}')"><h3 style="margin:0 0 8px!important">${esc(c.name)}</h3><div class="line"><span>${esc(c.trade||'Sub Contractor')}</span><b class="contractColor">${money(c.contract)}</b></div><div class="line"><span>Budget</span><b class="retentionColor">${money(t.approvedBudget)}</b></div><div class="line"><span>Claimed</span><b class="claimedColor">${money(t.claimed)}</b></div><div class="line"><span>Paid</span><b class="paidColor">${money(t.paid)}</b></div><div class="line"><span>Outstanding</span><b class="outstandingColor">${money(t.outstanding)}</b></div>${alert}<div class="progress"><i style="width:${Math.min(100,t.budgetProgress)}%"></i></div></div>`; }).join('');
   }
+
   function accountRows(c){
     const rows = (c.accounts||[]).slice().sort((a,b)=>Number(a.no)-Number(b.no)).map(a=>{
       const pct=Number(a.retentionPercent ?? c.retention ?? 0);
@@ -396,14 +414,39 @@
       <h3>Contract History</h3><div class="tableWrap"><table><thead><tr><th>Date</th><th>Old</th><th>New</th><th>Note</th></tr></thead><tbody>${historyRows(c)}</tbody></table></div>`;
   }
 
+
+  function projectNames(data){
+    const set = new Set();
+    try { (JSON.parse(localStorage.getItem('vp_contractors_projects') || '[]') || []).forEach(x => { if(String(x||'').trim()) set.add(String(x).trim()); }); } catch(e) {}
+    (data || []).forEach(c => { if(String(c.project || '').trim()) set.add(String(c.project).trim()); });
+    return [...set].sort((a,b)=>a.localeCompare(b));
+  }
+  function activeProject(data){
+    const saved = localStorage.getItem('vp_contractors_active_project') || '';
+    const names = projectNames(data);
+    if(saved && names.includes(saved)) return saved;
+    return '';
+  }
+  function filterProject(data, project){
+    if(!project) return data || [];
+    return (data || []).filter(c => String(c.project || '').trim() === project);
+  }
+  function projectOptions(data, current){
+    const opts = ['<option value="">All Projects</option>'];
+    projectNames(data).forEach(p => opts.push(`<option value="${esc(p)}" ${p===current?'selected':''}>${esc(p)}</option>`));
+    return opts.join('');
+  }
+
   function render(){
-    const data = load();
+    const allData = load();
+    const project = activeProject(allData);
+    const data = filterProject(allData, project);
     if (!activeId || !data.find(x=>x.id===activeId)) activeId = data[0]?.id || null;
     const active = data.find(x=>x.id===activeId);
     const gt = grandTotals(data);
     const el = q('contractorsProScreen'); if(!el) return;
-    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V244</h1><div class="sub">Select contractor from existing list · Auto account numbers · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn gold" onclick="vpConQuickAdd()">+ Open Contractor</button><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="selectBar"><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select><button class="btn gold" onclick="vpConQuickAdd()">New from List</button></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}
-      <div class="layout"><div class="panel"><h2>Open Contractor from Existing List</h2><div class="formBox"><select id="newConNameSelect" onchange="vpConFillFromList(this.value)">${contractorListOptions()}</select><input id="newConName" list="vpExistingSuppliers" placeholder="Contractor name from existing list"><datalist id="vpExistingSuppliers">${getSupplierList().map(s=>`<option value="${esc(s)}"></option>`).join('')}</datalist><input id="newConTrade" placeholder="Trade / Category"><input id="newConProject" placeholder="Project"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">V244 PRO: Auto calculations dashboard. No Approved field. Accounts cannot exceed Contract + Variations. Overruns above the original contract are shown in red with progress percentages. All updates are saved in localStorage.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a contractor from the dropdown. After creating it, you can manage the contract, accounts, payments, retention, and PDF statement.</div></div>'}</div></div></div>`;
+    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V247</h1><div class="sub">Project filter · Auto account numbers · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="projectBar"><select id="vpProjectSelect" onchange="vpConSetProject(this.value)">${projectOptions(allData, project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}
+      <div class="layout"><div class="panel contractorListPanel"><h2 class="sideTitle">Contractors${project ? ' · '+esc(project) : ''}</h2><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">Showing contractors for the selected project only. Use the project selector above to switch project.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a project and select a contractor from the list.</div></div>'}</div></div></div>`;
   }
 
   function updateContractor(id, mutator){
@@ -418,6 +461,19 @@
   }
 
   window.showContractorsDashboard = showContractors;
+
+  window.vpConSetProject = project => { localStorage.setItem('vp_contractors_active_project', project || ''); activeId = null; render(); };
+  window.vpConAddProject = () => {
+    const name = prompt('Project name');
+    if(!name) return;
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem('vp_contractors_projects') || '[]') || []; } catch(e) {}
+    if(!arr.map(x=>String(x).toLowerCase()).includes(String(name).trim().toLowerCase())) arr.push(String(name).trim());
+    localStorage.setItem('vp_contractors_projects', JSON.stringify(arr));
+    localStorage.setItem('vp_contractors_active_project', String(name).trim());
+    activeId = null;
+    render();
+  };
   window.showSuppliersDashboard = showSuppliers;
   window.vpConSelect = id => { activeId = id; render(); };
   window.vpConChooseExisting = id => { if(!id) return; activeId = id; render(); };
@@ -433,7 +489,7 @@
     const data = load();
     const existing = data.find(c => String(c.name).trim().toLowerCase() === name.toLowerCase());
     if(existing){ activeId = existing.id; render(); return; }
-    const c = { id:uid(), name, trade:(q('newConTrade')?.value||'Sub Contractor').trim(), project:(q('newConProject')?.value||'').trim(), contract:num(q('newConContract')?.value), retention:Number(q('newConRetention')?.value||5), accounts:[], payments:[], variations:[], deductions:[], retentionPayments:[], contractHistory:[] };
+    const c = { id:uid(), name, trade:(q('newConTrade')?.value||'Sub Contractor').trim(), project:(q('newConProject')?.value||activeProject(load())||'').trim(), contract:num(q('newConContract')?.value), retention:Number(q('newConRetention')?.value||5), accounts:[], payments:[], variations:[], deductions:[], retentionPayments:[], contractHistory:[] };
     data.unshift(c); save(data); activeId=c.id; render();
   };
   window.vpConSaveContract = id => updateContractor(id, c => {
