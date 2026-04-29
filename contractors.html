@@ -1,11 +1,178 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Contractors</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>VARDOPHASE Contractors</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#060606; --panel:#111112; --line:rgba(217,185,145,.22);
+  --gold:#d8b789; --gold2:#b88754; --text:#f5f5f7; --muted:#aeb4c0;
+  --green:#51d87a; --red:#ff6b6b; --blue:#64a8ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  background:radial-gradient(circle at 50% 0,rgba(217,185,145,.13),transparent 34%),var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:env(safe-area-inset-top) 14px calc(40px + env(safe-area-inset-bottom));
+}
+button,input{font:inherit}
+button{cursor:pointer;border:0}
+.card{
+  max-width:1180px;margin:18px auto;border:1px solid var(--line);border-radius:30px;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014));
+  padding:18px;box-shadow:0 28px 70px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)
+}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:62px;height:62px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#111;background:linear-gradient(145deg,#efd3ab,#b88754);box-shadow:0 0 42px rgba(217,185,145,.22)}
+h1{margin:0;font-size:clamp(30px,6vw,54px);letter-spacing:-.05em}
+.sub{color:var(--gold);margin-top:4px}
+.btn{
+  min-height:48px;border-radius:16px;padding:10px 16px;font-weight:900;
+  border:1px solid rgba(217,185,145,.30);color:#f5e2c5;
+  background:linear-gradient(180deg,rgba(24,21,18,.98),rgba(8,8,9,.98));
+  box-shadow:0 14px 28px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.06)
+}
+.btn.gold{color:#111;background:linear-gradient(145deg,#efd3ab 0%,#d1a775 50%,#b88754 100%);border-color:rgba(255,230,190,.55)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.panel{border:1px solid var(--line);border-radius:26px;background:rgba(255,255,255,.02);padding:14px}
+.searchrow{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px}
+input{width:100%;min-height:52px;border-radius:17px;border:1px solid rgba(255,255,255,.08);background:#080809;color:#fff;padding:0 16px;outline:none}
+.contractor{border:1px solid rgba(217,185,145,.16);border-radius:22px;padding:14px;margin-bottom:12px;background:linear-gradient(180deg,rgba(18,18,19,.94),rgba(8,8,9,.96))}
+.contractor.active{border-color:rgba(217,185,145,.62);box-shadow:0 0 0 1px rgba(217,185,145,.18)}
+.row{display:flex;align-items:center;gap:12px}
+.avatar{width:56px;height:56px;border-radius:18px;border:1px solid rgba(217,185,145,.35);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:22px;font-weight:900;background:radial-gradient(circle at 30% 20%,rgba(217,185,145,.22),rgba(0,0,0,.15))}
+.name{font-weight:900;font-size:20px}
+.meta{color:var(--muted);font-size:13px;margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.stat{border-left:1px solid rgba(255,255,255,.09);padding-left:8px}
+.stat:first-child{border-left:0}
+.stat small{display:block;color:var(--muted);font-size:11px}
+.stat strong{display:block;margin-top:4px;font-size:14px}
+.add{color:var(--green)}.ded{color:var(--red)}.pay{color:var(--blue)}.bal{color:var(--gold)}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tx{display:flex;justify-content:space-between;gap:12px;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px;margin-bottom:9px;background:rgba(255,255,255,.02)}
+.helper{color:var(--muted);text-align:center;padding:24px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.actions,.searchrow{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<h1>Contractors</h1>
-<script src="contractors-pro.js"></script>
+<div class="card">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">V</div>
+      <div>
+        <h1>Contractors</h1>
+        <div class="sub">Additions · Deductions · Payments · Balance</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="location.href='index.html'">← Suppliers</button>
+      <button class="btn gold" onclick="addContractor()">+ Add Contractor</button>
+      <button class="btn" onclick="loadAll()">Refresh</button>
+    </div>
+  </div>
+  <div id="status" class="helper"></div>
+  <div class="grid">
+    <div class="panel">
+      <div class="searchrow">
+        <input id="search" placeholder="Search contractor / project" oninput="renderList()">
+        <button class="btn" onclick="loadAll()">Refresh</button>
+      </div>
+      <div id="list"></div>
+    </div>
+    <div class="panel" id="detail"><div class="helper">Choose a contractor.</div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://owfbbshsemjvfltrsxsz.supabase.co";
+const SUPABASE_ANON_KEY = "";
+let sb = null;
+let contractors = [];
+let transactions = [];
+let selected = null;
+
+function esc(s){return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
+function money(v){const n=Number(v||0);return "R "+n.toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function initials(n){return String(n||"C").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"C"}
+function today(){return new Date().toISOString().slice(0,10)}
+function amount(v){return Number(String(v||"").replace(/[^0-9.-]/g,""))||0}
+function totals(id){let a=0,d=0,p=0;transactions.filter(t=>String(t.contractor_id)===String(id)).forEach(t=>{let x=amount(t.amount);if(t.type==="addition")a+=x;if(t.type==="deduction")d+=x;if(t.type==="payment")p+=x;});return {addition:a,deduction:d,payment:p,balance:a-d-p}}
+
+async function init(){
+  if(!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.length < 80){
+    document.getElementById("status").innerHTML = "Missing Supabase key in contractors.html. Send me your anon key or upload a ZIP that contains it.";
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  await loadAll();
+}
+
+async function loadAll(){
+  if(!sb) return;
+  document.getElementById("status").textContent="Loading...";
+  const c = await sb.from("contractors").select("*").order("created_at",{ascending:false});
+  if(c.error){document.getElementById("status").textContent=c.error.message;return}
+  const t = await sb.from("contractor_transactions").select("*").order("date",{ascending:false});
+  if(t.error){document.getElementById("status").textContent=t.error.message;return}
+  contractors=c.data||[]; transactions=t.data||[];
+  if(!selected && contractors.length) selected=contractors[0].id;
+  document.getElementById("status").textContent="";
+  renderList(); renderDetail();
+}
+
+function renderList(){
+  const q=(document.getElementById("search").value||"").toLowerCase();
+  const rows=contractors.filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q));
+  document.getElementById("list").innerHTML = rows.map(c=>{
+    const t=totals(c.id); const active=String(c.id)===String(selected)?" active":"";
+    return `<div class="contractor${active}" onclick="selected='${esc(c.id)}';renderList();renderDetail()">
+      <div class="row"><div class="avatar">${esc(initials(c.name))}</div><div><div class="name">${esc(c.name)}</div><div class="meta">Project: ${esc(c.project||"-")}</div><div class="meta">${esc(c.phone||"")}${c.email?" · "+esc(c.email):""}</div></div></div>
+      <div class="stats"><div class="stat"><small>Additions</small><strong class="add">${money(t.addition)}</strong></div><div class="stat"><small>Deductions</small><strong class="ded">${money(t.deduction)}</strong></div><div class="stat"><small>Paid</small><strong class="pay">${money(t.payment)}</strong></div><div class="stat"><small>Balance</small><strong class="bal">${money(t.balance)}</strong></div></div>
+      <div class="actions"><button class="btn" onclick="event.stopPropagation();addTx('${esc(c.id)}','addition')">+ Addition</button><button class="btn" onclick="event.stopPropagation();addTx('${esc(c.id)}','deduction')">− Deduction</button><button class="btn" onclick="event.stopPropagation();addTx('${esc(c.id)}','payment')">Payment</button></div>
+    </div>`
+  }).join("") || '<div class="helper">No contractors yet.</div>';
+}
+
+function renderDetail(){
+  const c=contractors.find(x=>String(x.id)===String(selected));
+  const box=document.getElementById("detail");
+  if(!c){box.innerHTML='<div class="helper">Choose a contractor.</div>';return}
+  const t=totals(c.id);
+  const tx=transactions.filter(x=>String(x.contractor_id)===String(c.id));
+  box.innerHTML = `<h2 style="margin-top:0">${esc(c.name)}</h2><div class="meta">Project: ${esc(c.project||"-")}</div>
+  <div class="stats"><div class="stat"><small>Additions</small><strong class="add">${money(t.addition)}</strong></div><div class="stat"><small>Deductions</small><strong class="ded">${money(t.deduction)}</strong></div><div class="stat"><small>Paid</small><strong class="pay">${money(t.payment)}</strong></div><div class="stat"><small>Balance</small><strong class="bal">${money(t.balance)}</strong></div></div>
+  <div class="actions"><button class="btn" onclick="addTx('${esc(c.id)}','addition')">+ Addition</button><button class="btn" onclick="addTx('${esc(c.id)}','deduction')">− Deduction</button><button class="btn" onclick="addTx('${esc(c.id)}','payment')">Payment</button></div>
+  <h3>Transactions</h3>` + (tx.map(x=>`<div class="tx"><div><b>${esc(x.type)}</b><div class="meta">${esc(x.description||"")} · ${esc(x.date||"")}</div></div><b>${money(x.amount)}</b></div>`).join("") || '<div class="helper">No transactions.</div>');
+}
+
+async function addContractor(){
+  if(!sb) return;
+  const name=prompt("Contractor name"); if(!name) return;
+  const project=prompt("Project","")||""; const phone=prompt("Phone","")||""; const email=prompt("Email","")||""; const notes=prompt("Notes","")||"";
+  const r=await sb.from("contractors").insert([{name,project,phone,email,notes}]);
+  if(r.error) return alert(r.error.message);
+  await loadAll();
+}
+
+async function addTx(contractor_id,type){
+  if(!sb) return;
+  const raw=prompt(type+" amount"); if(!raw) return;
+  const amt=amount(raw); if(!amt) return alert("Invalid amount");
+  const description=prompt("Description",type)||type; const date=prompt("Date",today())||today();
+  const r=await sb.from("contractor_transactions").insert([{contractor_id,type,amount:amt,date,description}]);
+  if(r.error) return alert(r.error.message);
+  await loadAll();
+}
+init();
+</script>
 </body>
 </html>
