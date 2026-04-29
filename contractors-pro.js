@@ -1,6 +1,6 @@
 (function(){
-  if (window.__VP_CONTRACTORS_PRO_V247__) return;
-  window.__VP_CONTRACTORS_PRO_V247__ = true;
+  if (window.__VP_CONTRACTORS_PRO_V248__) return;
+  window.__VP_CONTRACTORS_PRO_V248__ = true;
 
   const KEY = 'vp_contractors_pro_v233'; // keep same key so your old contractor data stays
   const OLD_KEYS = ['vp_contractors_pro_v236','vp_contractors_pro_v235','vp_contractors_pro_v234','vp_contractors_pro_v231','vp_contractors_pro_v230','vp_contractors_pro_v229','vp_contractors_pro_v226','vp_contractors_pro_v225','vp_contractors_pro_v224'];
@@ -222,6 +222,26 @@
       #contractorsProScreen .barLabel{display:flex!important;justify-content:space-between!important;color:#cfd2db!important;font-weight:900!important;margin-bottom:7px!important;}
       #contractorsProScreen .bar{height:12px!important;border-radius:99px!important;background:#24242a!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.05)!important;}
       #contractorsProScreen .bar i{display:block!important;height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,#64a8ff,#f5c15d,#51d87a)!important;}
+
+      /* V248 Project Financial Dashboard */
+      #contractorsProScreen .projectDashHero{border-radius:34px!important;padding:20px!important;margin-bottom:16px!important;background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.35)!important;box-shadow:0 22px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)!important;}
+      #contractorsProScreen .projectDashTitle{font-size:30px!important;font-weight:950!important;margin:0!important;color:#fff!important;letter-spacing:-.02em!important;}
+      #contractorsProScreen .projectDashSub{color:#e8c79a!important;font-weight:850!important;margin-top:6px!important;}
+      #contractorsProScreen .projectDashControls{display:grid!important;grid-template-columns:1fr auto!important;gap:10px!important;margin-top:16px!important;align-items:center!important;}
+      #contractorsProScreen .projectDashControls select{margin:0!important;min-height:54px!important;font-weight:950!important;}
+      #contractorsProScreen .dashSection{margin:16px 0!important;padding:18px!important;border-radius:30px!important;background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.35)!important;box-shadow:0 22px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)!important;}
+      #contractorsProScreen .dashSection h2{font-size:26px!important;margin:0 0 14px!important;color:#fff!important;font-weight:950!important;}
+      #contractorsProScreen .dashGrid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:10px!important;}
+      #contractorsProScreen .dashTile{border-radius:22px!important;padding:15px!important;background:linear-gradient(180deg,rgba(22,22,26,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.25)!important;min-height:92px!important;}
+      #contractorsProScreen .dashTile span{display:block!important;color:#cfd2db!important;font-size:12px!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.08em!important;}
+      #contractorsProScreen .dashTile b{display:block!important;margin-top:9px!important;font-size:21px!important;line-height:1.1!important;}
+      #contractorsProScreen .dashColumns{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;}
+      #contractorsProScreen .dashBarBox{margin-top:14px!important;}
+      #contractorsProScreen .dashBarLabel{display:flex!important;justify-content:space-between!important;color:#cfd2db!important;font-weight:900!important;margin-bottom:7px!important;}
+      #contractorsProScreen .dashBar{height:12px!important;border-radius:99px!important;background:#24242a!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.05)!important;}
+      #contractorsProScreen .dashBar i{display:block!important;height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,#64a8ff,#f5c15d,#51d87a)!important;}
+      @media(max-width:920px){#contractorsProScreen .dashGrid{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .dashColumns{grid-template-columns:1fr!important;}#contractorsProScreen .projectDashControls{grid-template-columns:1fr!important;}}
+
       @media(max-width:860px){#contractorsProScreen .proDashGrid{grid-template-columns:repeat(2,1fr)!important;}}
       #contractorsProScreen .kpi b.red,#contractorsProScreen .mini b.red{color:#ff8d8d!important;}
       #contractorsProScreen .kpi b.green,#contractorsProScreen .mini b.green{color:#73e29b!important;}
@@ -303,7 +323,7 @@
     if(!q('vpConFloat')){
       const nav = document.createElement('div');
       nav.className = 'vpcon-float'; nav.id = 'vpConFloat';
-      nav.innerHTML = '<button id="vpNavDash" onclick="showSuppliersDashboard()">Dashboard</button><button id="vpNavSup" onclick="showSuppliersDashboard()">Suppliers</button><button id="vpNavCon" onclick="showContractorsDashboard()">Contractors</button>';
+      nav.innerHTML = '<button id="vpNavDash" onclick="showProjectFinancialDashboard()">Dashboard</button><button id="vpNavSup" onclick="showSuppliersDashboard()">Suppliers</button><button id="vpNavCon" onclick="showContractorsDashboard()">Contractors</button>';
       document.body.appendChild(nav);
     }
   }
@@ -315,6 +335,7 @@
   function setActive(where){ ['vpNavDash','vpNavSup','vpNavCon'].forEach(id=>{ const b=q(id); if(b) b.classList.remove('active'); }); const b=q(where==='con'?'vpNavCon':'vpNavSup'); if(b) b.classList.add('active'); }
   function showSuppliers(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display=''; if(con) con.style.display='none'; setActive('sup'); }
   function showContractors(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display='none'; if(con){ con.style.display='block'; render(); } setActive('con'); }
+  async function showProjectDashboard(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display='none'; if(con) con.style.display='block'; setActive('dash'); await renderProjectFinancialDashboard(); }
 
   function activeContractorOptions(data){
     const opts = ['<option value="">Select Contractor</option>'];
@@ -437,6 +458,55 @@
     return opts.join('');
   }
 
+
+  function supplierMoneyValue(row){
+    if(!row) return 0;
+    const candidates=[row.amount_due,row.balance,row.outstanding,row.total,row.gross,row.amount,row.value,row.invoice_amount,row.delivered_amount,row.order_amount,row.price,row.subtotal];
+    for(const v of candidates){ const n=num(v); if(n) return n; }
+    return 0;
+  }
+  function supplierType(row){
+    const raw=String(row?.type||row?.kind||row?.status||'').toLowerCase();
+    if(raw.includes('invoice')) return 'invoice';
+    if(raw.includes('delivery')||raw==='dn') return 'delivery';
+    if(raw.includes('order')) return 'order';
+    if(String(row?.invoice_no||'').trim()) return 'invoice';
+    if(String(row?.delivery_note_no||row?.dn_no||'').trim()) return 'delivery';
+    if(String(row?.order_no||'').trim()) return 'order';
+    return raw||'record';
+  }
+  async function supplierRows(){
+    try{ if(typeof window.getEntries==='function') return await window.getEntries(); }catch(e){}
+    try{ if(typeof window.getAllRows==='function') return await window.getAllRows(); }catch(e){}
+    try{ return JSON.parse(localStorage.getItem('vp_supplier_rows')||'[]')||[]; }catch(e){}
+    return [];
+  }
+  function supplierProjects(rows){ return [...new Set((rows||[]).map(r=>String(r?.project||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+  function supplierTotals(rows, project){
+    const filtered=(rows||[]).filter(r=>!project || String(r?.project||'').trim()===project);
+    const out={count:filtered.length,orders:0,delivered:0,invoiced:0,paid:0,open:0,outstanding:0,overdue:0,deposits:0,credit:0};
+    filtered.forEach(r=>{
+      const amount=supplierMoneyValue(r), type=supplierType(r), status=String(r?.status||r?.month_status||'').toLowerCase();
+      if(type==='order') out.orders+=amount; else if(type==='delivery') out.delivered+=amount; else if(type==='invoice') out.invoiced+=amount; else out.open+=amount;
+      if(status.includes('paid')||status.includes('covered')||status.includes('closed')) out.paid+=amount; else out.outstanding+=amount;
+      if(status.includes('overdue')) out.overdue+=amount; if(status.includes('deposit')) out.deposits+=amount; if(status.includes('credit')) out.credit+=amount;
+    });
+    if(!out.open) out.open=Math.max(0,out.orders-out.delivered);
+    return out;
+  }
+  async function allProjectNames(){ const cData=load(); const sRows=await supplierRows(); const set=new Set(projectNames(cData)); supplierProjects(sRows).forEach(p=>set.add(p)); return [...set].sort((a,b)=>a.localeCompare(b)); }
+  function projectDashOptions(names,current){ const opts=['<option value="">All Projects</option>']; (names||[]).forEach(p=>opts.push(`<option value="${esc(p)}" ${p===current?'selected':''}>${esc(p)}</option>`)); return opts.join(''); }
+  function dashboardTile(label,value,cls){ return `<div class="dashTile"><span>${label}</span><b class="${cls||''}">${value}</b></div>`; }
+  async function renderProjectFinancialDashboard(){
+    ensure(); const el=q('contractorsProScreen'); if(!el) return;
+    const allData=load(); const allNames=await allProjectNames(); let project=localStorage.getItem('vp_contractors_active_project')||''; if(project && !allNames.includes(project)) project='';
+    const cData=filterProject(allData,project); const gt=grandTotals(cData); const sRows=await supplierRows(); const st=supplierTotals(sRows,project);
+    const totalCommitted=gt.approvedBudget+st.orders, totalPaid=gt.paid+st.paid, totalOutstanding=gt.outstanding+st.outstanding, overBudget=gt.overOriginalContract+gt.overApprovedBudget;
+    const paidProgress=totalCommitted?Math.max(0,Math.min(100,totalPaid/totalCommitted*100)):0; const claimedProgress=gt.approvedBudget?Math.max(0,Math.min(150,gt.claimed/gt.approvedBudget*100)):0;
+    el.style.display='block'; const app=q('app'); if(app) app.style.display='none';
+    el.innerHTML=`<div class="shell"><div class="projectDashHero"><div class="row"><div><div class="projectDashTitle">Project Financial Dashboard</div><div class="projectDashSub">Suppliers + Contractors financial control by selected project</div></div><button class="btn" onclick="showContractorsDashboard()">Open Contractors</button></div><div class="projectDashControls"><select id="vpProjectDashSelect" onchange="vpDashSetProject(this.value)">${projectDashOptions(allNames,project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button></div></div><div class="dashSection"><h2>${project?esc(project):'All Projects'} · Financial Summary</h2><div class="dashGrid">${dashboardTile('Total Committed',money(totalCommitted),'contractColor')}${dashboardTile('Total Paid',money(totalPaid),'paidColor')}${dashboardTile('Total Outstanding',money(totalOutstanding),'outstandingColor')}${dashboardTile('Over Budget',money(overBudget),overBudget>0?'overColor':'paidColor')}${dashboardTile('Contractors Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Suppliers Orders',money(st.orders),'contractColor')}${dashboardTile('Retention Balance',money(gt.retentionBalance),'retentionColor')}${dashboardTile('Cash Exposure',money(totalOutstanding+gt.retentionBalance),'claimedColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Paid vs Total Committed</span><span class="paidColor">${paidProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${paidProgress.toFixed(1)}%"></i></div></div></div><div class="dashColumns"><div class="dashSection"><h2>Suppliers Summary</h2><div class="dashGrid">${dashboardTile('Orders',money(st.orders),'contractColor')}${dashboardTile('Delivered',money(st.delivered),'paidColor')}${dashboardTile('Invoiced',money(st.invoiced),'claimedColor')}${dashboardTile('Paid',money(st.paid),'paidColor')}${dashboardTile('Outstanding',money(st.outstanding),'outstandingColor')}${dashboardTile('Open Supply',money(st.open),'outstandingColor')}${dashboardTile('Deposit / Credit',money(st.deposits+st.credit),'retentionColor')}${dashboardTile('Records',st.count,'contractColor')}</div></div><div class="dashSection"><h2>Contractors Summary</h2><div class="dashGrid">${dashboardTile('Original Contract',money(gt.contract),'contractColor')}${dashboardTile('Variations',money(gt.variationsTotal),'retentionColor')}${dashboardTile('Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Claimed',money(gt.claimed),'claimedColor')}${dashboardTile('Paid',money(gt.paid),'paidColor')}${dashboardTile('Outstanding',money(gt.outstanding),'outstandingColor')}${dashboardTile('Retention Held',money(gt.retentionHeld),'retentionColor')}${dashboardTile('Open Accounts',gt.openAccounts,'outstandingColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Contractor Budget Usage</span><span class="${claimedProgress>100?'overColor':'contractColor'}">${claimedProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${Math.min(100,claimedProgress).toFixed(1)}%"></i></div></div></div></div></div>`;
+  }
+
   function render(){
     const allData = load();
     const project = activeProject(allData);
@@ -445,7 +515,7 @@
     const active = data.find(x=>x.id===activeId);
     const gt = grandTotals(data);
     const el = q('contractorsProScreen'); if(!el) return;
-    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V247</h1><div class="sub">Project filter · Auto account numbers · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="projectBar"><select id="vpProjectSelect" onchange="vpConSetProject(this.value)">${projectOptions(allData, project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}
+    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V248</h1><div class="sub">Project dashboard · Auto calculations · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="projectBar"><select id="vpProjectSelect" onchange="vpConSetProject(this.value)">${projectOptions(allData, project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}
       <div class="layout"><div class="panel contractorListPanel"><h2 class="sideTitle">Contractors${project ? ' · '+esc(project) : ''}</h2><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">Showing contractors for the selected project only. Use the project selector above to switch project.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a project and select a contractor from the list.</div></div>'}</div></div></div>`;
   }
 
@@ -461,6 +531,8 @@
   }
 
   window.showContractorsDashboard = showContractors;
+  window.showProjectFinancialDashboard = showProjectDashboard;
+  window.vpDashSetProject = project => { localStorage.setItem('vp_contractors_active_project', project || ''); activeId = null; renderProjectFinancialDashboard(); };
 
   window.vpConSetProject = project => { localStorage.setItem('vp_contractors_active_project', project || ''); activeId = null; render(); };
   window.vpConAddProject = () => {
