@@ -1,6 +1,6 @@
 (function(){
-  if (window.__VP_CONTRACTORS_PRO_V237__) return;
-  window.__VP_CONTRACTORS_PRO_V237__ = true;
+  if (window.__VP_CONTRACTORS_PRO_V244__) return;
+  window.__VP_CONTRACTORS_PRO_V244__ = true;
 
   const KEY = 'vp_contractors_pro_v233'; // keep same key so your old contractor data stays
   const OLD_KEYS = ['vp_contractors_pro_v236','vp_contractors_pro_v235','vp_contractors_pro_v234','vp_contractors_pro_v231','vp_contractors_pro_v230','vp_contractors_pro_v229','vp_contractors_pro_v226','vp_contractors_pro_v225','vp_contractors_pro_v224'];
@@ -121,7 +121,11 @@
     return { contract, approvedBudget, claimed, variationsTotal, deductionsTotal, paid, retentionHeld, retentionPaid, retentionBalance, outstanding, accountNet: accountNetTotal, accountBalance, totalPayable, openPayable, progress, progressRaw, budgetProgress, overOriginalContract, overApprovedBudget, availableForAccounts, totalAccounts, paidAccounts, openAccounts };
   }
   function grandTotals(data){
-    return data.reduce((a,c)=>{ const t=totals(c); a.contract += t.contract; a.approvedBudget += t.approvedBudget; a.claimed += t.claimed; a.retentionHeld += t.retentionHeld; a.retentionPaid += t.retentionPaid; a.paid += t.paid; a.outstanding += t.outstanding; a.overOriginalContract += t.overOriginalContract; a.overApprovedBudget += t.overApprovedBudget; return a; }, {contract:0,approvedBudget:0,claimed:0,retentionHeld:0,retentionPaid:0,paid:0,outstanding:0,overOriginalContract:0,overApprovedBudget:0});
+    const out = data.reduce((a,c)=>{ const t=totals(c); a.contract += t.contract; a.approvedBudget += t.approvedBudget; a.claimed += t.claimed; a.variationsTotal += t.variationsTotal; a.deductionsTotal += t.deductionsTotal; a.retentionHeld += t.retentionHeld; a.retentionPaid += t.retentionPaid; a.retentionBalance += t.retentionBalance; a.paid += t.paid; a.outstanding += t.outstanding; a.overOriginalContract += t.overOriginalContract; a.overApprovedBudget += t.overApprovedBudget; a.totalAccounts += t.totalAccounts; a.paidAccounts += t.paidAccounts; a.openAccounts += t.openAccounts; return a; }, {contract:0,approvedBudget:0,claimed:0,variationsTotal:0,deductionsTotal:0,retentionHeld:0,retentionPaid:0,retentionBalance:0,paid:0,outstanding:0,overOriginalContract:0,overApprovedBudget:0,totalAccounts:0,paidAccounts:0,openAccounts:0});
+    out.progress = out.contract ? Math.max(0, out.claimed / out.contract * 100) : 0;
+    out.budgetProgress = out.approvedBudget ? Math.max(0, out.claimed / out.approvedBudget * 100) : 0;
+    out.availableForAccounts = Math.max(0, out.approvedBudget - out.claimed);
+    return out;
   }
   function nextAccountNo(c){
     const nums = (c.accounts || []).map(a => Number(a.no || 0)).filter(Boolean);
@@ -208,6 +212,17 @@
       #contractorsProScreen .claimedColor{color:#f5c15d!important;}
       #contractorsProScreen .paidColor{color:#73e29b!important;}
       #contractorsProScreen .outstandingColor,#contractorsProScreen .overColor{color:#ff8d8d!important;}
+      #contractorsProScreen .proDash{margin:16px 0!important;padding:18px!important;border-radius:30px!important;background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.35)!important;box-shadow:0 22px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)!important;}
+      #contractorsProScreen .proDashTitle{font-size:26px!important;font-weight:950!important;margin:0 0 12px!important;color:#fff!important;}
+      #contractorsProScreen .proDashGrid{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:10px!important;}
+      #contractorsProScreen .proTile{border-radius:22px!important;padding:15px!important;background:linear-gradient(180deg,rgba(22,22,26,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.25)!important;min-height:92px!important;}
+      #contractorsProScreen .proTile span{display:block!important;color:#cfd2db!important;font-size:12px!important;font-weight:900!important;text-transform:uppercase!important;letter-spacing:.08em!important;}
+      #contractorsProScreen .proTile b{display:block!important;margin-top:9px!important;font-size:21px!important;line-height:1.1!important;}
+      #contractorsProScreen .barBox{margin-top:14px!important;}
+      #contractorsProScreen .barLabel{display:flex!important;justify-content:space-between!important;color:#cfd2db!important;font-weight:900!important;margin-bottom:7px!important;}
+      #contractorsProScreen .bar{height:12px!important;border-radius:99px!important;background:#24242a!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.05)!important;}
+      #contractorsProScreen .bar i{display:block!important;height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,#64a8ff,#f5c15d,#51d87a)!important;}
+      @media(max-width:860px){#contractorsProScreen .proDashGrid{grid-template-columns:repeat(2,1fr)!important;}}
       #contractorsProScreen .kpi b.red,#contractorsProScreen .mini b.red{color:#ff8d8d!important;}
       #contractorsProScreen .kpi b.green,#contractorsProScreen .mini b.green{color:#73e29b!important;}
       #contractorsProScreen .kpi,#contractorsProScreen .mini{background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;}
@@ -288,6 +303,30 @@
     const rows = (c.contractHistory||[]).slice().reverse().map(h=>`<tr><td>${esc(h.date||'')}</td><td>${money(h.oldValue)}</td><td>${money(h.newValue)}</td><td>${esc(h.note||'')}</td></tr>`).join('');
     return rows || '<tr><td colspan="4" class="muted">No contract changes yet</td></tr>';
   }
+  function proDashboard(data, gt){
+    const progress = gt.progress || 0;
+    const paidRatio = gt.approvedBudget ? Math.max(0, Math.min(100, gt.paid / gt.approvedBudget * 100)) : 0;
+    const riskClass = gt.overOriginalContract > 0 || gt.overApprovedBudget > 0 ? 'overColor' : 'paidColor';
+    return `<div class="proDash"><div class="proDashTitle">PRO Dashboard</div>
+      <div class="proDashGrid">
+        <div class="proTile"><span>Total Contractors</span><b class="contractColor">${data.length}</b></div>
+        <div class="proTile"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div>
+        <div class="proTile"><span>Total Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div>
+        <div class="proTile"><span>Total Paid</span><b class="paidColor">${money(gt.paid)}</b></div>
+        <div class="proTile"><span>Total Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div>
+        <div class="proTile"><span>Over Contract</span><b class="${riskClass}">${money(gt.overOriginalContract)}</b></div>
+        <div class="proTile"><span>Retention Held</span><b class="retentionColor">${money(gt.retentionHeld)}</b></div>
+        <div class="proTile"><span>Retention Balance</span><b class="retentionColor">${money(gt.retentionBalance)}</b></div>
+        <div class="proTile"><span>Open Accounts</span><b class="outstandingColor">${gt.openAccounts}</b></div>
+        <div class="proTile"><span>Paid Accounts</span><b class="paidColor">${gt.paidAccounts} / ${gt.totalAccounts}</b></div>
+        <div class="proTile"><span>Available For Accounts</span><b class="retentionColor">${money(gt.availableForAccounts)}</b></div>
+        <div class="proTile"><span>Budget Progress</span><b class="${gt.budgetProgress>100?'overColor':'contractColor'}">${gt.budgetProgress.toFixed(1)}%</b></div>
+      </div>
+      <div class="barBox"><div class="barLabel"><span>Progress vs Original Contract</span><span class="${progress>100?'overColor':'paidColor'}">${progress.toFixed(1)}%</span></div><div class="bar"><i style="width:${Math.min(100,progress).toFixed(1)}%"></i></div></div>
+      <div class="barBox"><div class="barLabel"><span>Paid vs Approved Budget</span><span class="paidColor">${paidRatio.toFixed(1)}%</span></div><div class="bar"><i style="width:${paidRatio.toFixed(1)}%"></i></div></div>
+    </div>`;
+  }
+
   function detail(c){
     const t = totals(c);
     const nextNo = nextAccountNo(c);
@@ -320,8 +359,8 @@
     const active = data.find(x=>x.id===activeId);
     const gt = grandTotals(data);
     const el = q('contractorsProScreen'); if(!el) return;
-    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V243</h1><div class="sub">Select contractor from existing list · Auto account numbers · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn gold" onclick="vpConQuickAdd()">+ Open Contractor</button><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="selectBar"><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select><button class="btn gold" onclick="vpConQuickAdd()">New from List</button></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>
-      <div class="layout"><div class="panel"><h2>Open Contractor from Existing List</h2><div class="formBox"><select id="newConNameSelect" onchange="vpConFillFromList(this.value)">${contractorListOptions()}</select><input id="newConName" list="vpExistingSuppliers" placeholder="Contractor name from existing list"><datalist id="vpExistingSuppliers">${getSupplierList().map(s=>`<option value="${esc(s)}"></option>`).join('')}</datalist><input id="newConTrade" placeholder="Trade / Category"><input id="newConProject" placeholder="Project"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">V243: No Approved field. Accounts cannot exceed Contract + Variations. Overruns above the original contract are shown in red with progress percentages. All updates are saved in localStorage.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a contractor from the dropdown. After creating it, you can manage the contract, accounts, payments, retention, and PDF statement.</div></div>'}</div></div></div>`;
+    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V244</h1><div class="sub">Select contractor from existing list · Auto account numbers · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn gold" onclick="vpConQuickAdd()">+ Open Contractor</button><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="selectBar"><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select><button class="btn gold" onclick="vpConQuickAdd()">New from List</button></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}
+      <div class="layout"><div class="panel"><h2>Open Contractor from Existing List</h2><div class="formBox"><select id="newConNameSelect" onchange="vpConFillFromList(this.value)">${contractorListOptions()}</select><input id="newConName" list="vpExistingSuppliers" placeholder="Contractor name from existing list"><datalist id="vpExistingSuppliers">${getSupplierList().map(s=>`<option value="${esc(s)}"></option>`).join('')}</datalist><input id="newConTrade" placeholder="Trade / Category"><input id="newConProject" placeholder="Project"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">V244 PRO: Auto calculations dashboard. No Approved field. Accounts cannot exceed Contract + Variations. Overruns above the original contract are shown in red with progress percentages. All updates are saved in localStorage.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a contractor from the dropdown. After creating it, you can manage the contract, accounts, payments, retention, and PDF statement.</div></div>'}</div></div></div>`;
   }
 
   function updateContractor(id, mutator){
