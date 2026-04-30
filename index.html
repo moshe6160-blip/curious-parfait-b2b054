@@ -3196,6 +3196,7 @@ const supabase = createClient(
   "https://owfbbshsemjvfltrsxsz.supabase.co",
   "sb_publishable_-2wNFqv-HQXKgKQFS4KMvA_SArEjQls"
 );
+window.vpSupabase = supabase;
 
 const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 let currentUser = null;
@@ -20789,6 +20790,18 @@ body.role-dn-approver .money-amber {
 })();
 /* === END V168 DN APPROVER ROLE PATCH === */
 
+
+/* === V251 expose supplier data engine for project dashboard === */
+window.vpGetAllSupplierRows = async function(){
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("*")
+    .order("created_at", { ascending:false })
+    .limit((typeof PERFORMANCE_CONFIG !== "undefined" && PERFORMANCE_CONFIG.hardLimit) ? PERFORMANCE_CONFIG.hardLimit : 5000);
+  if(error) throw error;
+  try{ return (typeof computeLedger === "function") ? computeLedger(data || []) : (data || []); }
+  catch(e){ return data || []; }
+};
 </script>
 
 
