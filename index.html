@@ -3300,20 +3300,14 @@ function amountDueDisplay(row){
   const closed = !!(typeof extractCloseReason === "function" && extractCloseReason(row));
   const status = String(row?.status || "").trim().toLowerCase();
 
-  // Paid/Covered means the supplier invoice was paid/settled.
-  // Therefore outstanding after deposit must be zero.
-  if(status === "paid" || status === "covered"){
-    return 0;
-  }
-
-  // Real invoice outstanding is always: invoice value - deposit applied - credit notes.
-  // This prevents double reduction when amount_due is saved back to the same invoice row.
+  // V266 PRO: Credit Note is allowed even when invoice is already paid/covered.
+  // Paid/Covered invoice + credit note = Supplier Credit Available (negative outstanding).
   if(hasInvoice){
     const invoiceBase = (typeof invoiceDisplayAmount === "function") ? Number(invoiceDisplayAmount(row) || 0) : Number(row?.total || row?.amount || 0);
-    return Math.max(0, invoiceBase - Number(row?.deposit_applied || 0) - credit);
+    if(status === "paid" || status === "covered" || status === "credit available") return credit > 0 ? -credit : 0;
+    return invoiceBase - Number(row?.deposit_applied || 0) - credit;
   }
 
-  // If DN exists but no invoice yet, financial due follows delivered/open DN flow.
   if(hasDN){
     if(closed) return 0;
     return Math.max(0, delivered - credit);
@@ -3674,10 +3668,10 @@ function renderToolbarButtons(){
 }
 function renderSelectionButtons(){
   const btn = [];
-  if(canAccountant()) btn.push('<button class="credit-note-btn-pro" onclick="window.openCreditNoteModal()">Create Credit Note</button>');
   if(canEditAnyEntry()) btn.push('<button class="soft" onclick="window.duplicateEntry()">Duplicate Selected</button>');
   if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.convertOrderToDN()">Convert Order → DN</button>');
-if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>');
+  if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>');
+  if(canAccountant()) btn.push('<button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canAccountant()) btn.push('<button class="green" onclick="window.bulkMarkPaid()">Mark Selected Paid</button>');
   if(canDeleteRows()) btn.push('');
   if(canDeleteRows()) btn.push('<button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>');
@@ -4474,9 +4468,9 @@ async function render(){
         </div>`}
 
         <div class="helper" style="margin-bottom:10px">Selected rows: <span data-selected-count>${selectedIds.length}</span></div><div class="toolbar supplier-selection-toolbar" style="grid-template-columns:repeat(6,1fr);margin-bottom:12px">
-<button class="credit-note-btn-pro" onclick="window.openCreditNoteModal()">Create Credit Note</button>
 <button class="soft main-action" onclick="window.convertOrderToDN()">Convert Order → DN</button>
 <button class="soft main-action" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>
+<button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>
 <button class="green" onclick="window.bulkMarkPaid()">Mark Selected</button>
 <button onclick="window.duplicateEntry()">Duplicate Selected</button>
 <button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>
@@ -19891,10 +19885,10 @@ window.addTransparencyButtons = function(){
 };
 setInterval(window.addTransparencyButtons, 1000);
 
-/* === V260 SAFE CREDIT NOTE - DOES NOT TOUCH LOGIN === */
+/* === V266 PRO FULL CREDIT NOTE - INVOICE ONLY, PAID INVOICE ALLOWED === */
 (function(){
-  if(window.__v260CreditNoteLoaded) return;
-  window.__v260CreditNoteLoaded = true;
+  if(window.__v266CreditNoteLoaded) return;
+  window.__v266CreditNoteLoaded = true;
   function cnAmount(v){ return Number(String(v||"").replace(/[^0-9.-]/g,"")) || 0; }
   function cnToday(){ return new Date().toISOString().slice(0,10); }
   function cnMoney(n){ try{ return money(Number(n||0)); }catch(e){ return "R " + Number(n||0).toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2}); } }
@@ -19919,42 +19913,45 @@ setInterval(window.addTransparencyButtons, 1000);
       const currentCredit = (typeof extractCreditAmount === "function") ? Number(extractCreditAmount(row) || 0) : 0;
       const invoiceBase = (typeof invoiceDisplayAmount === "function") ? Number(invoiceDisplayAmount(row) || 0) : Number(row.total || row.amount || 0);
       const depositApplied = Number(row.deposit_applied || 0);
-      const currentOutstanding = (typeof amountDueDisplay === "function") ? Number(amountDueDisplay(row) || 0) : Math.max(0, invoiceBase - depositApplied - currentCredit);
-
-      if(currentOutstanding <= 0) return alert("This invoice has no outstanding balance to credit.");
+      const statusText = String(row.status || "").trim().toLowerCase();
+      const currentOutstanding = (typeof amountDueDisplay === "function") ? Number(amountDueDisplay(row) || 0) : (invoiceBase - depositApplied - currentCredit);
+      const wasSettled = (statusText === "paid" || statusText === "covered" || statusText === "credit available") || currentOutstanding <= 0.01;
 
       const creditNo = prompt("Credit Note Number", "CN-" + String(row.invoice_no || ""));
       if(creditNo === null || !String(creditNo).trim()) return;
 
-      const raw = prompt("Credit Note Amount\nOutstanding: " + cnMoney(currentOutstanding), currentOutstanding.toFixed(2));
+      const defaultCreditAmount = Math.max(0, currentOutstanding);
+      const raw = prompt("Credit Note Amount\nCurrent Outstanding: " + cnMoney(currentOutstanding) + "\nPaid/closed invoices are allowed. If already paid, this becomes Supplier Credit Available.", defaultCreditAmount.toFixed(2));
       if(raw === null) return;
       const creditAmount = cnAmount(raw);
       if(creditAmount <= 0) return alert("Invalid Credit Note amount.");
-      if(creditAmount > currentOutstanding + 0.01) return alert("Credit Note cannot be higher than the invoice outstanding: " + cnMoney(currentOutstanding));
 
-      const reason = prompt("Reason / Note", "Supplier credit note") || "Supplier credit note";
+      const reason = prompt("Reason / Note", "Material quality issue / supplier credit") || "Supplier credit note";
       const date = prompt("Credit Note Date", cnToday()) || cnToday();
       const newCreditTotal = currentCredit + creditAmount;
-      const newAmountDue = Math.max(0, invoiceBase - depositApplied - newCreditTotal);
+      const newAmountDue = wasSettled ? -newCreditTotal : (invoiceBase - depositApplied - newCreditTotal);
 
       let notes = String(row.notes || "");
+      const historyLine = date + " | " + String(creditNo).trim() + " | " + creditAmount.toFixed(2) + " | " + reason;
       if(typeof upsertNoteTag === "function"){
         notes = upsertNoteTag(notes, "CREDIT", newCreditTotal.toFixed(2));
         notes = upsertNoteTag(notes, "CREDITNO", String(creditNo).trim());
         notes = upsertNoteTag(notes, "CREDITDATE", date);
         notes = upsertNoteTag(notes, "CREDITREASON", reason);
+        notes += "\n[[CREDITHISTORY:" + historyLine + "]]";
       } else {
         notes += "\n[[CREDIT:" + newCreditTotal.toFixed(2) + "]]";
         notes += "\n[[CREDITNO:" + String(creditNo).trim() + "]]";
         notes += "\n[[CREDITDATE:" + date + "]]";
         notes += "\n[[CREDITREASON:" + reason + "]]";
+        notes += "\n[[CREDITHISTORY:" + historyLine + "]]";
       }
 
       const update = {
         notes,
         amount_due: newAmountDue,
         unpaid_after_deposit: newAmountDue,
-        status: newAmountDue <= 0.01 ? "Covered" : (row.status || "Unpaid")
+        status: newAmountDue < -0.01 ? "Credit Available" : (newAmountDue <= 0.01 ? "Covered" : (row.status || "Unpaid"))
       };
 
       const upd = await supabase.from("suppliers").update(update).eq("id", id);
@@ -19962,12 +19959,12 @@ setInterval(window.addTransparencyButtons, 1000);
 
       selectedIds = [];
       try{ if(typeof logAudit === "function") await logAudit("credit_note", "invoice=" + (row.invoice_no || id) + " amount=" + creditAmount + " no=" + creditNo); }catch(e){}
-      alert("Credit Note saved on invoice " + String(row.invoice_no || "") + ": " + String(creditNo).trim() + " / " + cnMoney(creditAmount) + "\nNew Outstanding: " + cnMoney(newAmountDue));
+      alert("Credit Note saved on invoice " + String(row.invoice_no || "") + ": " + String(creditNo).trim() + " / " + cnMoney(creditAmount) + "\nNew Outstanding / Credit: " + cnMoney(newAmountDue));
       if(typeof render === "function") await render();
     }catch(err){ alert(err?.message || "Credit Note error"); }
   };
   const st = document.createElement("style");
-  st.textContent = ".credit-note-btn{color:#111!important;background:linear-gradient(145deg,#efd3ab,#b88754)!important;font-weight:900!important}.credit-note-value{color:#f5c26b!important}";
+  st.textContent = ".credit-note-btn,.credit-note-btn-pro{color:#111!important;background:linear-gradient(145deg,#efd3ab,#b88754)!important;font-weight:900!important}.credit-note-value{color:#f5c26b!important}";
   document.head.appendChild(st);
 })();
 
@@ -20660,17 +20657,17 @@ window.vpGetAllSupplierRows = async function(){
 
 <script src="contractors-pro.js" defer></script>
 <script>
-/* === V265 PRO FORCE VISIBLE CREDIT NOTE BUTTON - FIXED PLACEMENT === */
+/* === V266 PRO FORCE VISIBLE CREDIT NOTE BUTTON - NEXT TO CONVERT INVOICE === */
 (function(){
- if(window.__v265ForceCreditNoteVisible) return; window.__v265ForceCreditNoteVisible=true;
+ if(window.__v266ForceCreditNoteVisible) return; window.__v266ForceCreditNoteVisible=true;
  function run(){ if(typeof window.openCreditNoteModal==='function') return window.openCreditNoteModal(); alert('Credit Note module is still loading. Refresh and try again.'); }
- function make(id,txt){ var b=document.getElementById(id); if(!b){b=document.createElement('button');b.id=id;b.type='button';b.textContent=txt;b.onclick=run;} b.className='v265-credit-note-force'; b.style.cssText='display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:42px!important;padding:0 18px!important;border-radius:16px!important;border:1px solid rgba(255,255,255,.55)!important;background:linear-gradient(135deg,#ffe7b3,#d39a55)!important;color:#111!important;font-weight:900!important;font-size:13px!important;box-shadow:0 8px 24px rgba(211,154,85,.28)!important;cursor:pointer!important;white-space:nowrap!important;z-index:999999!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important'; return b;}
+ function make(id,txt){ var b=document.getElementById(id); if(!b){b=document.createElement('button');b.id=id;b.type='button';b.textContent=txt;b.onclick=run;} b.className='v266-credit-note-force'; b.style.cssText='display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:42px!important;padding:0 18px!important;border-radius:16px!important;border:1px solid rgba(255,255,255,.55)!important;background:linear-gradient(135deg,#ffe7b3,#d39a55)!important;color:#111!important;font-weight:900!important;font-size:13px!important;box-shadow:0 8px 24px rgba(211,154,85,.28)!important;cursor:pointer!important;white-space:nowrap!important;z-index:999999!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important'; return b;}
  function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
- function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v265CreditNoteMainBtn')){var b=make('v265CreditNoteMainBtn','Create Credit Note'); bar.insertBefore(b,bar.firstElementChild||null); try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} if(!document.getElementById('v265CreditNoteFloatBtn')){var f=make('v265CreditNoteFloatBtn','Credit Note'); f.style.position='fixed'; f.style.right='18px'; f.style.bottom='82px'; f.style.minHeight='46px'; f.style.padding='0 22px'; f.style.borderRadius='999px'; f.style.fontSize='14px'; document.body.appendChild(f);} }
- var st=document.createElement('style'); st.textContent='.v265-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}@media(max-width:700px){#v265CreditNoteFloatBtn{right:12px!important;bottom:92px!important}}'; document.head.appendChild(st);
+ function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} if(!document.getElementById('v266CreditNoteFloatBtn')){var f=make('v266CreditNoteFloatBtn','Credit Note'); f.style.position='fixed'; f.style.right='18px'; f.style.bottom='82px'; f.style.minHeight='46px'; f.style.padding='0 22px'; f.style.borderRadius='999px'; f.style.fontSize='14px'; document.body.appendChild(f);} }
+ var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}@media(max-width:700px){#v266CreditNoteFloatBtn{right:12px!important;bottom:92px!important}}'; document.head.appendChild(st);
  document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
 })();
 </script>
 </body>
 </html>
-<!-- V265 marker -->
+<!-- V266 marker -->
