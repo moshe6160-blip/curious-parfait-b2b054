@@ -20378,8 +20378,12 @@ setInterval(window.addTransparencyButtons, 1000);
       });
 
       // Final credit logic:
-      // Credit Balance must be based on Total After VAT deposits minus applied deposits.
-      totals.creditBalance = Math.max(0, totals.depositCredit - totals.depositApplied);
+      // Credit Balance is ONLY unused supplier deposits / advance payments.
+      // Invoice-linked Credit Notes appear as negative Deposit Applied, but they must NOT
+      // become supplier Credit Balance. Example: Invoice 12,000 + Credit Note -6,000
+      // should show net Invoiced 6,000 and Credit Balance 0.
+      const positiveDepositApplied = Math.max(0, totals.depositApplied);
+      totals.creditBalance = Math.max(0, totals.depositCredit - positiveDepositApplied);
 
       const box = document.createElement("div");
       box.id = "safeFinancialStatus";
