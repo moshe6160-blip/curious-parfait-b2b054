@@ -488,6 +488,14 @@
     return raw||'record';
   }
   async function supplierRows(){
+    try{ if(typeof window.vpGetAllSupplierRows==='function') return await window.vpGetAllSupplierRows(); }catch(e){}
+    try{
+      const sb = window.vpSupabase || window.supabaseClient || window.supabase;
+      if(sb && typeof sb.from === 'function'){
+        const {data,error}=await sb.from('suppliers').select('*').order('created_at',{ascending:false}).limit(5000);
+        if(!error) return data || [];
+      }
+    }catch(e){}
     try{ if(typeof window.getAllRows==='function') return await window.getAllRows(); }catch(e){}
     try{ if(typeof window.getEntries==='function') return await window.getEntries(); }catch(e){}
     try{ return JSON.parse(localStorage.getItem('vp_supplier_rows')||'[]')||[]; }catch(e){}
@@ -495,18 +503,38 @@
   }
   function supplierProjects(rows){ return [...new Set((rows||[]).map(r=>String(r?.project||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
   function supplierTotals(rows, project){
-    const filtered=(rows||[]).filter(r=>!project || String(r?.project||'').trim().toLowerCase()===String(project).trim().toLowerCase());
+    const norm = v => String(v||'').trim().toLowerCase();
+    const filtered=(rows||[]).filter(r=>!project || norm(r?.project)===norm(project));
     const out={count:filtered.length,orders:0,delivered:0,invoiced:0,paid:0,open:0,outstanding:0,overdue:0,deposits:0,credit:0};
+    const hasOrder = r => !!String(r?.order_no||r?.orderNo||'').trim() || supplierType(r)==='order';
+    const hasInvoice = r => !!String(r?.invoice_no||r?.invoiceNo||'').trim() || supplierType(r)==='invoice';
+    const hasDelivery = r => !!String(r?.delivery_note_no||r?.dn_no||r?.deliveryNoteNo||'').trim() || /DNAMT:/i.test(String(r?.notes||'')) || supplierType(r)==='delivery_note' || supplierType(r)==='delivery';
+    const deliveredAmount = r => {
+      const note = String(r?.notes||'');
+      const m = note.match(/DNAMT:([0-9.,-]+)/i);
+      if(m) return num(m[1]);
+      const candidates=[r?.delivered_amount,r?.delivery_amount,r?.dn_amount,r?.total,r?.amount,r?.gross,r?.net_amount];
+      for(const v of candidates){ const n=num(v); if(n) return n; }
+      return supplierBaseAmount(r);
+    };
+    const isPaid = r => { const st=norm(r?.status||r?.month_status); return st.includes('paid') || st.includes('covered') || st.includes('closed'); };
     filtered.forEach(r=>{
-      const type=supplierType(r), status=String(r?.status||r?.month_status||'').toLowerCase();
+      const type=supplierType(r), status=norm(r?.status||r?.month_status);
       const base=supplierBaseAmount(r);
-      if(type==='deposit') { out.deposits += base; out.credit += base; return; }
-      if(type==='invoice') { const inv=supplierInvoiceAmount(r); const due=supplierDueAmount(r); out.invoiced += inv; out.outstanding += due; out.paid += Math.max(0, inv - due); return; }
-      if(type==='delivery_note' || type==='delivery') { out.delivered += base; if(status.includes('paid')||status.includes('closed')) out.paid += base; else out.outstanding += base; return; }
-      if(type==='order') { out.orders += base; out.open += base; if(status.includes('overdue')) out.overdue += base; return; }
-      out.open += base;
+      if(type==='deposit') { out.deposits += base; out.credit += Number(r?.supplier_credit_balance || 0) || base; return; }
+      if(hasOrder(r)) out.orders += base;
+      if(hasDelivery(r)) out.delivered += deliveredAmount(r);
+      if(hasInvoice(r)){
+        const inv=supplierInvoiceAmount(r);
+        const due=supplierDueAmount(r);
+        out.invoiced += inv;
+        out.outstanding += due;
+        out.paid += isPaid(r) ? inv : Math.max(0, inv - due);
+      } else if(isPaid(r)){ out.paid += base; }
+      if(status.includes('overdue')) out.overdue += base;
     });
-    if(!out.open) out.open=Math.max(0,out.orders-out.delivered);
+    out.open = Math.max(0, out.orders - out.delivered);
+    if(!out.outstanding) out.outstanding = Math.max(0, out.invoiced - out.paid);
     return out;
   }
   async function allProjectNames(){ const cData=load(); const sRows=await supplierRows(); const set=new Set(projectNames(cData)); supplierProjects(sRows).forEach(p=>set.add(p)); return [...set].sort((a,b)=>a.localeCompare(b)); }
