@@ -3306,18 +3306,34 @@ function amountDueDisplay(row){
     return 0;
   }
 
-  // If DN exists, financial due should follow delivered/invoiced flow, not original order.
+  // Real invoice outstanding is always: invoice value - deposit applied - credit notes.
+  // This prevents double reduction when amount_due is saved back to the same invoice row.
+  if(hasInvoice){
+    const invoiceBase = (typeof invoiceDisplayAmount === "function") ? Number(invoiceDisplayAmount(row) || 0) : Number(row?.total || row?.amount || 0);
+    return Math.max(0, invoiceBase - Number(row?.deposit_applied || 0) - credit);
+  }
+
+  // If DN exists but no invoice yet, financial due follows delivered/open DN flow.
   if(hasDN){
-    if(hasInvoice) return Math.max(0, delivered - Number(row?.deposit_applied || 0) - credit);
     if(closed) return 0;
     return Math.max(0, delivered - credit);
   }
 
   return Math.max(0, Number(row?.amount_due || row?.total || row?.amount || 0) - credit);
 }
+function extractCreditNo(row){ return getNoteTag(row, "CREDITNO"); }
+function extractCreditDate(row){ return getNoteTag(row, "CREDITDATE"); }
+function extractCreditReason(row){ return getNoteTag(row, "CREDITREASON"); }
+function creditNoteLabel(row){
+  const credit = typeof extractCreditAmount === "function" ? Number(extractCreditAmount(row) || 0) : 0;
+  if(!credit) return "";
+  const no = extractCreditNo(row);
+  const dt = extractCreditDate(row);
+  return "Credit Note" + (no ? " " + no : "") + " · " + money(credit) + (dt ? " · " + dt : "");
+}
 function visibleNotes(row){
   let n = String(row?.notes || "");
-  ["DNAMT","CANCELAMT","CREDIT","CLOSE"].forEach(tag => n = stripNoteTag(n, tag));
+  ["DNAMT","CANCELAMT","CREDIT","CREDITNO","CREDITDATE","CREDITREASON","CLOSE"].forEach(tag => n = stripNoteTag(n, tag));
   return n;
 }
 
@@ -4516,7 +4532,7 @@ async function render(){
                   <td>${money(e.supplier_credit_balance || 0)}</td>
                   <td><span class="badge ${e.status==='Paid'?'paid':'unpaid'}">${esc(e.status || "")}</span></td>
                   <td>${esc(e.created_by || "")}</td>
-                  <td>${esc(typeof visibleNotes === "function" ? visibleNotes(e) : (e.notes || ""))}</td>
+                  <td>${esc(typeof visibleNotes === "function" ? visibleNotes(e) : (e.notes || ""))}${typeof creditNoteLabel === "function" && creditNoteLabel(e) ? `<br><span class="badge vat credit-note-value">${esc(creditNoteLabel(e))}</span>` : ""}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -19888,24 +19904,40 @@ setInterval(window.addTransparencyButtons, 1000);
     try{
       if(typeof supabase === "undefined" || !supabase) return alert("System is still loading. Refresh and try again.");
       if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can add Credit Note.");
-      if(!Array.isArray(selectedIds) || selectedIds.length !== 1) return alert("Select exactly one Invoice / Order row first.");
+      if(!Array.isArray(selectedIds) || selectedIds.length !== 1) return alert("Select exactly one Invoice row first.");
+
       const id = selectedIds[0];
       const res = await supabase.from("suppliers").select("*").eq("id", id).single();
       if(res.error || !res.data) return alert(res.error?.message || "Could not load selected row.");
       const row = res.data;
+
       const hasInvoice = !!String(row.invoice_no || "").trim();
-      const hasOrder = !!String(row.order_no || "").trim();
-      if(!hasInvoice && !hasOrder) return alert("Credit Note must be linked to an existing Invoice / Order row.");
-      const creditNo = prompt("Credit Note Number", "CN-");
+      const kind = (typeof displayEntryKind === "function") ? String(displayEntryKind(row) || "").toLowerCase() : String(row.entry_type || "").toLowerCase();
+      if(!hasInvoice || kind === "order" || kind === "deposit" || kind === "delivery_note" || kind === "delivery"){
+        return alert("Credit Note works only on the selected Invoice row. Select an invoice with an Invoice No.");
+      }
+
+      const currentCredit = (typeof extractCreditAmount === "function") ? Number(extractCreditAmount(row) || 0) : 0;
+      const invoiceBase = (typeof invoiceDisplayAmount === "function") ? Number(invoiceDisplayAmount(row) || 0) : Number(row.total || row.amount || 0);
+      const depositApplied = Number(row.deposit_applied || 0);
+      const currentOutstanding = (typeof amountDueDisplay === "function") ? Number(amountDueDisplay(row) || 0) : Math.max(0, invoiceBase - depositApplied - currentCredit);
+
+      if(currentOutstanding <= 0) return alert("This invoice has no outstanding balance to credit.");
+
+      const creditNo = prompt("Credit Note Number", "CN-" + String(row.invoice_no || ""));
       if(creditNo === null || !String(creditNo).trim()) return;
-      const raw = prompt("Credit Note Amount", "");
+
+      const raw = prompt("Credit Note Amount\nOutstanding: " + cnMoney(currentOutstanding), currentOutstanding.toFixed(2));
       if(raw === null) return;
       const creditAmount = cnAmount(raw);
       if(creditAmount <= 0) return alert("Invalid Credit Note amount.");
+      if(creditAmount > currentOutstanding + 0.01) return alert("Credit Note cannot be higher than the invoice outstanding: " + cnMoney(currentOutstanding));
+
       const reason = prompt("Reason / Note", "Supplier credit note") || "Supplier credit note";
       const date = prompt("Credit Note Date", cnToday()) || cnToday();
-      const previousCredit = (typeof extractCreditAmount === "function") ? Number(extractCreditAmount(row)||0) : 0;
-      const newCreditTotal = previousCredit + creditAmount;
+      const newCreditTotal = currentCredit + creditAmount;
+      const newAmountDue = Math.max(0, invoiceBase - depositApplied - newCreditTotal);
+
       let notes = String(row.notes || "");
       if(typeof upsertNoteTag === "function"){
         notes = upsertNoteTag(notes, "CREDIT", newCreditTotal.toFixed(2));
@@ -19918,13 +19950,20 @@ setInterval(window.addTransparencyButtons, 1000);
         notes += "\n[[CREDITDATE:" + date + "]]";
         notes += "\n[[CREDITREASON:" + reason + "]]";
       }
-      const baseDue = (typeof amountDueDisplay === "function") ? Number(amountDueDisplay(row)||0) : Number(row.amount_due || row.total || row.amount || 0);
-      const update = { notes, amount_due: Math.max(0, baseDue - creditAmount) };
+
+      const update = {
+        notes,
+        amount_due: newAmountDue,
+        unpaid_after_deposit: newAmountDue,
+        status: newAmountDue <= 0.01 ? "Covered" : (row.status || "Unpaid")
+      };
+
       const upd = await supabase.from("suppliers").update(update).eq("id", id);
       if(upd.error) return alert(upd.error.message);
+
       selectedIds = [];
-      try{ if(typeof logAudit === "function") await logAudit("credit_note", "row="+id+" amount="+creditAmount+" no="+creditNo); }catch(e){}
-      alert("Credit Note saved: " + String(creditNo).trim() + " / " + cnMoney(creditAmount));
+      try{ if(typeof logAudit === "function") await logAudit("credit_note", "invoice=" + (row.invoice_no || id) + " amount=" + creditAmount + " no=" + creditNo); }catch(e){}
+      alert("Credit Note saved on invoice " + String(row.invoice_no || "") + ": " + String(creditNo).trim() + " / " + cnMoney(creditAmount) + "\nNew Outstanding: " + cnMoney(newAmountDue));
       if(typeof render === "function") await render();
     }catch(err){ alert(err?.message || "Credit Note error"); }
   };
@@ -20358,254 +20397,8 @@ setInterval(window.addTransparencyButtons, 1000);
         @media print{body{padding:0!important;}}
       </style>
     `;
-    if(h.includes("
-<style id="v168-dn-approver-css">
-/* V168 DN Approver limited role - no login changes */
-
-/* Hide financial cells/columns from the table */
-body.role-dn-approver table th:nth-child(8),
-body.role-dn-approver table td:nth-child(8),
-body.role-dn-approver table th:nth-child(9),
-body.role-dn-approver table td:nth-child(9),
-body.role-dn-approver table th:nth-child(14),
-body.role-dn-approver table td:nth-child(14),
-body.role-dn-approver table th:nth-child(15),
-body.role-dn-approver table td:nth-child(15),
-body.role-dn-approver table th:nth-child(16),
-body.role-dn-approver table td:nth-child(16),
-body.role-dn-approver table th:nth-child(17),
-body.role-dn-approver table td:nth-child(17),
-body.role-dn-approver table th:nth-child(18),
-body.role-dn-approver table td:nth-child(18),
-body.role-dn-approver table th:nth-child(19),
-body.role-dn-approver table td:nth-child(19) {
-  display: none !important;
-}
-
-/* Hide money/cards/status financial overview */
-body.role-dn-approver .stat,
-body.role-dn-approver .stats,
-body.role-dn-approver .alert-strip,
-body.role-dn-approver #safeFinancialStatus,
-body.role-dn-approver .safe-financial-status,
-body.role-dn-approver .financial-status,
-body.role-dn-approver .credit-statement {
-  display: none !important;
-}
-
-/* Hide all action/report/admin buttons except Convert Order -> DN and filters/search */
-body.role-dn-approver button[onclick*="Invoice"],
-body.role-dn-approver button[onclick*="invoice"],
-body.role-dn-approver button[onclick*="Deposit"],
-body.role-dn-approver button[onclick*="deposit"],
-body.role-dn-approver button[onclick*="Report"],
-body.role-dn-approver button[onclick*="report"],
-body.role-dn-approver button[onclick*="Audit"],
-body.role-dn-approver button[onclick*="Roles"],
-body.role-dn-approver button[onclick*="Settings"],
-body.role-dn-approver button[onclick*="bulkDelete"],
-body.role-dn-approver button[onclick*="duplicate"],
-body.role-dn-approver button[onclick*="bulkMarkPaid"],
-body.role-dn-approver button[onclick*="markSelected"],
-body.role-dn-approver button[onclick*="openEntryModal"],
-body.role-dn-approver button[onclick*="openDepositModal"] {
-  display: none !important;
-}
-
-body.role-dn-approver button[onclick*="convertOrderToDN"] {
-  display: inline-flex !important;
-  visibility: visible !important;
-}
-
-/* Keep filters/search visible */
-body.role-dn-approver .filters,
-body.role-dn-approver .filters *,
-body.role-dn-approver .month-tools,
-body.role-dn-approver .month-tools * {
-  display: revert !important;
-}
-
-/* Hide selected financial summary text */
-body.role-dn-approver .money-gold,
-body.role-dn-approver .money-red,
-body.role-dn-approver .money-blue,
-body.role-dn-approver .money-green,
-body.role-dn-approver .money-amber {
-  display: none !important;
-}
-</style>
-
-
-<style id="v169-dn-approver-dropdown-label">
-/* V169: role dropdown includes DN Approver. Login untouched. */
-</style>
-
-</head>")) return h.replace("
-<style id="v168-dn-approver-css">
-/* V168 DN Approver limited role - no login changes */
-
-/* Hide financial cells/columns from the table */
-body.role-dn-approver table th:nth-child(8),
-body.role-dn-approver table td:nth-child(8),
-body.role-dn-approver table th:nth-child(9),
-body.role-dn-approver table td:nth-child(9),
-body.role-dn-approver table th:nth-child(14),
-body.role-dn-approver table td:nth-child(14),
-body.role-dn-approver table th:nth-child(15),
-body.role-dn-approver table td:nth-child(15),
-body.role-dn-approver table th:nth-child(16),
-body.role-dn-approver table td:nth-child(16),
-body.role-dn-approver table th:nth-child(17),
-body.role-dn-approver table td:nth-child(17),
-body.role-dn-approver table th:nth-child(18),
-body.role-dn-approver table td:nth-child(18),
-body.role-dn-approver table th:nth-child(19),
-body.role-dn-approver table td:nth-child(19) {
-  display: none !important;
-}
-
-/* Hide money/cards/status financial overview */
-body.role-dn-approver .stat,
-body.role-dn-approver .stats,
-body.role-dn-approver .alert-strip,
-body.role-dn-approver #safeFinancialStatus,
-body.role-dn-approver .safe-financial-status,
-body.role-dn-approver .financial-status,
-body.role-dn-approver .credit-statement {
-  display: none !important;
-}
-
-/* Hide all action/report/admin buttons except Convert Order -> DN and filters/search */
-body.role-dn-approver button[onclick*="Invoice"],
-body.role-dn-approver button[onclick*="invoice"],
-body.role-dn-approver button[onclick*="Deposit"],
-body.role-dn-approver button[onclick*="deposit"],
-body.role-dn-approver button[onclick*="Report"],
-body.role-dn-approver button[onclick*="report"],
-body.role-dn-approver button[onclick*="Audit"],
-body.role-dn-approver button[onclick*="Roles"],
-body.role-dn-approver button[onclick*="Settings"],
-body.role-dn-approver button[onclick*="bulkDelete"],
-body.role-dn-approver button[onclick*="duplicate"],
-body.role-dn-approver button[onclick*="bulkMarkPaid"],
-body.role-dn-approver button[onclick*="markSelected"],
-body.role-dn-approver button[onclick*="openEntryModal"],
-body.role-dn-approver button[onclick*="openDepositModal"] {
-  display: none !important;
-}
-
-body.role-dn-approver button[onclick*="convertOrderToDN"] {
-  display: inline-flex !important;
-  visibility: visible !important;
-}
-
-/* Keep filters/search visible */
-body.role-dn-approver .filters,
-body.role-dn-approver .filters *,
-body.role-dn-approver .month-tools,
-body.role-dn-approver .month-tools * {
-  display: revert !important;
-}
-
-/* Hide selected financial summary text */
-body.role-dn-approver .money-gold,
-body.role-dn-approver .money-red,
-body.role-dn-approver .money-blue,
-body.role-dn-approver .money-green,
-body.role-dn-approver .money-amber {
-  display: none !important;
-}
-</style>
-
-
-<style id="v169-dn-approver-dropdown-label">
-/* V169: role dropdown includes DN Approver. Login untouched. */
-</style>
-
-</head>", reportCss + "
-<style id="v168-dn-approver-css">
-/* V168 DN Approver limited role - no login changes */
-
-/* Hide financial cells/columns from the table */
-body.role-dn-approver table th:nth-child(8),
-body.role-dn-approver table td:nth-child(8),
-body.role-dn-approver table th:nth-child(9),
-body.role-dn-approver table td:nth-child(9),
-body.role-dn-approver table th:nth-child(14),
-body.role-dn-approver table td:nth-child(14),
-body.role-dn-approver table th:nth-child(15),
-body.role-dn-approver table td:nth-child(15),
-body.role-dn-approver table th:nth-child(16),
-body.role-dn-approver table td:nth-child(16),
-body.role-dn-approver table th:nth-child(17),
-body.role-dn-approver table td:nth-child(17),
-body.role-dn-approver table th:nth-child(18),
-body.role-dn-approver table td:nth-child(18),
-body.role-dn-approver table th:nth-child(19),
-body.role-dn-approver table td:nth-child(19) {
-  display: none !important;
-}
-
-/* Hide money/cards/status financial overview */
-body.role-dn-approver .stat,
-body.role-dn-approver .stats,
-body.role-dn-approver .alert-strip,
-body.role-dn-approver #safeFinancialStatus,
-body.role-dn-approver .safe-financial-status,
-body.role-dn-approver .financial-status,
-body.role-dn-approver .credit-statement {
-  display: none !important;
-}
-
-/* Hide all action/report/admin buttons except Convert Order -> DN and filters/search */
-body.role-dn-approver button[onclick*="Invoice"],
-body.role-dn-approver button[onclick*="invoice"],
-body.role-dn-approver button[onclick*="Deposit"],
-body.role-dn-approver button[onclick*="deposit"],
-body.role-dn-approver button[onclick*="Report"],
-body.role-dn-approver button[onclick*="report"],
-body.role-dn-approver button[onclick*="Audit"],
-body.role-dn-approver button[onclick*="Roles"],
-body.role-dn-approver button[onclick*="Settings"],
-body.role-dn-approver button[onclick*="bulkDelete"],
-body.role-dn-approver button[onclick*="duplicate"],
-body.role-dn-approver button[onclick*="bulkMarkPaid"],
-body.role-dn-approver button[onclick*="markSelected"],
-body.role-dn-approver button[onclick*="openEntryModal"],
-body.role-dn-approver button[onclick*="openDepositModal"] {
-  display: none !important;
-}
-
-body.role-dn-approver button[onclick*="convertOrderToDN"] {
-  display: inline-flex !important;
-  visibility: visible !important;
-}
-
-/* Keep filters/search visible */
-body.role-dn-approver .filters,
-body.role-dn-approver .filters *,
-body.role-dn-approver .month-tools,
-body.role-dn-approver .month-tools * {
-  display: revert !important;
-}
-
-/* Hide selected financial summary text */
-body.role-dn-approver .money-gold,
-body.role-dn-approver .money-red,
-body.role-dn-approver .money-blue,
-body.role-dn-approver .money-green,
-body.role-dn-approver .money-amber {
-  display: none !important;
-}
-</style>
-
-
-<style id="v169-dn-approver-dropdown-label">
-/* V169: role dropdown includes DN Approver. Login untouched. */
-</style>
-
-</head>");
-    return reportCss + h;
+    if(h.includes("</head>")) return h.replace("</head>", reportCss + "</head>");
+    return "<!doctype html><html><head>" + reportCss + "</head><body>" + h + "</body></html>";
   }
 
   window.openReportInlineV148 = function(title, url){
