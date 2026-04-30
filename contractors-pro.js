@@ -47,6 +47,11 @@
       id: c.id || uid(),
       name: c.name || c.contractor || c.supplier || 'Contractor',
       trade: c.trade || c.category || 'Sub Contractor',
+      contactPerson: c.contactPerson || c.contact || c.contact_person || '',
+      phone: c.phone || c.mobile || '',
+      email: c.email || '',
+      address: c.address || '',
+      companyDetails: c.companyDetails || c.company_details || c.company || '',
       project: c.project || '',
       budgetItem: c.budgetItem || c.budget_item || c.costCode || c.cost_code || c.budgetCode || '',
       budget: num(c.budget || c.budgetAmount || c.budget_amount || c.costBudget),
@@ -244,6 +249,20 @@
       #contractorsProScreen .dashBarLabel{display:flex!important;justify-content:space-between!important;color:#cfd2db!important;font-weight:900!important;margin-bottom:7px!important;}
       #contractorsProScreen .dashBar{height:12px!important;border-radius:99px!important;background:#24242a!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.05)!important;}
       #contractorsProScreen .dashBar i{display:block!important;height:100%!important;border-radius:99px!important;background:linear-gradient(90deg,#64a8ff,#f5c15d,#51d87a)!important;}
+
+      #contractorsProScreen .modalOverlay{position:fixed!important;inset:0!important;background:rgba(0,0,0,.72)!important;backdrop-filter:blur(14px)!important;z-index:99999!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;padding:calc(18px + env(safe-area-inset-top)) 14px calc(90px + env(safe-area-inset-bottom))!important;overflow:auto!important;}
+      #contractorsProScreen .modalCard{width:min(980px,96vw)!important;background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.48)!important;border-radius:30px!important;box-shadow:0 28px 90px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.08)!important;padding:18px!important;margin:18px auto!important;}
+      #contractorsProScreen .modalHead{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:14px!important;margin-bottom:14px!important;}
+      #contractorsProScreen .modalTitle{font-size:26px!important;font-weight:1000!important;letter-spacing:-.03em!important;color:#fff!important;margin:0!important;}
+      #contractorsProScreen .modalSub{font-size:13px!important;line-height:1.35!important;color:rgba(255,255,255,.72)!important;margin-top:4px!important;}
+      #contractorsProScreen .modalSectionTitle{margin:14px 0 8px!important;color:#e8c79a!important;text-transform:uppercase!important;letter-spacing:.12em!important;font-size:12px!important;font-weight:1000!important;}
+      #contractorsProScreen .modalCard input,#contractorsProScreen .modalCard select,#contractorsProScreen .modalCard textarea{font-size:15px!important;min-height:48px!important;border-radius:16px!important;}
+      #contractorsProScreen .modalCard textarea{padding:14px 16px!important;min-height:84px!important;resize:vertical!important;}
+      #contractorsProScreen .topActions{display:flex!important;gap:10px!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end!important;}
+      #contractorsProScreen .topActions .btn{font-size:13px!important;min-height:46px!important;padding:9px 13px!important;}
+      #contractorsProScreen .manageListRow{display:grid!important;grid-template-columns:1.2fr .8fr .8fr .7fr auto!important;gap:8px!important;align-items:center!important;border:1px solid rgba(230,198,154,.22)!important;border-radius:16px!important;padding:10px!important;margin-bottom:8px!important;background:rgba(255,255,255,.025)!important;}
+      #contractorsProScreen .manageListRow b{font-size:14px!important;color:#fff!important;}
+      #contractorsProScreen .manageListRow span{font-size:12px!important;color:rgba(255,255,255,.72)!important;}
       @media(max-width:920px){#contractorsProScreen .dashGrid{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .dashColumns{grid-template-columns:1fr!important;}#contractorsProScreen .projectDashControls{grid-template-columns:1fr!important;}}
 
       @media(max-width:860px){#contractorsProScreen .proDashGrid{grid-template-columns:repeat(2,1fr)!important;}}
@@ -311,7 +330,7 @@
       #contractorsProScreen .formBox .muted,#contractorsProScreen .formBox .note{font-size:12px!important;line-height:1.35!important;}
       #contractorsProScreen .mini span,#contractorsProScreen .kpi span{color:#cfd2db!important;}
       #contractorsProScreen .mini b,#contractorsProScreen .kpi b{font-size:19px!important;}
-      @media(max-width:920px){#contractorsProScreen .layout{grid-template-columns:1fr!important;}#contractorsProScreen .projectBar{grid-template-columns:1fr!important;}#contractorsProScreen .kpis{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .grid6,#contractorsProScreen .grid4,#contractorsProScreen .grid2,#contractorsProScreen .actions{grid-template-columns:1fr!important;}#contractorsProScreen h1{font-size:25px!important;}.vpcon-float{left:10px!important;right:10px!important}.vpcon-float button{font-size:14px!important;min-height:54px!important}}
+      @media(max-width:920px){#contractorsProScreen .layout{grid-template-columns:1fr!important;}#contractorsProScreen .projectBar{grid-template-columns:1fr!important;}#contractorsProScreen .kpis{grid-template-columns:repeat(2,1fr)!important;}#contractorsProScreen .grid6,#contractorsProScreen .grid4,#contractorsProScreen .grid2,#contractorsProScreen .actions{grid-template-columns:1fr!important;}#contractorsProScreen h1{font-size:25px!important;}.vpcon-float{left:10px!important;right:10px!important}.vpcon-float button{font-size:14px!important;min-height:54px!important}#contractorsProScreen .manageListRow{grid-template-columns:1fr!important}}
     `;
     document.head.appendChild(s);
   }
@@ -421,7 +440,7 @@
       <div class="grid4"><div class="mini"><span>Progress vs Contract</span><b class="${t.progress>100?'overColor':'paidColor'}">${t.progress.toFixed(1)}%</b></div><div class="mini"><span>Progress vs Budget</span><b class="contractColor">${t.budgetProgress.toFixed(1)}%</b></div><div class="mini"><span>Above Original Contract</span><b class="${t.overOriginalContract>0?'overColor':'paidColor'}">${money(t.overOriginalContract)}</b></div><div class="mini"><span>Available For Accounts</span><b class="retentionColor">${money(t.availableForAccounts)}</b></div></div>
       <div class="grid4"><div class="mini"><span>Paid Accounts</span><b class="paidColor">${t.paidAccounts} / ${t.totalAccounts}</b></div><div class="mini"><span>Open Accounts</span><b class="outstandingColor">${t.openAccounts}</b></div><div class="mini"><span>Retention Held</span><b class="retentionColor">${money(t.retentionHeld)}</b></div><div class="mini"><span>Retention Balance</span><b class="retentionColor">${money(t.retentionBalance)}</b></div></div>
       ${t.overApprovedBudget>0?`<div class="note" style="border-color:rgba(255,80,80,.7)!important;background:rgba(255,0,0,.08)!important"><b class="red">WARNING:</b> Accounts are above approved budget by <b class="red">${money(t.overApprovedBudget)}</b>. Add Variation before additional accounts.</div>`:''}
-      <div class="formBox"><h3>Contractor Setup</h3><div class="muted">Update budget, budget item, contract, payment terms and main contractor details.</div><div class="grid2"><input id="contractorNameEdit" placeholder="Contractor name" value="${esc(c.name)}"><input id="contractorTradeEdit" placeholder="Trade / Category" value="${esc(c.trade||'')}"><input id="contractorProjectEdit" placeholder="Project" value="${esc(c.project||'')}"><input id="contractorBudgetItemEdit" placeholder="Budget Item / Cost Code" value="${esc(c.budgetItem||'')}"><input id="contractorBudgetEdit" type="number" inputmode="decimal" placeholder="Budget amount" value="${esc(c.budget||'')}"><input id="contractorPaymentTermsEdit" placeholder="Payment terms" value="${esc(c.paymentTerms||'')}"><input id="contractorRetentionEdit" type="number" inputmode="decimal" placeholder="Retention %" value="${esc(c.retention||5)}"><input id="contractorNotesEdit" placeholder="Notes" value="${esc(c.notes||'')}"></div><button class="btn gold" onclick="vpConSaveContractorSetup('${c.id}')">Save Contractor Setup</button></div>
+      <div class="formBox"><h3>Contractor Setup</h3><div class="muted">Update contractor profile, project, budget item, contract and payment terms.</div><div class="grid2"><input id="contractorNameEdit" placeholder="Contractor name" value="${esc(c.name)}"><input id="contractorContactEdit" placeholder="Contact person" value="${esc(c.contactPerson||'')}"><input id="contractorPhoneEdit" placeholder="Phone" value="${esc(c.phone||'')}"><input id="contractorEmailEdit" placeholder="Email" value="${esc(c.email||'')}"><input id="contractorTradeEdit" placeholder="Trade / Category" value="${esc(c.trade||'')}"><input id="contractorProjectEdit" placeholder="Project" value="${esc(c.project||'')}"><input id="contractorBudgetItemEdit" placeholder="Budget Item / Cost Code" value="${esc(c.budgetItem||'')}"><input id="contractorBudgetEdit" type="number" inputmode="decimal" placeholder="Budget amount" value="${esc(c.budget||'')}"><input id="contractorPaymentTermsEdit" placeholder="Payment terms" value="${esc(c.paymentTerms||'')}"><input id="contractorRetentionEdit" type="number" inputmode="decimal" placeholder="Retention %" value="${esc(c.retention||5)}"><input id="contractorAddressEdit" placeholder="Address" value="${esc(c.address||'')}"><input id="contractorCompanyEdit" placeholder="Company / registration details" value="${esc(c.companyDetails||'')}"><input id="contractorNotesEdit" placeholder="Notes" value="${esc(c.notes||'')}"></div><button class="btn gold" onclick="vpConSaveContractorSetup('${c.id}')">Save Contractor Setup</button></div>
       <div class="grid2">
         <div class="formBox"><h3>Edit Contract</h3><div class="muted">Contract changes are saved in history and update Outstanding immediately.</div><input id="contractEditValue" type="number" inputmode="decimal" placeholder="New contract value" value="${esc(c.contract)}"><input id="contractEditNote" placeholder="Change note"><button class="btn gold" onclick="vpConSaveContract('${c.id}')">Save Contract</button></div>
         <div class="formBox"><h3>Quick Actions</h3><div class="actions"><button class="btn gold" onclick="vpConFocus('accClaimed')">+ Account #${nextNo}</button><button class="btn" onclick="vpConFocus('accountsTableAnchor')">Pay From Account</button><button class="btn" onclick="vpConFocus('varAmount')">Variation</button><button class="btn" onclick="vpConFocus('dedAmount')">Deduction</button><button class="btn" onclick="vpConFocus('retAmount')">Release Retention</button></div><div class="muted">Account number is automatic. No Approved field.</div></div>
@@ -556,10 +575,24 @@
   }
 
 
-  function openContractorForm(project){
-    const show = localStorage.getItem('vp_contractors_open_form') === '1';
-    if(!show) return '';
-    return `<div class="formBox openContractorBox"><div class="row"><div><h2 style="margin:0!important">Open / Create Contractor</h2><div class="muted">Create contractor card and define budget, budget item, contract and payment terms.</div></div><button class="btn" onclick="vpConToggleOpenForm()">Close</button></div><div class="grid2"><select id="newConNameSelect" onchange="vpConFillFromList(this.value)">${contractorListOptions()}</select><input id="newConName" placeholder="Contractor name"><input id="newConTrade" placeholder="Trade / Category"><input id="newConProject" placeholder="Project" value="${esc(project||'')}"><input id="newConBudgetItem" placeholder="Budget Item / Cost Code"><input id="newConBudget" type="number" inputmode="decimal" placeholder="Budget amount"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"><input id="newConPaymentTerms" placeholder="Payment terms"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"><input id="newConNotes" placeholder="Notes / Special terms"></div><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div>`;
+  function budgetItemOptions(data, selected){
+    const items = new Set(['Preliminaries','Earthworks','Concrete','Brickwork','Plaster','Carpentry','Electrical','Plumbing','Painting','Aluminium','Roofing','Flooring','Other']);
+    (data || load()).forEach(c => { if(c.budgetItem) items.add(c.budgetItem); });
+    return '<option value="">Choose from budget item / cost code</option>' + [...items].sort((a,b)=>a.localeCompare(b)).map(x=>`<option value="${esc(x)}" ${x===selected?'selected':''}>${esc(x)}</option>`).join('');
+  }
+
+  function contractorModal(project){
+    const mode = localStorage.getItem('vp_contractors_modal') || '';
+    if(!mode) return '';
+    const data = load();
+    if(mode === 'manage'){
+      const rows = data.map(c=>{
+        const t = totals(c);
+        return `<div class="manageListRow"><div><b>${esc(c.name)}</b><br><span>${esc(c.contactPerson||'No contact')} · ${esc(c.phone||'No phone')} · ${esc(c.email||'No email')}</span></div><span>${esc(c.project||'-')}</span><span>${esc(c.budgetItem||'-')}</span><span class="paidColor">${money(t.paid)}</span><button class="btn" onclick="vpConSelectFromManage('${c.id}')">Open</button></div>`;
+      }).join('') || '<div class="helper">No contractors yet.</div>';
+      return `<div class="modalOverlay" onclick="vpConCloseModal(event)"><div class="modalCard" onclick="event.stopPropagation()"><div class="modalHead"><div><h2 class="modalTitle">Manage Contractor List</h2><div class="modalSub">Reusable contractor profiles. Select an existing contractor, then edit project / budget / contract in the contractor card.</div></div><button class="btn" onclick="vpConCloseModal()">Close</button></div>${rows}</div></div>`;
+    }
+    return `<div class="modalOverlay" onclick="vpConCloseModal(event)"><div class="modalCard" onclick="event.stopPropagation()"><div class="modalHead"><div><h2 class="modalTitle">Open Contractor</h2><div class="modalSub">Create a reusable contractor profile and assign it to the selected project, budget item, contract and payment terms.</div></div><button class="btn" onclick="vpConCloseModal()">Close</button></div><div class="modalSectionTitle">Contractor Details</div><div class="grid2"><input id="newConName" placeholder="Contractor name"><input id="newConContact" placeholder="Contact person"><input id="newConPhone" placeholder="Phone"><input id="newConEmail" placeholder="Email"><input id="newConAddress" placeholder="Address"><input id="newConCompany" placeholder="Company / registration / VAT details"></div><div class="modalSectionTitle">Project + Budget</div><div class="grid2"><input id="newConProject" placeholder="Project" value="${esc(project||'')}"><input id="newConTrade" placeholder="Trade / Category"><select id="newConBudgetItemSelect" onchange="document.getElementById('newConBudgetItem').value=this.value">${budgetItemOptions(data,'')}</select><input id="newConBudgetItem" placeholder="Budget Item / Cost Code"><input id="newConBudget" type="number" inputmode="decimal" placeholder="Budget amount"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"></div><div class="modalSectionTitle">Commercial Terms</div><div class="grid2"><input id="newConPaymentTerms" placeholder="Payment terms"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"></div><textarea id="newConNotes" placeholder="Notes / special terms / scope details"></textarea><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div></div>`;
   }
 
   function render(){
@@ -570,7 +603,7 @@
     const active = data.find(x=>x.id===activeId);
     const gt = grandTotals(data);
     const el = q('contractorsProScreen'); if(!el) return;
-    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V248</h1><div class="sub">Project dashboard · Auto calculations · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="projectBar"><select id="vpProjectSelect" onchange="vpConSetProject(this.value)">${projectOptions(allData, project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button><button class="btn gold" onclick="vpConToggleOpenForm()">+ Open Contractor</button><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}${openContractorForm(project)}
+    el.innerHTML = `<div class="shell"><div class="hero"><div class="row"><div><h1>CONTRACTORS PRO V248</h1><div class="sub">Project dashboard · Auto calculations · Retention · PDF · Local saving</div></div><div class="row" style="justify-content:flex-start!important"><button class="btn" onclick="vpConPrint()">Statement PDF</button></div></div><div class="projectBar"><select id="vpProjectSelect" onchange="vpConSetProject(this.value)">${projectOptions(allData, project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button><div class="topActions"><button class="btn" onclick="vpConOpenManageList()">Manage Contractor List</button><button class="btn gold" onclick="vpConOpenContractorModal()">+ Open Contractor</button></div><select id="vpActiveContractorSelect" onchange="vpConChooseExisting(this.value)">${activeContractorOptions(data)}</select></div><div class="kpis"><div class="kpi"><span>Total Contracts</span><b class="contractColor">${money(gt.contract)}</b></div><div class="kpi"><span>Approved Budget</span><b class="retentionColor">${money(gt.approvedBudget)}</b></div><div class="kpi"><span>Claimed</span><b class="claimedColor">${money(gt.claimed)}</b></div><div class="kpi"><span>Paid</span><b class="paidColor">${money(gt.paid)}</b></div><div class="kpi"><span>Outstanding</span><b class="outstandingColor">${money(gt.outstanding)}</b></div><div class="kpi"><span>Above Contract</span><b class="${gt.overOriginalContract>0?'overColor':'paidColor'}">${money(gt.overOriginalContract)}</b></div></div></div>${proDashboard(data, gt)}${contractorModal(project)}
       <div class="layout"><div class="panel contractorListPanel"><h2 class="sideTitle">Contractors${project ? ' · '+esc(project) : ''}</h2><input placeholder="Search contractor" oninput="vpConFilter(this.value)"><div id="vpCards">${cards(data)}</div><div class="note">Showing contractors for the selected project only. Use the project selector above to switch project.</div></div><div class="panel">${active?detail(active):'<div class="empty"><h2>Ready to start</h2><div class="muted">Choose a project and select a contractor from the list.</div></div>'}</div></div></div>`;
   }
 
@@ -602,26 +635,32 @@
     render();
   };
   window.showSuppliersDashboard = showSuppliers;
-  window.vpConToggleOpenForm = () => { const cur = localStorage.getItem('vp_contractors_open_form') === '1'; localStorage.setItem('vp_contractors_open_form', cur ? '0' : '1'); render(); };
+  window.vpConOpenContractorModal = () => { localStorage.setItem('vp_contractors_modal','open'); render(); };
+  window.vpConOpenManageList = () => { localStorage.setItem('vp_contractors_modal','manage'); render(); };
+  window.vpConCloseModal = (ev) => { if(ev && ev.target !== ev.currentTarget) return; localStorage.removeItem('vp_contractors_modal'); render(); };
+  window.vpConSelectFromManage = id => { activeId = id; localStorage.removeItem('vp_contractors_modal'); render(); };
   window.vpConSelect = id => { activeId = id; render(); };
   window.vpConChooseExisting = id => { if(!id) return; activeId = id; render(); };
   window.vpConFilter = val => { const v=String(val||'').toLowerCase(); document.querySelectorAll('[data-vpcard]').forEach(e=>{ e.style.display = e.dataset.vpcard.includes(v) ? '' : 'none'; }); };
-  window.vpConFillFromList = val => { const el=q('newConName'); if(el) el.value = val || ''; };
   window.vpConFocus = id => { const el=q(id); if(el){ el.focus(); el.scrollIntoView({behavior:'smooth',block:'center'}); } };
   window.vpConQuickAdd = () => { const el=q('newConNameSelect') || q('newConName'); if(el){ el.focus(); el.scrollIntoView({behavior:'smooth',block:'center'}); } };
   window.vpConCreateFromForm = () => {
-    const selected = (q('newConNameSelect')?.value || '').trim();
-    const typed = (q('newConName')?.value || '').trim();
-    const name = selected || typed;
-    if(!name){ alert('Choose contractor from the existing list'); return; }
+    const name = (q('newConName')?.value || '').trim();
+    if(!name){ alert('Enter contractor name'); return; }
     const data = load();
-    const existing = data.find(c => String(c.name).trim().toLowerCase() === name.toLowerCase());
-    if(existing){ activeId = existing.id; render(); return; }
-    const c = { id:uid(), name, trade:(q('newConTrade')?.value||'Sub Contractor').trim(), project:(q('newConProject')?.value||activeProject(load())||'').trim(), budgetItem:(q('newConBudgetItem')?.value||'').trim(), budget:num(q('newConBudget')?.value), paymentTerms:(q('newConPaymentTerms')?.value||'').trim(), notes:(q('newConNotes')?.value||'').trim(), contract:num(q('newConContract')?.value), retention:Number(q('newConRetention')?.value||5), accounts:[], payments:[], variations:[], deductions:[], retentionPayments:[], contractHistory:[] };
-    data.unshift(c); save(data); activeId=c.id; localStorage.setItem('vp_contractors_open_form','0'); render();
+    const projectName = (q('newConProject')?.value||activeProject(load())||'').trim();
+    const existing = data.find(c => String(c.name).trim().toLowerCase() === name.toLowerCase() && String(c.project||'').trim().toLowerCase() === projectName.toLowerCase());
+    if(existing){ activeId = existing.id; localStorage.removeItem('vp_contractors_modal'); render(); return; }
+    const c = { id:uid(), name, contactPerson:(q('newConContact')?.value||'').trim(), phone:(q('newConPhone')?.value||'').trim(), email:(q('newConEmail')?.value||'').trim(), address:(q('newConAddress')?.value||'').trim(), companyDetails:(q('newConCompany')?.value||'').trim(), trade:(q('newConTrade')?.value||'Sub Contractor').trim(), project:projectName, budgetItem:(q('newConBudgetItem')?.value||q('newConBudgetItemSelect')?.value||'').trim(), budget:num(q('newConBudget')?.value), paymentTerms:(q('newConPaymentTerms')?.value||'').trim(), notes:(q('newConNotes')?.value||'').trim(), contract:num(q('newConContract')?.value), retention:Number(q('newConRetention')?.value||5), accounts:[], payments:[], variations:[], deductions:[], retentionPayments:[], contractHistory:[] };
+    data.unshift(c); save(data); activeId=c.id; localStorage.removeItem('vp_contractors_modal'); render();
   };
   window.vpConSaveContractorSetup = id => updateContractor(id, c => {
     c.name = (q('contractorNameEdit')?.value || c.name || '').trim();
+    c.contactPerson = (q('contractorContactEdit')?.value || '').trim();
+    c.phone = (q('contractorPhoneEdit')?.value || '').trim();
+    c.email = (q('contractorEmailEdit')?.value || '').trim();
+    c.address = (q('contractorAddressEdit')?.value || '').trim();
+    c.companyDetails = (q('contractorCompanyEdit')?.value || '').trim();
     c.trade = (q('contractorTradeEdit')?.value || c.trade || '').trim();
     c.project = (q('contractorProjectEdit')?.value || c.project || '').trim();
     c.budgetItem = (q('contractorBudgetItemEdit')?.value || '').trim();
