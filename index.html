@@ -1692,10 +1692,6 @@ input.premium-check:checked::after,
 /* V240 keep entire system English direction */
 html, body, input, select, textarea, button, table{direction:ltr !important;}
 
-
-/* V256 Credit Note styling */
-.credit-note-btn{border-color:rgba(255,107,107,.35)!important;color:#ffd0d0!important}
-.status.credit-note,.chip.credit-note{color:#ff8a8a!important}
 </style>
 
 <style>
@@ -3325,8 +3321,7 @@ function visibleNotes(row){
 }
 
 function processStatusLabel(row){
-  // Deposit / Credit Note are their own processes, not Orders.
-  if(displayEntryKind(row) === "credit_note") return "Credit Note";
+  // Deposit / Advance Payment is its own process, not Order.
   if(displayEntryKind(row) === "deposit") return "Deposit";
 
   const hasOrder = !!String(row.order_no || "").trim();
@@ -3343,7 +3338,6 @@ function processStatusLabel(row){
 
 function processStatusClass(row){
   const label = processStatusLabel(row);
-  if(label === "Credit Note") return "credit-note";
   if(label === "Deposit") return "deposit";
   if(label === "Order") return "unpaid";
   if(label === "Delivery Note") return "vat";
@@ -3385,8 +3379,8 @@ function displayEntryKind(row){
   const status = String(row.status || "").toLowerCase();
   const desc = String(row.description || "").toLowerCase();
 
-  // Deposit / Credit Note must be their own document types.
-  if(rawType === "credit_note" || rawType === "credit" || status === "credit note" || desc.includes("credit note") || desc.includes("refund")) return "credit_note";
+  // Deposit / Advance Payment must be its own document type.
+  // It is supplier credit/payment, not an Order.
   if(rawType === "deposit" || status === "deposit" || desc.includes("deposit") || desc.includes("advance payment")) return "deposit";
 
   if(rawType === "delivery_note") return "delivery_note";
@@ -3470,7 +3464,6 @@ function dailyKind(row){
   const status = String(row?.status || "").toLowerCase();
   const desc = String(row?.description || "").toLowerCase();
 
-  if(type === "credit_note" || type === "credit" || status === "credit note" || desc.includes("credit note") || desc.includes("refund")) return "credit_note";
   if(type === "deposit" || status === "deposit" || desc.includes("deposit") || desc.includes("advance payment")) return "deposit";
   if(type === "delivery_note" || type === "dn") return "delivery_note";
   if(type === "order") return "order";
@@ -3646,8 +3639,7 @@ function renderToolbarButtons(){
   const btn = [];
   if(canCreateOrder()) btn.push('<button class="primary main-action" onclick="window.openOrderModal()">Order</button>');
   if(canCreateInvoice()) btn.push('<button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>');
-  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
-          <button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
+  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>');
   if(canManageLists()) btn.push('<button class="ghost" onclick="window.openListsModal()">Manage Lists</button>');
   if(canManageSettings()) btn.push('<button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>');
   btn.push('<button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>');
@@ -3923,22 +3915,20 @@ async function getEntries(){
 }
 
 function computeLedger(rows){
-  const sorted = [...(rows || [])].sort((a,b)=>{
+  const sorted = [...rows].sort((a,b)=>{
     const ad = a.created_at || "";
     const bd = b.created_at || "";
     if(ad !== bd) return ad.localeCompare(bd);
     return String(a.id||"").localeCompare(String(b.id||""));
   });
 
-  // Deposits and Credit Notes both create supplier credit.
-  // Deposit = cash paid in advance. Credit Note / Refund = accounting reduction after invoice.
-  const totalCredits = {};
+  const totalDeposits = {};
   sorted.forEach(r=>{
     const supplier = r.supplier || "Unknown";
-    const type = String(r.entry_type || "invoice").toLowerCase();
-    const amount = Math.abs(Number(r.total || r.amount || 0));
-    if(type === "deposit" || type === "credit_note" || type === "credit"){
-      totalCredits[supplier] = (totalCredits[supplier] || 0) + amount;
+    const type = (r.entry_type || "invoice").toLowerCase();
+    const amount = Number(r.total || r.amount || 0);
+    if(type === "deposit"){
+      totalDeposits[supplier] = (totalDeposits[supplier] || 0) + amount;
     }
   });
 
@@ -3946,55 +3936,54 @@ function computeLedger(rows){
   return sorted.map(r=>{
     const e = {...r};
     const supplier = e.supplier || "Unknown";
-    const type = String(e.entry_type || "invoice").toLowerCase();
-    const amount = Math.abs(Number(e.total || e.amount || 0));
-    const availableBefore = Math.max(0, Number(totalCredits[supplier] || 0) - Number(used[supplier] || 0));
+    const type = (e.entry_type || "invoice").toLowerCase();
+    const amount = Number(e.total || e.amount || 0);
+    const availableBefore = Math.max(0, Number(totalDeposits[supplier] || 0) - Number(used[supplier] || 0));
 
     e.entry_type = type;
     e.deposit_applied = 0;
-    e.credit_applied = 0;
     e.amount_due = 0;
     e.unpaid_after_deposit = 0;
 
-    if(type === "deposit" || type === "credit_note"){
+    if(type === "deposit"){
       e.status = "Deposit";
       e.amount_due = 0;
-    } else if(type === "credit_note" || type === "credit"){
-      e.status = "Credit Note";
-      e.amount_due = 0;
-      e.credit_applied = amount;
     } else {
       const applied = Math.min(availableBefore, amount);
       e.deposit_applied = applied;
-      e.credit_applied = applied;
       e.amount_due = Math.max(0, amount - applied);
       e.unpaid_after_deposit = e.amount_due;
       used[supplier] = Number(used[supplier] || 0) + applied;
-      if(e.amount_due <= 0){ e.status = "Covered"; }
-      else if(e.deposit_applied > 0){ e.status = "Part Covered"; }
-      else if(!e.status){ e.status = "Unpaid"; }
+
+      if(e.amount_due <= 0){
+        e.status = "Covered";
+      } else if(e.deposit_applied > 0){
+        e.status = "Part Covered";
+      } else if(!e.status){
+        e.status = "Unpaid";
+      }
     }
 
     const totalUsed = Number(used[supplier] || 0);
-    e.supplier_credit_balance = Math.max(0, Number(totalCredits[supplier] || 0) - totalUsed);
+    e.supplier_credit_balance = Math.max(0, Number(totalDeposits[supplier] || 0) - totalUsed);
     return e;
   });
 }
+
 function totals(entries){
-  let invoiceTotal = 0, orderTotal = 0, depositTotal = 0, creditTotal = 0, depositApplied = 0, outstanding = 0, net = 0, vat = 0;
+  let invoiceTotal = 0, orderTotal = 0, depositTotal = 0, depositApplied = 0, outstanding = 0, net = 0, vat = 0;
   const grouped = {};
-  (entries || []).forEach(e=>{
+  entries.forEach(e=>{
     const supplier = e.supplier || "Unknown";
     const kind = displayEntryKind(e);
-    const base = Math.abs(Number(depositBaseAmount(e) || e.total || e.amount || 0));
-    if(!grouped[supplier]) grouped[supplier] = { deposits:0, credits:0, invoices:0 };
+    const base = depositBaseAmount(e);
+    if(!grouped[supplier]) grouped[supplier] = { deposits:0, invoices:0 };
     if(kind === "deposit"){
       depositTotal += base;
       grouped[supplier].deposits += base;
-    } else if(kind === "credit_note"){
-      creditTotal += base;
-      grouped[supplier].credits += base;
     } else if(kind === "invoice"){
+      // If DN exists, invoice financial value follows delivered amount.
+      // If no DN exists, it falls back to the invoice/order total.
       const invoiceBase = (typeof invoiceDisplayAmount === "function") ? invoiceDisplayAmount(e) : base;
       const dueBase = (typeof amountDueDisplay === "function") ? amountDueDisplay(e) : Math.max(0, invoiceBase - Number(e.deposit_applied || 0));
       invoiceTotal += invoiceBase;
@@ -4007,10 +3996,10 @@ function totals(entries){
       orderTotal += base;
     }
   });
-  const carryForward = Object.values(grouped).reduce((sum, g) => sum + Math.max(0, (g.deposits + g.credits) - g.invoices), 0);
-  const netCommitted = Math.max(0, invoiceTotal - creditTotal);
-  return { invoiceTotal, orderTotal, depositTotal, creditTotal, depositApplied, outstanding, net, vat, carryForward, netCommitted, suppliers: new Set((entries||[]).map(e=>e.supplier)).size };
+  const carryForward = Object.values(grouped).reduce((sum, g) => sum + Math.max(0, g.deposits - g.invoices), 0);
+  return { invoiceTotal, orderTotal, depositTotal, depositApplied, outstanding, net, vat, carryForward, suppliers: new Set(entries.map(e=>e.supplier)).size };
 }
+
 function setMonthFilter(m){ selectedMonth = selectedMonth === m ? "" : m; render(); }
 function clearSelection(){ selectedIds = []; render(); }
 function toggleRowSelect(id, ev){
@@ -4388,7 +4377,6 @@ async function render(){
           <button class="primary main-action" onclick="window.openOrderModal()">Order</button>
           <button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>
           <button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
-          <button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>
           <button class="ghost" onclick="window.openListsModal()">Manage Lists</button>
           <button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>
           <button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>
@@ -4567,7 +4555,6 @@ async function render(){
             <select class="dark" id="entryType" onchange="window.handleEntryTypeChange()">
               <option value="invoice">Invoice</option>
               <option value="deposit">Deposit</option>
-              <option value="credit_note">Credit Note / Refund</option>
             </select>
           </label>
 
@@ -5306,18 +5293,18 @@ window.handleEntryTypeChange = function(){
   if(type === "deposit"){
     const statusWrap = document.getElementById("entryStatusWrap");
     if(invoice) invoice.value = "";
-    if(invoice) invoice.placeholder = type === "credit_note" ? "Credit Note No / Ref" : "Not required for deposit";
+    if(invoice) invoice.placeholder = "Not required for deposit";
     if(status){
       status.innerHTML = '<option value="Paid">Paid</option>';
       status.value = "Paid";
       status.disabled = true;
       status.setAttribute("aria-disabled","true");
-      status.title = type === "credit_note" ? "Credit Note is applied as supplier credit" : "Deposit is always Paid";
+      status.title = "Deposit is always Paid";
     }
     if(statusWrap) statusWrap.style.display = "none";
     if(note){
       note.className = "status ok";
-      note.textContent = type === "credit_note" ? "Credit Note / Refund reduces the supplier balance. It is not a cash payment and will reduce outstanding invoices." : "Deposit / Advance Payment is always PAID and recorded as supplier credit. It is NOT an invoice and will be applied against future invoices.";
+      note.textContent = "Deposit / Advance Payment is always PAID and recorded as supplier credit. It is NOT an invoice and will be applied against future invoices.";
     }
   } else {
     const statusWrap = document.getElementById("entryStatusWrap");
@@ -5805,7 +5792,7 @@ window.saveEntry = async function(){
   let netAmount = Number(document.getElementById("entryNetAmount").value || 0);
   let vatAmount = Number(document.getElementById("entryVatAmount").value || 0);
   let total = Number(document.getElementById("entryTotal").value || 0);
-  const status = entryType === "deposit" ? "Paid" : (entryType === "credit_note" ? "Credit Note" : document.getElementById("entryStatus").value);
+  const status = entryType === "deposit" ? "Paid" : document.getElementById("entryStatus").value;
   const notes = document.getElementById("entryNotes").value.trim();
 
   if(!supplier || !project || !total){
@@ -5862,7 +5849,7 @@ window.saveEntry = async function(){
     total: total,
     status,
     notes,
-    entry_type: effectiveMode === "delivery_note" ? "delivery_note" : (effectiveMode === "order" ? "order" : (entryType === "deposit" ? "deposit" : (entryType === "credit_note" ? "credit_note" : (invoiceNo ? "invoice" : "order")))),
+    entry_type: effectiveMode === "delivery_note" ? "delivery_note" : (effectiveMode === "order" ? "order" : (entryType === "deposit" ? "deposit" : (invoiceNo ? "invoice" : "order"))),
     created_by: currentUser?.email || "",
     amount: total
   };
@@ -20803,56 +20790,6 @@ body.role-dn-approver .money-amber {
 })();
 /* === END V168 DN APPROVER ROLE PATCH === */
 
-
-
-
-/* === V256 SUPPLIER CREDIT NOTE / REFUND SUPPORT === */
-(function(){
-  window.openCreditNoteModal = async function(){
-    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant or admin can add credit notes.");
-    editingId = null;
-    await render();
-    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
-    set("entryMode", "invoice");
-    set("entrySupplier", "");
-    set("entryProject", "");
-    set("entryOrderNo", "");
-    set("entryInvoiceNo", "");
-    set("entryType", "credit_note");
-    set("entryDescription", "Credit Note / Refund");
-    set("entryDescriptionSelect", "");
-    set("entryNetAmount", "");
-    set("entryVatAmount", "0.00");
-    set("entryTotal", "");
-    set("entryStatus", "Paid");
-    set("entryNotes", "");
-    document.getElementById("entryModal")?.classList.add("show");
-    if(typeof window.handleEntryTypeChange === "function") window.handleEntryTypeChange();
-    if(typeof window.applyEntryModePermissions === "function") window.applyEntryModePermissions();
-    const type = document.getElementById("entryType");
-    if(type){ type.value = "credit_note"; }
-    const inv = document.getElementById("entryInvoiceNo");
-    if(inv) inv.placeholder = "Credit Note No / Ref";
-    const label = document.getElementById("entryInvoiceLabel");
-    if(label) label.textContent = "Credit Note No";
-    const statusWrap = document.getElementById("entryStatusWrap");
-    if(statusWrap) statusWrap.style.display = "none";
-    if(typeof setEntryStatus === "function") setEntryStatus("Credit Note / Refund reduces supplier outstanding without recording a cash payment.", "ok");
-    try{ refreshCustomSelects(document); }catch(e){}
-  };
-  function ensureCreditOption(){
-    const sel = document.getElementById("entryType");
-    if(sel && ![...sel.options].some(o=>o.value==="credit_note")){
-      const opt = document.createElement("option");
-      opt.value = "credit_note";
-      opt.textContent = "Credit Note / Refund";
-      sel.appendChild(opt);
-    }
-  }
-  document.addEventListener("click", ()=>setTimeout(ensureCreditOption, 80), true);
-  window.addEventListener("load", ()=>setTimeout(ensureCreditOption, 500));
-})();
-/* === END V256 SUPPLIER CREDIT NOTE / REFUND SUPPORT === */
 
 /* === V251 expose supplier data engine for project dashboard === */
 window.vpGetAllSupplierRows = async function(){
