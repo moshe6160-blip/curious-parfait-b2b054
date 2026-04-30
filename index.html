@@ -1692,6 +1692,12 @@ input.premium-check:checked::after,
 /* V240 keep entire system English direction */
 html, body, input, select, textarea, button, table{direction:ltr !important;}
 
+
+/* === V258 REAL CREDIT NOTE BUTTON + READABLE UI === */
+.credit-note-btn{background:linear-gradient(180deg,rgba(245,194,107,.18),rgba(184,137,74,.08))!important;border-color:rgba(245,194,107,.34)!important;color:#fff4d6!important}
+.credit-note-value,.credit-note-chip{color:#f5c26b!important}
+input.dark,select.dark,textarea.dark,.modal-box input,.modal-box select,.modal-box textarea{color:#f5f5f7!important;background:#08090d!important}
+
 </style>
 
 <style>
@@ -3639,7 +3645,9 @@ function renderToolbarButtons(){
   const btn = [];
   if(canCreateOrder()) btn.push('<button class="primary main-action" onclick="window.openOrderModal()">Order</button>');
   if(canCreateInvoice()) btn.push('<button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>');
-  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>');
+  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
+          <button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
+  if(canAccountant()) btn.push('<button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canManageLists()) btn.push('<button class="ghost" onclick="window.openListsModal()">Manage Lists</button>');
   if(canManageSettings()) btn.push('<button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>');
   btn.push('<button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>');
@@ -4377,6 +4385,7 @@ async function render(){
           <button class="primary main-action" onclick="window.openOrderModal()">Order</button>
           <button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>
           <button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
+          <button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>
           <button class="ghost" onclick="window.openListsModal()">Manage Lists</button>
           <button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>
           <button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>
@@ -20806,6 +20815,63 @@ window.vpGetAllSupplierRows = async function(){
 
 
 
+
+
+<script>
+/* === V258 REAL SUPPLIER CREDIT NOTE - SAFE, NO LOGIN/AUTH TOUCH === */
+(function(){
+  if(window.__v258CreditNoteInstalled) return;
+  window.__v258CreditNoteInstalled = true;
+  function v258Money(v){ try{ if(typeof money === "function") return money(v); }catch(e){} const n=Number(v||0); return "R "+n.toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function v258GetTag(row, tag){ try{ if(typeof getNoteTag === "function") return getNoteTag(row, tag); }catch(e){} const notes=String(row?.notes||""); const re=new RegExp("\\[\\["+tag+":([^\\]]*)\\]\\]"); const m=notes.match(re); return m?String(m[1]||"").trim():""; }
+  function v258StripTag(notes, tag){ try{ if(typeof stripNoteTag === "function") return stripNoteTag(notes, tag); }catch(e){} const re=new RegExp("\\n?\\[\\["+tag+":[^\\]]*\\]\\]","g"); return String(notes||"").replace(re,"").trim(); }
+  function v258UpsertTag(notes, tag, value){ try{ if(typeof upsertNoteTag === "function") return upsertNoteTag(notes, tag, value); }catch(e){} let clean=v258StripTag(notes, tag); return (clean?clean+"\n":"")+"[["+tag+":"+value+"]]"; }
+  function v258Credit(row){ const single=Number(v258GetTag(row,"CREDIT")||0); const hist=v258GetTag(row,"CREDITS_JSON"); if(hist){ try{return JSON.parse(hist).reduce((s,x)=>s+Number(x.amount||0),0)}catch(e){} } return single; }
+  if(typeof window.amountDueDisplay === "function" && !window.__v258AmountDueWrapped){
+    window.__v258AmountDueWrapped=true;
+    const oldAmountDueDisplay=window.amountDueDisplay;
+    window.amountDueDisplay=function(row){ return Math.max(0, Number(oldAmountDueDisplay(row)||0)-v258Credit(row)); };
+  }
+  window.openCreditNoteModal = async function(){
+    try{
+      if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can create Credit Note.");
+      if(!window.selectedIds || selectedIds.length !== 1) return alert("Select one Invoice row first, then press Credit Note.");
+      const id=selectedIds[0];
+      const res=await supabase.from("suppliers").select("*").eq("id", id).single();
+      if(res.error || !res.data) return alert(res.error?.message || "Selected row not found.");
+      const row=res.data;
+      if(!String(row.invoice_no||"").trim()) return alert("Credit Note must be linked to an existing Invoice. Select an invoice row.");
+      const creditNo=prompt("Credit Note Number","CN-"); if(!creditNo) return;
+      const raw=prompt("Credit Note Amount","0.00"); if(raw===null) return;
+      const amount=Number(String(raw||"").replace(/[^0-9.-]/g,"")); if(!amount||amount<=0) return alert("Invalid Credit Note amount.");
+      const reason=prompt("Reason / Note","Supplier credit note")||"Supplier credit note";
+      const date=prompt("Credit Note Date",new Date().toISOString().slice(0,10))||new Date().toISOString().slice(0,10);
+      let history=[]; const existingJson=v258GetTag(row,"CREDITS_JSON"); if(existingJson){ try{history=JSON.parse(existingJson)}catch(e){history=[]} }
+      history.push({creditNo,amount,reason,date});
+      const totalCredit=history.reduce((s,x)=>s+Number(x.amount||0),0);
+      let notes=row.notes||"";
+      notes=v258UpsertTag(notes,"CREDIT",totalCredit.toFixed(2));
+      notes=v258UpsertTag(notes,"CREDITNO",creditNo);
+      notes=v258UpsertTag(notes,"CREDITREASON",reason);
+      notes=v258UpsertTag(notes,"CREDITDATE",date);
+      notes=v258UpsertTag(notes,"CREDITS_JSON",JSON.stringify(history));
+      const upd=await supabase.from("suppliers").update({notes}).eq("id",row.id);
+      if(upd.error) return alert(upd.error.message);
+      selectedIds=[];
+      alert("Credit Note saved on invoice " + (row.invoice_no||"") + "\nAmount: " + v258Money(amount));
+      if(typeof render === "function") await render();
+    }catch(e){ alert(e?.message || "Credit Note error."); }
+  };
+  function injectCreditButton(){
+    if(document.querySelector('.credit-note-btn')) return;
+    const dep=document.querySelector('.add-deposit-btn, button[onclick*="openDepositModal"]');
+    if(!dep || !dep.parentElement) return;
+    const b=document.createElement('button'); b.className='soft main-action credit-note-btn'; b.textContent='Credit Note'; b.onclick=window.openCreditNoteModal; dep.insertAdjacentElement('afterend',b);
+  }
+  document.addEventListener('DOMContentLoaded',injectCreditButton);
+  setInterval(injectCreditButton,1000);
+})();
+</script>
 
 <script src="contractors-pro.js" defer></script>
 </body>
