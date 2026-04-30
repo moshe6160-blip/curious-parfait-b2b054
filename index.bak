@@ -4473,8 +4473,7 @@ async function render(){
           <div class="stat"><div class="label">Credit Statement</div><div class="value" style="font-size:14px;color:#a7a9b3">Choose a supplier to view deposit, applied credit and carry forward.</div></div>
         </div>`}
 
-        <div class="helper" style="margin-bottom:10px">Selected rows: <span data-selected-count>${selectedIds.length}</span></div><div class="toolbar supplier-selection-toolbar" style="grid-template-columns:repeat(6,1fr);margin-bottom:12px">
-<button class="credit-note-btn-pro" onclick="window.openCreditNoteModal()">Create Credit Note</button>
+        <div class="helper" style="margin-bottom:10px">Selected rows: <span data-selected-count>${selectedIds.length}</span></div><div class="toolbar" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px">
 <button class="soft main-action" onclick="window.convertOrderToDN()">Convert Order → DN</button>
 <button class="soft main-action" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>
 <button class="green" onclick="window.bulkMarkPaid()">Mark Selected</button>
@@ -20664,4 +20663,3 @@ window.vpGetAllSupplierRows = async function(){
 <script src="contractors-pro.js" defer></script>
 </body>
 </html>
-<!-- V263 marker -->
