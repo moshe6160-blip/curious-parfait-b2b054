@@ -1,0 +1,10 @@
+
+/* V258 Credit Note Button / Row Indicator */
+.has-credit-note{
+  outline: 1px solid rgba(245,194,107,.55);
+  box-shadow: inset 0 0 0 1px rgba(245,194,107,.18);
+}
+.credit-note-value,
+.credit-note{
+  color:#f5c26b!important;
+}
