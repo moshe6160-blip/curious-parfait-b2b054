@@ -3674,6 +3674,7 @@ function renderToolbarButtons(){
 }
 function renderSelectionButtons(){
   const btn = [];
+  if(canAccountant()) btn.push('<button class="credit-note-btn-pro" onclick="window.openCreditNoteModal()">Create Credit Note</button>');
   if(canEditAnyEntry()) btn.push('<button class="soft" onclick="window.duplicateEntry()">Duplicate Selected</button>');
   if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.convertOrderToDN()">Convert Order → DN</button>');
 if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>');
