@@ -3233,6 +3233,11 @@ body.role-dn-approver .money-amber {
 }
 </style>
 
+<style id="v275-credit-status-colors">
+.badge.credited-partial{background:rgba(245,194,107,.16)!important;border:1px solid rgba(245,194,107,.55)!important;color:#ffd77a!important;font-weight:900!important}
+.badge.credited-full{background:rgba(65,214,130,.16)!important;border:1px solid rgba(65,214,130,.55)!important;color:#7dffad!important;font-weight:900!important}
+.badge.credit-note-status{background:rgba(125,190,255,.16)!important;border:1px solid rgba(125,190,255,.55)!important;color:#9fd0ff!important;font-weight:900!important}
+</style>
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
@@ -3495,6 +3500,36 @@ function processStatusClass(row){
   if(label === "Delivery Note") return "vat";
   if(label === "Invoice") return "paid";
   if(label === "Done") return "paid";
+  return "unpaid";
+}
+
+/* V275: clear invoice credit statuses only (UI/status display, login untouched) */
+function invoiceCreditStatusInfo(row){
+  try{
+    if(typeof displayEntryKind === "function" && displayEntryKind(row) === "credit_note"){
+      return { label: "Credit Note", cls: "credit-note-status" };
+    }
+    const hasInvoice = !!String(row?.invoice_no || "").trim();
+    if(!hasInvoice) return null;
+    const credit = (typeof extractCreditAmount === "function") ? Math.abs(Number(extractCreditAmount(row) || 0)) : 0;
+    if(credit <= 0.01) return null;
+    const invoiceValue = (typeof invoiceDisplayAmount === "function") ? Math.abs(Number(invoiceDisplayAmount(row) || 0)) : Math.abs(Number(row?.total || row?.amount || 0));
+    if(invoiceValue > 0 && credit >= invoiceValue - 0.01){
+      return { label: "Credited (full)", cls: "credited-full" };
+    }
+    return { label: "Credited (partial)", cls: "credited-partial" };
+  }catch(e){ return null; }
+}
+function displayFinancialStatusLabel(row){
+  const info = invoiceCreditStatusInfo(row);
+  return info ? info.label : String(row?.status || "");
+}
+function displayFinancialStatusClass(row){
+  const info = invoiceCreditStatusInfo(row);
+  if(info) return info.cls;
+  const st = String(row?.status || "").toLowerCase();
+  if(st.includes("paid") || st.includes("covered")) return "paid";
+  if(st.includes("partial") || st.includes("credit")) return "credited-partial";
   return "unpaid";
 }
 
@@ -4676,7 +4711,7 @@ async function render(){
                   <td>${money(e.deposit_applied || 0)}</td>
                   <td>${money(typeof amountDueDisplay === "function" ? amountDueDisplay(e) : (e.amount_due || 0))}</td>
                   <td>${money(e.supplier_credit_balance || 0)}</td>
-                  <td><span class="badge ${e.status==='Paid'?'paid':'unpaid'}">${esc(e.status || "")}</span></td>
+                  <td><span class="badge ${typeof displayFinancialStatusClass === "function" ? displayFinancialStatusClass(e) : (e.status==='Paid'?'paid':'unpaid')}">${esc(typeof displayFinancialStatusLabel === "function" ? displayFinancialStatusLabel(e) : (e.status || ""))}</span></td>
                   <td>${esc(e.created_by || "")}</td>
                   <td>${esc(typeof visibleNotes === "function" ? visibleNotes(e) : (e.notes || ""))}${typeof creditNoteLabel === "function" && creditNoteLabel(e) ? `<br><span class="badge vat credit-note-value">${esc(creditNoteLabel(e))}</span>` : ""}</td>
                 </tr>
@@ -20085,7 +20120,7 @@ setInterval(window.addTransparencyButtons, 1000);
       const date = prompt("Credit Note Date", cnToday()) || cnToday();
       const newCreditTotal = currentCredit + creditAmount;
       const invoiceDueAfterCredit = Math.max(0, invoiceBase - depositApplied - newCreditTotal);
-      const safeStatus = invoiceDueAfterCredit <= 0.01 ? "Covered" : (row.status || "Unpaid");
+      const safeStatus = invoiceDueAfterCredit <= 0.01 ? "Credited (full)" : "Credited (partial)";
 
       let notes = String(row.notes || "");
       const historyLine = date + " | " + cleanCreditNo + " | " + creditAmount.toFixed(2) + " | " + reason;
@@ -20990,7 +21025,7 @@ window.vpGetAllSupplierRows = async function(){
       var depositApplied = Math.max(0, num(row.deposit_applied));
       var netInvoiceAfterCredit = Math.max(0, invoiceValue - newCreditTotal);
       var invoiceDueAfterCredit = Math.max(0, invoiceValue - depositApplied - newCreditTotal);
-      var newStatus = netInvoiceAfterCredit <= 0.01 ? "Credited" : (invoiceDueAfterCredit <= 0.01 ? (row.status || "Paid") : "Partial Credit");
+      var newStatus = netInvoiceAfterCredit <= 0.01 ? "Credited (full)" : "Credited (partial)";
 
       var notes = String(row.notes || "");
       notes = upsertTag(notes, "CREDIT", newCreditTotal.toFixed(2));
