@@ -3294,6 +3294,7 @@ function invoiceDisplayAmount(row){
 
 function amountDueDisplay(row){
   const delivered = typeof extractDeliveredAmount === "function" ? extractDeliveredAmount(row) : 0;
+  const credit = typeof extractCreditAmount === "function" ? Number(extractCreditAmount(row) || 0) : 0;
   const hasDN = !!(typeof extractDeliveryNoteNo === "function" && extractDeliveryNoteNo(row));
   const hasInvoice = !!String(row?.invoice_no || "").trim();
   const closed = !!(typeof extractCloseReason === "function" && extractCloseReason(row));
@@ -3307,12 +3308,12 @@ function amountDueDisplay(row){
 
   // If DN exists, financial due should follow delivered/invoiced flow, not original order.
   if(hasDN){
-    if(hasInvoice) return Math.max(0, delivered - Number(row?.deposit_applied || 0));
+    if(hasInvoice) return Math.max(0, delivered - Number(row?.deposit_applied || 0) - credit);
     if(closed) return 0;
-    return delivered;
+    return Math.max(0, delivered - credit);
   }
 
-  return Number(row?.amount_due || row?.total || row?.amount || 0);
+  return Math.max(0, Number(row?.amount_due || row?.total || row?.amount || 0) - credit);
 }
 function visibleNotes(row){
   let n = String(row?.notes || "");
@@ -3639,8 +3640,8 @@ function renderToolbarButtons(){
   const btn = [];
   if(canCreateOrder()) btn.push('<button class="primary main-action" onclick="window.openOrderModal()">Order</button>');
   if(canCreateInvoice()) btn.push('<button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>');
-  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
-          <button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
+  if(canAccountant()) btn.push('<button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>');
+  if(canAccountant()) btn.push('<button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canManageLists()) btn.push('<button class="ghost" onclick="window.openListsModal()">Manage Lists</button>');
   if(canManageSettings()) btn.push('<button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>');
   btn.push('<button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>');
@@ -19875,22 +19876,23 @@ window.addTransparencyButtons = function(){
 };
 setInterval(window.addTransparencyButtons, 1000);
 
-
-/* === V259 SAFE SUPPLIER CREDIT NOTE - REAL BUTTON + LINKED CREDIT === */
+/* === V260 SAFE CREDIT NOTE - DOES NOT TOUCH LOGIN === */
 (function(){
-  if(window.__v259CreditNoteLoaded) return;
-  window.__v259CreditNoteLoaded = true;
-  function cnMoney(n){ try{ if(typeof money === "function") return money(Number(n||0)); }catch(e){} return "R " + Number(n||0).toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  if(window.__v260CreditNoteLoaded) return;
+  window.__v260CreditNoteLoaded = true;
   function cnAmount(v){ return Number(String(v||"").replace(/[^0-9.-]/g,"")) || 0; }
   function cnToday(){ return new Date().toISOString().slice(0,10); }
-  function cnUpsert(notes, tag, value){ if(typeof upsertNoteTag === "function") return upsertNoteTag(notes, tag, value); return String(notes||"") + "\n[[" + tag + ":" + value + "]]"; }
+  function cnMoney(n){ try{ return money(Number(n||0)); }catch(e){ return "R " + Number(n||0).toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2}); } }
+
   window.openCreditNoteModal = async function(){
     try{
+      if(typeof supabase === "undefined" || !supabase) return alert("System is still loading. Refresh and try again.");
       if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can add Credit Note.");
-      if(typeof selectedIds === "undefined" || selectedIds.length !== 1) return alert("Select exactly one Invoice / Order row first.");
+      if(!Array.isArray(selectedIds) || selectedIds.length !== 1) return alert("Select exactly one Invoice / Order row first.");
       const id = selectedIds[0];
-      const { data: row, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
-      if(error || !row) return alert(error?.message || "Could not load selected row.");
+      const res = await supabase.from("suppliers").select("*").eq("id", id).single();
+      if(res.error || !res.data) return alert(res.error?.message || "Could not load selected row.");
+      const row = res.data;
       const hasInvoice = !!String(row.invoice_no || "").trim();
       const hasOrder = !!String(row.order_no || "").trim();
       if(!hasInvoice && !hasOrder) return alert("Credit Note must be linked to an existing Invoice / Order row.");
@@ -19905,23 +19907,29 @@ setInterval(window.addTransparencyButtons, 1000);
       const previousCredit = (typeof extractCreditAmount === "function") ? Number(extractCreditAmount(row)||0) : 0;
       const newCreditTotal = previousCredit + creditAmount;
       let notes = String(row.notes || "");
-      notes = cnUpsert(notes, "CREDIT", newCreditTotal.toFixed(2));
-      notes = cnUpsert(notes, "CREDITNO", String(creditNo).trim());
-      notes = cnUpsert(notes, "CREDITDATE", date);
-      notes = cnUpsert(notes, "CREDITREASON", reason);
-      const currentDue = Number(row.amount_due ?? row.total ?? row.amount ?? 0) || 0;
-      const newDue = Math.max(0, currentDue - creditAmount);
-      const update = { notes, amount_due: newDue, status: newDue <= 0 ? "Covered" : (row.status || "Credit Note") };
-      const { error: updErr } = await supabase.from("suppliers").update(update).eq("id", id);
-      if(updErr) return alert(updErr.message);
+      if(typeof upsertNoteTag === "function"){
+        notes = upsertNoteTag(notes, "CREDIT", newCreditTotal.toFixed(2));
+        notes = upsertNoteTag(notes, "CREDITNO", String(creditNo).trim());
+        notes = upsertNoteTag(notes, "CREDITDATE", date);
+        notes = upsertNoteTag(notes, "CREDITREASON", reason);
+      } else {
+        notes += "\n[[CREDIT:" + newCreditTotal.toFixed(2) + "]]";
+        notes += "\n[[CREDITNO:" + String(creditNo).trim() + "]]";
+        notes += "\n[[CREDITDATE:" + date + "]]";
+        notes += "\n[[CREDITREASON:" + reason + "]]";
+      }
+      const baseDue = (typeof amountDueDisplay === "function") ? Number(amountDueDisplay(row)||0) : Number(row.amount_due || row.total || row.amount || 0);
+      const update = { notes, amount_due: Math.max(0, baseDue - creditAmount) };
+      const upd = await supabase.from("suppliers").update(update).eq("id", id);
+      if(upd.error) return alert(upd.error.message);
       selectedIds = [];
-      if(typeof logAudit === "function") await logAudit("credit_note", `row=${id} amount=${creditAmount} no=${creditNo}`);
-      alert("Credit Note saved and linked: " + String(creditNo).trim() + " / " + cnMoney(creditAmount));
+      try{ if(typeof logAudit === "function") await logAudit("credit_note", "row="+id+" amount="+creditAmount+" no="+creditNo); }catch(e){}
+      alert("Credit Note saved: " + String(creditNo).trim() + " / " + cnMoney(creditAmount));
       if(typeof render === "function") await render();
     }catch(err){ alert(err?.message || "Credit Note error"); }
   };
-  const st = document.createElement('style');
-  st.textContent = `.credit-note-btn{color:#111!important;background:linear-gradient(145deg,#efd3ab,#b88754)!important;font-weight:900!important}`;
+  const st = document.createElement("style");
+  st.textContent = ".credit-note-btn{color:#111!important;background:linear-gradient(145deg,#efd3ab,#b88754)!important;font-weight:900!important}.credit-note-value{color:#f5c26b!important}";
   document.head.appendChild(st);
 })();
 
