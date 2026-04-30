@@ -21089,6 +21089,43 @@ window.vpGetAllSupplierRows = async function(){
   };
 })();
 </script>
+<script id="v277-accounting-true-net-from-v276-main">
+(function(){
+  if(window.__v277AccountingTrueNetLoaded) return;
+  window.__v277AccountingTrueNetLoaded = true;
+  function parseMoneyText(txt){ var s = String(txt || '').replace(/R/g,'').replace(/\s/g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''); return Number(s || 0) || 0; }
+  function moneyV277(n){ try{ if(typeof money === 'function') return money(Number(n||0)); }catch(e){} return 'R ' + Number(n||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function norm(t){ return String(t||'').trim().toLowerCase(); }
+  function fixFinancialStatusDisplay(){
+    try{
+      var box = document.getElementById('safeFinancialStatus');
+      if(!box) return;
+      var byLabel = {};
+      Array.from(box.querySelectorAll('.card')).forEach(function(card){
+        var labelEl = card.querySelector('div');
+        var valueEl = card.querySelector('b');
+        if(!labelEl || !valueEl) return;
+        byLabel[norm(labelEl.textContent)] = {label:labelEl,value:valueEl,amount:parseMoneyText(valueEl.textContent)};
+      });
+      var depCredit = byLabel['deposit / credit'];
+      var depApplied = byLabel['deposit applied'] || byLabel['credit applied'];
+      var creditBal = byLabel['credit balance'];
+      var outstanding = byLabel['outstanding'];
+      if(depApplied && depApplied.amount < 0){ depApplied.label.textContent = 'Credit Applied'; }
+      if(creditBal){
+        var hasRealSupplierDeposit = depCredit && depCredit.amount > 0;
+        if(!hasRealSupplierDeposit || (depApplied && depApplied.amount < 0)){ creditBal.value.textContent = moneyV277(0); }
+      }
+      if(outstanding && outstanding.amount < 0){ outstanding.value.textContent = moneyV277(0); }
+    }catch(e){ console.warn('V277 financial display fix skipped', e); }
+  }
+  function run(){ fixFinancialStatusDisplay(); }
+  window.addEventListener('load', function(){ setTimeout(run,900); setTimeout(run,2200); setTimeout(run,4000); });
+  document.addEventListener('click', function(){ setTimeout(run,800); }, true);
+  document.addEventListener('change', function(){ setTimeout(run,800); }, true);
+  setInterval(run,1500);
+})();
+</script>
 </body>
 </html>
 <!-- V266 marker -->
