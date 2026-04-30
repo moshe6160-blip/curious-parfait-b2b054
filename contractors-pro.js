@@ -332,7 +332,7 @@
     return !!(appScreen && !appScreen.classList.contains('hidden') && (!login || login.classList.contains('hidden')));
   }
   function tick(){ ensure(); const n=q('vpConFloat'); if(n) n.style.display = logged() ? 'flex' : 'none'; }
-  function setActive(where){ ['vpNavDash','vpNavSup','vpNavCon'].forEach(id=>{ const b=q(id); if(b) b.classList.remove('active'); }); const b=q(where==='con'?'vpNavCon':'vpNavSup'); if(b) b.classList.add('active'); }
+  function setActive(where){ ['vpNavDash','vpNavSup','vpNavCon'].forEach(id=>{ const b=q(id); if(b) b.classList.remove('active'); }); const b=q(where==='dash'?'vpNavDash':(where==='con'?'vpNavCon':'vpNavSup')); if(b) b.classList.add('active'); }
   function showSuppliers(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display=''; if(con) con.style.display='none'; setActive('sup'); }
   function showContractors(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display='none'; if(con){ con.style.display='block'; render(); } setActive('con'); }
   async function showProjectDashboard(){ ensure(); const app=q('app'), con=q('contractorsProScreen'); if(app) app.style.display='none'; if(con) con.style.display='block'; setActive('dash'); await renderProjectFinancialDashboard(); }
@@ -459,37 +459,52 @@
   }
 
 
-  function supplierMoneyValue(row){
+  function supplierBaseAmount(row){
     if(!row) return 0;
-    const candidates=[row.amount_due,row.balance,row.outstanding,row.total,row.gross,row.amount,row.value,row.invoice_amount,row.delivered_amount,row.order_amount,row.price,row.subtotal];
+    try{ if(typeof window.depositBaseAmount === 'function') return num(window.depositBaseAmount(row)); }catch(e){}
+    const candidates=[row.amount_due,row.total,row.amount,row.gross,row.order_amount,row.delivered_amount,row.invoice_amount,row.net_amount,row.value,row.price,row.subtotal];
     for(const v of candidates){ const n=num(v); if(n) return n; }
     return 0;
   }
+  function supplierInvoiceAmount(row){
+    try{ if(typeof window.invoiceDisplayAmount === 'function') return num(window.invoiceDisplayAmount(row)); }catch(e){}
+    return supplierBaseAmount(row);
+  }
+  function supplierDueAmount(row){
+    try{ if(typeof window.amountDueDisplay === 'function') return num(window.amountDueDisplay(row)); }catch(e){}
+    const applied=num(row?.deposit_applied);
+    return Math.max(0, supplierInvoiceAmount(row)-applied);
+  }
   function supplierType(row){
-    const raw=String(row?.type||row?.kind||row?.status||'').toLowerCase();
+    try{ if(typeof window.displayEntryKind === 'function') return String(window.displayEntryKind(row)||'').toLowerCase(); }catch(e){}
+    const raw=String(row?.entry_type||row?.type||row?.kind||row?.status||'').toLowerCase();
+    if(raw.includes('deposit')) return 'deposit';
     if(raw.includes('invoice')) return 'invoice';
-    if(raw.includes('delivery')||raw==='dn') return 'delivery';
+    if(raw.includes('delivery')||raw.includes('delivery_note')||raw==='dn') return 'delivery_note';
     if(raw.includes('order')) return 'order';
     if(String(row?.invoice_no||'').trim()) return 'invoice';
-    if(String(row?.delivery_note_no||row?.dn_no||'').trim()) return 'delivery';
+    if(String(row?.delivery_note_no||row?.dn_no||'').trim()) return 'delivery_note';
     if(String(row?.order_no||'').trim()) return 'order';
     return raw||'record';
   }
   async function supplierRows(){
-    try{ if(typeof window.getEntries==='function') return await window.getEntries(); }catch(e){}
     try{ if(typeof window.getAllRows==='function') return await window.getAllRows(); }catch(e){}
+    try{ if(typeof window.getEntries==='function') return await window.getEntries(); }catch(e){}
     try{ return JSON.parse(localStorage.getItem('vp_supplier_rows')||'[]')||[]; }catch(e){}
     return [];
   }
   function supplierProjects(rows){ return [...new Set((rows||[]).map(r=>String(r?.project||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
   function supplierTotals(rows, project){
-    const filtered=(rows||[]).filter(r=>!project || String(r?.project||'').trim()===project);
+    const filtered=(rows||[]).filter(r=>!project || String(r?.project||'').trim().toLowerCase()===String(project).trim().toLowerCase());
     const out={count:filtered.length,orders:0,delivered:0,invoiced:0,paid:0,open:0,outstanding:0,overdue:0,deposits:0,credit:0};
     filtered.forEach(r=>{
-      const amount=supplierMoneyValue(r), type=supplierType(r), status=String(r?.status||r?.month_status||'').toLowerCase();
-      if(type==='order') out.orders+=amount; else if(type==='delivery') out.delivered+=amount; else if(type==='invoice') out.invoiced+=amount; else out.open+=amount;
-      if(status.includes('paid')||status.includes('covered')||status.includes('closed')) out.paid+=amount; else out.outstanding+=amount;
-      if(status.includes('overdue')) out.overdue+=amount; if(status.includes('deposit')) out.deposits+=amount; if(status.includes('credit')) out.credit+=amount;
+      const type=supplierType(r), status=String(r?.status||r?.month_status||'').toLowerCase();
+      const base=supplierBaseAmount(r);
+      if(type==='deposit') { out.deposits += base; out.credit += base; return; }
+      if(type==='invoice') { const inv=supplierInvoiceAmount(r); const due=supplierDueAmount(r); out.invoiced += inv; out.outstanding += due; out.paid += Math.max(0, inv - due); return; }
+      if(type==='delivery_note' || type==='delivery') { out.delivered += base; if(status.includes('paid')||status.includes('closed')) out.paid += base; else out.outstanding += base; return; }
+      if(type==='order') { out.orders += base; out.open += base; if(status.includes('overdue')) out.overdue += base; return; }
+      out.open += base;
     });
     if(!out.open) out.open=Math.max(0,out.orders-out.delivered);
     return out;
