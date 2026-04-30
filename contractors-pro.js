@@ -13,26 +13,6 @@
   const uid = () => 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
   const esc = x => String(x ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const num = v => Number(String(v ?? '').replace(/[^0-9.-]/g,'')) || 0;
-  const PDF_COST_CODES = [{"bill": "Bill 1", "name": "PRELIMINARIES AND GENERAL", "budget": 21536097.02}, {"bill": "Bill 2", "name": "EARTHWORKS (PROVISIONAL)", "budget": 15724261.31}, {"bill": "Bill 3", "name": "LATERAL SUPPORT", "budget": 8347293.54}, {"bill": "Bill 4", "name": "CONCRETE, FORMWORK AND REINFORCEMENT", "budget": 78908199.81}, {"bill": "Bill 5", "name": "MASONRY", "budget": 15633494.17}, {"bill": "Bill 6", "name": "WATERPROOFING", "budget": 4816408.34}, {"bill": "Bill 7", "name": "CARPENTRY AND JOINERY", "budget": 9185484.2}, {"bill": "Bill 8", "name": "CEILINGS, PARTITIONS AND ACCESS FLOORING (PROVISIONAL)", "budget": 3791674.9}, {"bill": "Bill 9", "name": "FLOOR COVERINGS (PROVISIONAL)", "budget": 5220439.25}, {"bill": "Bill 10", "name": "IRONMONGERY (PROVISIONAL)", "budget": 2343800.0}, {"bill": "Bill 11", "name": "METALWORK", "budget": 27622628.97}, {"bill": "Bill 12", "name": "PLASTERING", "budget": 11065925.94}, {"bill": "Bill 13", "name": "TILING", "budget": 7768842.05}, {"bill": "Bill 14", "name": "PLUMBING, DRAINAGE AND FIRE INSTALLATION (PROVISIONAL)", "budget": 28668989.86}, {"bill": "Bill 15", "name": "ELECTRICAL WORK (PROVISIONAL)", "budget": 19715822.03}, {"bill": "Bill 16", "name": "MECHANICAL WORK (PROVISIONAL)", "budget": 14403688.53}, {"bill": "Bill 17", "name": "GLAZING", "budget": 454571.43}, {"bill": "Bill 18", "name": "PAINTWORK", "budget": 9770000.0}, {"bill": "Bill 19", "name": "EXTERNAL WORK", "budget": 2459699.0}, {"bill": "Bill 20", "name": "PROVISIONAL SUMS", "budget": 200000.0}, {"bill": "Bill 21", "name": "POOL", "budget": 3204984.35}, {"bill": "Furn.", "name": "PATIO FURNITURE", "budget": 400000.0}, {"bill": "Furn.", "name": "UNIT FURNITURE AND RECEPTION AREA", "budget": 22204081.63}, {"bill": "Cont.", "name": "8% CONTINGENCY ON UNIT FURNITURE, RECEPTION AND INSTALLATION", "budget": 1776326.53}];
-
-  function costCodeKey(v){
-    const s = String(v || '').trim().toUpperCase();
-    if(!s) return '';
-    const direct = PDF_COST_CODES.find(x => x.name.toUpperCase() === s || (x.bill + ' - ' + x.name).toUpperCase() === s || x.bill.toUpperCase() === s);
-    if(direct) return direct.name;
-    // Soft matching for old values/users' wording
-    const clean = s.replace(/[^A-Z0-9]+/g,' ');
-    const hit = PDF_COST_CODES.find(x => clean.includes(x.name.toUpperCase().replace(/\s*\(PROVISIONAL\)/,'').replace(/[^A-Z0-9]+/g,' ').trim()) || x.name.toUpperCase().includes(clean));
-    return hit ? hit.name : String(v||'').trim();
-  }
-  function pdfBudgetForCostCode(v){
-    const key = costCodeKey(v);
-    const hit = PDF_COST_CODES.find(x => x.name === key);
-    return hit ? num(hit.budget) : 0;
-  }
-  function costCodeLabel(x){
-    return x.bill ? (x.bill + ' - ' + x.name) : x.name;
-  }
 
   function loadRaw(){
     try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e){ return []; }
@@ -254,11 +234,6 @@
 
       /* V248 Project Financial Dashboard */
       #contractorsProScreen .projectDashHero{border-radius:34px!important;padding:20px!important;margin-bottom:16px!important;background:linear-gradient(180deg,rgba(29,29,34,.98),rgba(7,7,9,.99))!important;border:1px solid rgba(230,198,154,.35)!important;box-shadow:0 22px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)!important;}
-      #contractorsProScreen .costCodeReview .tableWrap{overflow:auto!important;border:1px solid rgba(230,198,154,.22)!important;border-radius:18px!important;background:rgba(0,0,0,.22)!important;}
-      #contractorsProScreen .costReviewTable{width:100%!important;border-collapse:collapse!important;min-width:1120px!important;font-size:12px!important;}
-      #contractorsProScreen .costReviewTable th{position:sticky!important;top:0!important;background:#101218!important;color:#d8b789!important;text-align:left!important;padding:10px!important;letter-spacing:.08em!important;text-transform:uppercase!important;}
-      #contractorsProScreen .costReviewTable td{border-top:1px solid rgba(230,198,154,.14)!important;padding:10px!important;color:#fff!important;}
-      #contractorsProScreen .costReviewTable tr:hover td{background:rgba(255,255,255,.035)!important;}
       #contractorsProScreen .projectDashTitle{font-size:30px!important;font-weight:950!important;margin:0!important;color:#fff!important;letter-spacing:-.02em!important;}
       #contractorsProScreen .projectDashSub{color:#e8c79a!important;font-weight:850!important;margin-top:6px!important;}
       #contractorsProScreen .projectDashControls{display:grid!important;grid-template-columns:1fr auto!important;gap:10px!important;margin-top:16px!important;align-items:center!important;}
@@ -465,7 +440,7 @@
       <div class="grid4"><div class="mini"><span>Progress vs Contract</span><b class="${t.progress>100?'overColor':'paidColor'}">${t.progress.toFixed(1)}%</b></div><div class="mini"><span>Progress vs Budget</span><b class="contractColor">${t.budgetProgress.toFixed(1)}%</b></div><div class="mini"><span>Above Original Contract</span><b class="${t.overOriginalContract>0?'overColor':'paidColor'}">${money(t.overOriginalContract)}</b></div><div class="mini"><span>Available For Accounts</span><b class="retentionColor">${money(t.availableForAccounts)}</b></div></div>
       <div class="grid4"><div class="mini"><span>Paid Accounts</span><b class="paidColor">${t.paidAccounts} / ${t.totalAccounts}</b></div><div class="mini"><span>Open Accounts</span><b class="outstandingColor">${t.openAccounts}</b></div><div class="mini"><span>Retention Held</span><b class="retentionColor">${money(t.retentionHeld)}</b></div><div class="mini"><span>Retention Balance</span><b class="retentionColor">${money(t.retentionBalance)}</b></div></div>
       ${t.overApprovedBudget>0?`<div class="note" style="border-color:rgba(255,80,80,.7)!important;background:rgba(255,0,0,.08)!important"><b class="red">WARNING:</b> Accounts are above approved budget by <b class="red">${money(t.overApprovedBudget)}</b>. Add Variation before additional accounts.</div>`:''}
-      <div class="formBox"><h3>Contractor Setup</h3><div class="muted">Update contractor profile, project, budget item, contract and payment terms.</div><div class="grid2"><input id="contractorNameEdit" placeholder="Contractor name" value="${esc(c.name)}"><input id="contractorContactEdit" placeholder="Contact person" value="${esc(c.contactPerson||'')}"><input id="contractorPhoneEdit" placeholder="Phone" value="${esc(c.phone||'')}"><input id="contractorEmailEdit" placeholder="Email" value="${esc(c.email||'')}"><input id="contractorTradeEdit" placeholder="Trade / Category" value="${esc(c.trade||'')}"><input id="contractorProjectEdit" placeholder="Project" value="${esc(c.project||'')}"><select id="contractorBudgetItemEdit">${budgetItemOptions(load(), c.budgetItem||'')}</select><input id="contractorBudgetEdit" type="number" inputmode="decimal" placeholder="Budget amount" value="${esc(c.budget||'')}"><input id="contractorPaymentTermsEdit" placeholder="Payment terms" value="${esc(c.paymentTerms||'')}"><input id="contractorRetentionEdit" type="number" inputmode="decimal" placeholder="Retention %" value="${esc(c.retention||5)}"><input id="contractorAddressEdit" placeholder="Address" value="${esc(c.address||'')}"><input id="contractorCompanyEdit" placeholder="Company / registration details" value="${esc(c.companyDetails||'')}"><input id="contractorNotesEdit" placeholder="Notes" value="${esc(c.notes||'')}"></div><button class="btn gold" onclick="vpConSaveContractorSetup('${c.id}')">Save Contractor Setup</button></div>
+      <div class="formBox"><h3>Contractor Setup</h3><div class="muted">Update contractor profile, project, budget item, contract and payment terms.</div><div class="grid2"><input id="contractorNameEdit" placeholder="Contractor name" value="${esc(c.name)}"><input id="contractorContactEdit" placeholder="Contact person" value="${esc(c.contactPerson||'')}"><input id="contractorPhoneEdit" placeholder="Phone" value="${esc(c.phone||'')}"><input id="contractorEmailEdit" placeholder="Email" value="${esc(c.email||'')}"><input id="contractorTradeEdit" placeholder="Trade / Category" value="${esc(c.trade||'')}"><input id="contractorProjectEdit" placeholder="Project" value="${esc(c.project||'')}"><input id="contractorBudgetItemEdit" placeholder="Budget Item / Cost Code" value="${esc(c.budgetItem||'')}"><input id="contractorBudgetEdit" type="number" inputmode="decimal" placeholder="Budget amount" value="${esc(c.budget||'')}"><input id="contractorPaymentTermsEdit" placeholder="Payment terms" value="${esc(c.paymentTerms||'')}"><input id="contractorRetentionEdit" type="number" inputmode="decimal" placeholder="Retention %" value="${esc(c.retention||5)}"><input id="contractorAddressEdit" placeholder="Address" value="${esc(c.address||'')}"><input id="contractorCompanyEdit" placeholder="Company / registration details" value="${esc(c.companyDetails||'')}"><input id="contractorNotesEdit" placeholder="Notes" value="${esc(c.notes||'')}"></div><button class="btn gold" onclick="vpConSaveContractorSetup('${c.id}')">Save Contractor Setup</button></div>
       <div class="grid2">
         <div class="formBox"><h3>Edit Contract</h3><div class="muted">Contract changes are saved in history and update Outstanding immediately.</div><input id="contractEditValue" type="number" inputmode="decimal" placeholder="New contract value" value="${esc(c.contract)}"><input id="contractEditNote" placeholder="Change note"><button class="btn gold" onclick="vpConSaveContract('${c.id}')">Save Contract</button></div>
         <div class="formBox"><h3>Quick Actions</h3><div class="actions"><button class="btn gold" onclick="vpConFocus('accClaimed')">+ Account #${nextNo}</button><button class="btn" onclick="vpConFocus('accountsTableAnchor')">Pay From Account</button><button class="btn" onclick="vpConFocus('varAmount')">Variation</button><button class="btn" onclick="vpConFocus('dedAmount')">Deduction</button><button class="btn" onclick="vpConFocus('retAmount')">Release Retention</button></div><div class="muted">Account number is automatic. No Approved field.</div></div>
@@ -586,92 +561,6 @@
     if(!out.outstanding) out.outstanding = Math.max(0, out.invoiced - out.paid);
     return out;
   }
-
-  function supplierCostCode(row){
-    const candidates = [
-      row?.cost_code,row?.costCode,row?.budget_item,row?.budgetItem,row?.category,row?.trade,row?.description,row?.item,row?.scope,row?.supplier_category
-    ];
-    for(const v of candidates){
-      const s = String(v||'').trim();
-      if(s) return costCodeKey(s);
-    }
-    // Try text matching on supplier / notes
-    const text = JSON.stringify(row||{}).toUpperCase();
-    const hit = PDF_COST_CODES.find(x => text.includes(x.name.toUpperCase().replace(/\s*\(PROVISIONAL\)/,'')));
-    return hit ? hit.name : 'Unallocated';
-  }
-  function supplierTotalsByCostCode(rows, project){
-    const norm = v => String(v||'').trim().toLowerCase();
-    const out = {};
-    (rows||[]).filter(r=>!project || norm(r?.project)===norm(project)).forEach(r=>{
-      const key = supplierCostCode(r);
-      if(!out[key]) out[key] = {orders:0,delivered:0,invoiced:0,paid:0,outstanding:0,open:0,count:0};
-      const t = supplierTotals([r], '');
-      out[key].orders += t.orders; out[key].delivered += t.delivered; out[key].invoiced += t.invoiced; out[key].paid += t.paid; out[key].outstanding += t.outstanding; out[key].open += t.open; out[key].count += 1;
-    });
-    return out;
-  }
-  function contractorTotalsByCostCode(data){
-    const out = {};
-    (data||[]).forEach(c=>{
-      const key = costCodeKey(c.budgetItem || c.trade || 'Unallocated');
-      if(!out[key]) out[key] = {contract:0,approvedBudget:0,claimed:0,paid:0,outstanding:0,retentionBalance:0,count:0};
-      const t = totals(c);
-      out[key].contract += t.contract || c.contract || 0;
-      out[key].approvedBudget += t.approvedBudget || 0;
-      out[key].claimed += t.claimed || 0;
-      out[key].paid += t.paid || 0;
-      out[key].outstanding += t.outstanding || 0;
-      out[key].retentionBalance += t.retentionBalance || 0;
-      out[key].count += 1;
-    });
-    return out;
-  }
-  function costCodeFinancialReviewRows(sRows, cData, project){
-    const s = supplierTotalsByCostCode(sRows, project);
-    const c = contractorTotalsByCostCode(cData);
-    const keys = new Set(PDF_COST_CODES.map(x=>x.name));
-    Object.keys(s).forEach(k=>keys.add(k));
-    Object.keys(c).forEach(k=>keys.add(k));
-    let rows = [...keys].filter(k => k && k !== 'Unallocated').map(k=>{
-      const pdf = PDF_COST_CODES.find(x=>x.name===k) || {};
-      const sv=s[k]||{}, cv=c[k]||{};
-      const budget = num(pdf.budget || cv.approvedBudget || cv.contract || sv.orders || 0);
-      const suppliers = num(sv.orders || sv.invoiced || 0);
-      const contractors = num(cv.approvedBudget || cv.contract || 0);
-      const committed = suppliers + contractors;
-      const paid = num(sv.paid||0) + num(cv.paid||0);
-      const outstanding = num(sv.outstanding||0) + num(cv.outstanding||0);
-      const remaining = Math.max(0, budget - committed);
-      const over = Math.max(0, committed - budget);
-      return {bill:pdf.bill||'', name:k, budget, suppliers, contractors, committed, paid, outstanding, remaining, over, records:(sv.count||0)+(cv.count||0)};
-    });
-    rows.sort((a,b)=>{
-      const ai = PDF_COST_CODES.findIndex(x=>x.name===a.name);
-      const bi = PDF_COST_CODES.findIndex(x=>x.name===b.name);
-      return (ai<0?999:ai) - (bi<0?999:bi);
-    });
-    return rows;
-  }
-  function costCodeFinancialReviewHtml(sRows, cData, project){
-    const rows = costCodeFinancialReviewRows(sRows, cData, project);
-    const totalBudget = rows.reduce((a,b)=>a+b.budget,0);
-    const totalCommitted = rows.reduce((a,b)=>a+b.committed,0);
-    const totalPaid = rows.reduce((a,b)=>a+b.paid,0);
-    const totalOutstanding = rows.reduce((a,b)=>a+b.outstanding,0);
-    const totalOver = rows.reduce((a,b)=>a+b.over,0);
-    const trs = rows.map(r=>`<tr>
-      <td><b>${esc(r.bill||'')}</b></td><td>${esc(r.name)}</td>
-      <td class="contractColor">${money(r.budget)}</td><td class="contractColor">${money(r.suppliers)}</td><td class="retentionColor">${money(r.contractors)}</td>
-      <td class="claimedColor">${money(r.committed)}</td><td class="paidColor">${money(r.paid)}</td><td class="outstandingColor">${money(r.outstanding)}</td>
-      <td class="${r.over>0?'overColor':'paidColor'}">${r.over>0?money(r.over):money(r.remaining)}</td><td>${r.records}</td>
-    </tr>`).join('');
-    return `<div class="dashSection costCodeReview"><div class="row"><h2>Final Financial Review by Cost Code</h2><button class="btn" onclick="window.print()">Print / PDF</button></div>
-      <div class="dashGrid">${dashboardTile('PDF Budget',money(totalBudget),'retentionColor')}${dashboardTile('Committed',money(totalCommitted),'claimedColor')}${dashboardTile('Paid',money(totalPaid),'paidColor')}${dashboardTile('Outstanding',money(totalOutstanding),'outstandingColor')}${dashboardTile('Over Budget',money(totalOver),totalOver>0?'overColor':'paidColor')}</div>
-      <div class="tableWrap"><table class="costReviewTable"><thead><tr><th>Bill</th><th>Cost Code / Category</th><th>PDF Budget</th><th>Suppliers</th><th>Contractors</th><th>Committed</th><th>Paid</th><th>Outstanding</th><th>Remaining / Over</th><th>Records</th></tr></thead><tbody>${trs}</tbody></table></div>
-    </div>`;
-  }
-
   async function allProjectNames(){ const cData=load(); const sRows=await supplierRows(); const set=new Set(projectNames(cData)); supplierProjects(sRows).forEach(p=>set.add(p)); return [...set].sort((a,b)=>a.localeCompare(b)); }
   function projectDashOptions(names,current){ const opts=['<option value="">All Projects</option>']; (names||[]).forEach(p=>opts.push(`<option value="${esc(p)}" ${p===current?'selected':''}>${esc(p)}</option>`)); return opts.join(''); }
   function dashboardTile(label,value,cls){ return `<div class="dashTile"><span>${label}</span><b class="${cls||''}">${value}</b></div>`; }
@@ -682,17 +571,14 @@
     const totalCommitted=gt.approvedBudget+st.orders, totalPaid=gt.paid+st.paid, totalOutstanding=gt.outstanding+st.outstanding, overBudget=gt.overOriginalContract+gt.overApprovedBudget;
     const paidProgress=totalCommitted?Math.max(0,Math.min(100,totalPaid/totalCommitted*100)):0; const claimedProgress=gt.approvedBudget?Math.max(0,Math.min(150,gt.claimed/gt.approvedBudget*100)):0;
     el.style.display='block'; const app=q('app'); if(app) app.style.display='none';
-    el.innerHTML=`<div class="shell"><div class="projectDashHero"><div class="row"><div><div class="projectDashTitle">Project Financial Dashboard</div><div class="projectDashSub">Suppliers + Contractors financial control by selected project · PDF cost code list</div></div><button class="btn" onclick="showContractorsDashboard()">Open Contractors</button></div><div class="projectDashControls"><select id="vpProjectDashSelect" onchange="vpDashSetProject(this.value)">${projectDashOptions(allNames,project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button></div></div><div class="dashSection"><h2>${project?esc(project):'All Projects'} · Financial Summary</h2><div class="dashGrid">${dashboardTile('Total Committed',money(totalCommitted),'contractColor')}${dashboardTile('Total Paid',money(totalPaid),'paidColor')}${dashboardTile('Total Outstanding',money(totalOutstanding),'outstandingColor')}${dashboardTile('Over Budget',money(overBudget),overBudget>0?'overColor':'paidColor')}${dashboardTile('Contractors Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Suppliers Orders',money(st.orders),'contractColor')}${dashboardTile('Retention Balance',money(gt.retentionBalance),'retentionColor')}${dashboardTile('Cash Exposure',money(totalOutstanding+gt.retentionBalance),'claimedColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Paid vs Total Committed</span><span class="paidColor">${paidProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${paidProgress.toFixed(1)}%"></i></div></div></div><div class="dashColumns"><div class="dashSection"><h2>Suppliers Summary</h2><div class="dashGrid">${dashboardTile('Orders',money(st.orders),'contractColor')}${dashboardTile('Delivered',money(st.delivered),'paidColor')}${dashboardTile('Invoiced',money(st.invoiced),'claimedColor')}${dashboardTile('Paid',money(st.paid),'paidColor')}${dashboardTile('Outstanding',money(st.outstanding),'outstandingColor')}${dashboardTile('Open Supply',money(st.open),'outstandingColor')}${dashboardTile('Deposit / Credit',money(st.deposits+st.credit),'retentionColor')}${dashboardTile('Records',st.count,'contractColor')}</div></div><div class="dashSection"><h2>Contractors Summary</h2><div class="dashGrid">${dashboardTile('Original Contract',money(gt.contract),'contractColor')}${dashboardTile('Variations',money(gt.variationsTotal),'retentionColor')}${dashboardTile('Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Claimed',money(gt.claimed),'claimedColor')}${dashboardTile('Paid',money(gt.paid),'paidColor')}${dashboardTile('Outstanding',money(gt.outstanding),'outstandingColor')}${dashboardTile('Retention Held',money(gt.retentionHeld),'retentionColor')}${dashboardTile('Open Accounts',gt.openAccounts,'outstandingColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Contractor Budget Usage</span><span class="${claimedProgress>100?'overColor':'contractColor'}">${claimedProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${Math.min(100,claimedProgress).toFixed(1)}%"></i></div></div></div></div>${costCodeFinancialReviewHtml(sRows,cData,project)}</div>`;
+    el.innerHTML=`<div class="shell"><div class="projectDashHero"><div class="row"><div><div class="projectDashTitle">Project Financial Dashboard</div><div class="projectDashSub">Suppliers + Contractors financial control by selected project</div></div><button class="btn" onclick="showContractorsDashboard()">Open Contractors</button></div><div class="projectDashControls"><select id="vpProjectDashSelect" onchange="vpDashSetProject(this.value)">${projectDashOptions(allNames,project)}</select><button class="btn gold" onclick="vpConAddProject()">+ Add Project</button></div></div><div class="dashSection"><h2>${project?esc(project):'All Projects'} · Financial Summary</h2><div class="dashGrid">${dashboardTile('Total Committed',money(totalCommitted),'contractColor')}${dashboardTile('Total Paid',money(totalPaid),'paidColor')}${dashboardTile('Total Outstanding',money(totalOutstanding),'outstandingColor')}${dashboardTile('Over Budget',money(overBudget),overBudget>0?'overColor':'paidColor')}${dashboardTile('Contractors Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Suppliers Orders',money(st.orders),'contractColor')}${dashboardTile('Retention Balance',money(gt.retentionBalance),'retentionColor')}${dashboardTile('Cash Exposure',money(totalOutstanding+gt.retentionBalance),'claimedColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Paid vs Total Committed</span><span class="paidColor">${paidProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${paidProgress.toFixed(1)}%"></i></div></div></div><div class="dashColumns"><div class="dashSection"><h2>Suppliers Summary</h2><div class="dashGrid">${dashboardTile('Orders',money(st.orders),'contractColor')}${dashboardTile('Delivered',money(st.delivered),'paidColor')}${dashboardTile('Invoiced',money(st.invoiced),'claimedColor')}${dashboardTile('Paid',money(st.paid),'paidColor')}${dashboardTile('Outstanding',money(st.outstanding),'outstandingColor')}${dashboardTile('Open Supply',money(st.open),'outstandingColor')}${dashboardTile('Deposit / Credit',money(st.deposits+st.credit),'retentionColor')}${dashboardTile('Records',st.count,'contractColor')}</div></div><div class="dashSection"><h2>Contractors Summary</h2><div class="dashGrid">${dashboardTile('Original Contract',money(gt.contract),'contractColor')}${dashboardTile('Variations',money(gt.variationsTotal),'retentionColor')}${dashboardTile('Approved Budget',money(gt.approvedBudget),'retentionColor')}${dashboardTile('Claimed',money(gt.claimed),'claimedColor')}${dashboardTile('Paid',money(gt.paid),'paidColor')}${dashboardTile('Outstanding',money(gt.outstanding),'outstandingColor')}${dashboardTile('Retention Held',money(gt.retentionHeld),'retentionColor')}${dashboardTile('Open Accounts',gt.openAccounts,'outstandingColor')}</div><div class="dashBarBox"><div class="dashBarLabel"><span>Contractor Budget Usage</span><span class="${claimedProgress>100?'overColor':'contractColor'}">${claimedProgress.toFixed(1)}%</span></div><div class="dashBar"><i style="width:${Math.min(100,claimedProgress).toFixed(1)}%"></i></div></div></div></div></div>`;
   }
 
 
   function budgetItemOptions(data, selected){
-    const selectedKey = costCodeKey(selected);
-    const extras = new Set();
-    (data || load()).forEach(c => { if(c.budgetItem && !PDF_COST_CODES.find(x=>x.name===costCodeKey(c.budgetItem))) extras.add(c.budgetItem); });
-    return '<option value="">Choose from Budget Item / Cost Code</option>' +
-      PDF_COST_CODES.map(x=>`<option value="${esc(x.name)}" ${x.name===selectedKey?'selected':''}>${esc(costCodeLabel(x))}</option>`).join('') +
-      [...extras].sort((a,b)=>String(a).localeCompare(String(b))).map(x=>`<option value="${esc(x)}" ${String(x)===String(selected)?'selected':''}>${esc(x)}</option>`).join('');
+    const items = new Set(['Preliminaries','Earthworks','Concrete','Brickwork','Plaster','Carpentry','Electrical','Plumbing','Painting','Aluminium','Roofing','Flooring','Other']);
+    (data || load()).forEach(c => { if(c.budgetItem) items.add(c.budgetItem); });
+    return '<option value="">Choose from budget item / cost code</option>' + [...items].sort((a,b)=>a.localeCompare(b)).map(x=>`<option value="${esc(x)}" ${x===selected?'selected':''}>${esc(x)}</option>`).join('');
   }
 
   function contractorModal(project){
@@ -706,7 +592,7 @@
       }).join('') || '<div class="helper">No contractors yet.</div>';
       return `<div class="modalOverlay" onclick="vpConCloseModal(event)"><div class="modalCard" onclick="event.stopPropagation()"><div class="modalHead"><div><h2 class="modalTitle">Manage Contractor List</h2><div class="modalSub">Reusable contractor profiles. Select an existing contractor, then edit project / budget / contract in the contractor card.</div></div><button class="btn" onclick="vpConCloseModal()">Close</button></div>${rows}</div></div>`;
     }
-    return `<div class="modalOverlay" onclick="vpConCloseModal(event)"><div class="modalCard" onclick="event.stopPropagation()"><div class="modalHead"><div><h2 class="modalTitle">Open Contractor</h2><div class="modalSub">Create a reusable contractor profile and assign it to the selected project, budget item, contract and payment terms.</div></div><button class="btn" onclick="vpConCloseModal()">Close</button></div><div class="modalSectionTitle">Contractor Details</div><div class="grid2"><input id="newConName" placeholder="Contractor name"><input id="newConContact" placeholder="Contact person"><input id="newConPhone" placeholder="Phone"><input id="newConEmail" placeholder="Email"><input id="newConAddress" placeholder="Address"><input id="newConCompany" placeholder="Company / registration / VAT details"></div><div class="modalSectionTitle">Project + Budget</div><div class="grid2"><input id="newConProject" placeholder="Project" value="${esc(project||'')}"><input id="newConTrade" placeholder="Trade / Category"><select id="newConBudgetItem">${budgetItemOptions(data,'')}</select><input id="newConBudget" type="number" inputmode="decimal" placeholder="Budget amount"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"></div><div class="modalSectionTitle">Commercial Terms</div><div class="grid2"><input id="newConPaymentTerms" placeholder="Payment terms"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"></div><textarea id="newConNotes" placeholder="Notes / special terms / scope details"></textarea><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div></div>`;
+    return `<div class="modalOverlay" onclick="vpConCloseModal(event)"><div class="modalCard" onclick="event.stopPropagation()"><div class="modalHead"><div><h2 class="modalTitle">Open Contractor</h2><div class="modalSub">Create a reusable contractor profile and assign it to the selected project, budget item, contract and payment terms.</div></div><button class="btn" onclick="vpConCloseModal()">Close</button></div><div class="modalSectionTitle">Contractor Details</div><div class="grid2"><input id="newConName" placeholder="Contractor name"><input id="newConContact" placeholder="Contact person"><input id="newConPhone" placeholder="Phone"><input id="newConEmail" placeholder="Email"><input id="newConAddress" placeholder="Address"><input id="newConCompany" placeholder="Company / registration / VAT details"></div><div class="modalSectionTitle">Project + Budget</div><div class="grid2"><input id="newConProject" placeholder="Project" value="${esc(project||'')}"><input id="newConTrade" placeholder="Trade / Category"><select id="newConBudgetItemSelect" onchange="document.getElementById('newConBudgetItem').value=this.value">${budgetItemOptions(data,'')}</select><input id="newConBudgetItem" placeholder="Budget Item / Cost Code"><input id="newConBudget" type="number" inputmode="decimal" placeholder="Budget amount"><input id="newConContract" type="number" inputmode="decimal" placeholder="Contract value"></div><div class="modalSectionTitle">Commercial Terms</div><div class="grid2"><input id="newConPaymentTerms" placeholder="Payment terms"><input id="newConRetention" type="number" inputmode="decimal" placeholder="Retention %" value="5"></div><textarea id="newConNotes" placeholder="Notes / special terms / scope details"></textarea><button class="btn gold" onclick="vpConCreateFromForm()">Create / Open Contractor</button></div></div>`;
   }
 
   function render(){
