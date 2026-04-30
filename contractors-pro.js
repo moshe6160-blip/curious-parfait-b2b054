@@ -209,6 +209,15 @@
       .vpcon-float{position:fixed!important;left:max(18px,env(safe-area-inset-left))!important;right:max(18px,env(safe-area-inset-right))!important;bottom:calc(18px + env(safe-area-inset-bottom))!important;z-index:999999!important;display:none;gap:10px!important;padding:10px!important;border-radius:28px!important;background:linear-gradient(180deg,rgba(28,28,31,.98),rgba(5,5,6,.98))!important;border:1px solid rgba(230,198,154,.38)!important;box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07)!important;}
       .vpcon-float button{flex:1!important;min-height:50px!important;border-radius:20px!important;border:1px solid rgba(230,198,154,.22)!important;background:#121216!important;color:#fff!important;font-weight:950!important;font-size:15px!important;}
 
+
+      /* V273: bottom nav hidden while working; hover/touch handle reveals it */
+      .vpcon-float{display:flex!important;transform:translateY(calc(100% - 11px))!important;opacity:.18!important;transition:transform .22s ease,opacity .22s ease!important;pointer-events:auto!important;}
+      .vpcon-float button{pointer-events:none!important;}
+      .vpcon-float:hover,.vpcon-float:focus-within,.vpcon-float.vpcon-open{transform:translateY(0)!important;opacity:1!important;}
+      .vpcon-float:hover button,.vpcon-float:focus-within button,.vpcon-float.vpcon-open button{pointer-events:auto!important;}
+      .vpcon-float::before{content:"";position:absolute;top:-10px;left:0;right:0;height:22px;}
+      #contractorsProScreen select{-webkit-appearance:none!important;appearance:none!important;color:#fff!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 16px center!important;background-size:17px 17px!important;padding-right:48px!important;}
+
       /* V243 - Contractors financial status colors matched to Suppliers */
       #contractorsProScreen .kpis .kpi:nth-child(1) b{color:#64a8ff!important;} /* Contract / Orders blue */
       #contractorsProScreen .kpis .kpi:nth-child(2) b{color:#e8c79a!important;} /* Budget rose-gold */

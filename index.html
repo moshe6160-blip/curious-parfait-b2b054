@@ -3095,18 +3095,144 @@ body.role-dn-approver .money-amber {
 #app .toolbar button.primary,#app .toolbar button.warning,#app .month-btn.active,#app .dock-item.active{color:#121212 !important;}
 </style>
 
-<style id="v272-ui-readability-footer-safe">
-/* V272 UI SAFE: CSS only. No JavaScript, no login/auth/data/Credit Note logic changed. */
-#app label,#app label span,#app .modal label,#app .modal label span,#app .helper,#app .note,#app .section-title,#app .modal-head h3,#app .mini-title,#app .sub,#app .brand-subtitle,#app .brand-sub,#app th,#app td,#app .table-wrap,#app .form-grid,#app .modal-box,#app .card,#app .panel,#app .alert-card,#app .stat{color:rgba(255,255,255,.94)!important;}
-#app input,#app select,#app textarea,#app input.dark,#app select.dark,#app textarea.dark,#app .dark{color:#fff!important;-webkit-text-fill-color:#fff!important;caret-color:#fff!important;background:rgba(8,12,20,.72)!important;border-color:rgba(255,255,255,.22)!important;}
-#app input::placeholder,#app textarea::placeholder{color:rgba(255,255,255,.58)!important;-webkit-text-fill-color:rgba(255,255,255,.58)!important;}
-#app select option{color:#fff!important;background:#101520!important;}
-#app .money-blue{color:#69a8ff!important;}#app .money-gold,#app .money-amber{color:#ffd76a!important;}#app .money-red{color:#ff6b86!important;}#app .money-green{color:#64e28f!important;}
-#app .app-nav,#app .bottom-nav,#app .mobile-nav,#app .tabbar,#app .tab-bar,body .app-nav,body .bottom-nav,body .mobile-nav,body .tabbar,body .tab-bar{position:fixed!important;left:max(16px,env(safe-area-inset-left))!important;right:max(16px,env(safe-area-inset-right))!important;bottom:max(0px,env(safe-area-inset-bottom))!important;z-index:99990!important;transform:translateY(calc(100% - 14px))!important;opacity:.22!important;transition:transform .18s ease,opacity .18s ease!important;}
-#app .app-nav:hover,#app .app-nav:focus-within,#app .bottom-nav:hover,#app .bottom-nav:focus-within,#app .mobile-nav:hover,#app .mobile-nav:focus-within,#app .tabbar:hover,#app .tabbar:focus-within,#app .tab-bar:hover,#app .tab-bar:focus-within,body .app-nav:hover,body .app-nav:focus-within,body .bottom-nav:hover,body .bottom-nav:focus-within,body .mobile-nav:hover,body .mobile-nav:focus-within,body .tabbar:hover,body .tabbar:focus-within,body .tab-bar:hover,body .tab-bar:focus-within{transform:translateY(0)!important;opacity:1!important;}
-#app .modal-actions{position:relative!important;z-index:100000!important;padding-bottom:8px!important;}
-@media(hover:none){#app .app-nav,#app .bottom-nav,#app .mobile-nav,#app .tabbar,#app .tab-bar,body .app-nav,body .bottom-nav,body .mobile-nav,body .tabbar,body .tab-bar{transform:translateY(calc(100% - 22px))!important;opacity:.35!important;}}
+
+<style id="v273-readable-arrows-floating-nav-safe">
+/* V273 UI-only patch: brighter controls + hidden bottom floating navigation. Login/auth/DB logic untouched. */
+:root, html, body, #app, #appScreen { color-scheme: dark !important; }
+
+/* Force bright readable labels/text across dark forms */
+#app label,
+#app label span,
+#app .label,
+#app .helper,
+#app .note,
+#app .modal-box,
+#app .modal-box *:not(button.warning):not(button.primary),
+#app .form-grid label,
+#app .form-grid label span,
+#app input,
+#app textarea,
+#app select,
+#app option,
+#loginScreen input,
+#loginScreen textarea,
+#loginScreen select {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 8px rgba(0,0,0,.72) !important;
+}
+
+#app input::placeholder,
+#app textarea::placeholder,
+#loginScreen input::placeholder,
+#loginScreen textarea::placeholder {
+  color: rgba(255,255,255,.82) !important;
+  opacity: 1 !important;
+}
+
+/* White dropdown arrows (Safari/Chrome) */
+#app select,
+#app select.dark,
+#loginScreen select,
+#contractorsProScreen select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  color: #ffffff !important;
+  background-color: #07090f !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 17px 17px !important;
+  padding-right: 48px !important;
+}
+
+#app select option,
+#loginScreen select option,
+#contractorsProScreen select option {
+  background: #080a10 !important;
+  color: #ffffff !important;
+}
+
+/* Bright number/input native indicators */
+#app input[type="number"],
+#app input[type="date"],
+#app input[type="time"],
+#app input[type="datetime-local"],
+#loginScreen input[type="number"],
+#contractorsProScreen input[type="number"] {
+  color-scheme: dark !important;
+  color: #ffffff !important;
+}
+
+#app input::-webkit-calendar-picker-indicator,
+#app input::-webkit-inner-spin-button,
+#app input::-webkit-outer-spin-button,
+#contractorsProScreen input::-webkit-calendar-picker-indicator,
+#contractorsProScreen input::-webkit-inner-spin-button,
+#contractorsProScreen input::-webkit-outer-spin-button {
+  filter: invert(1) brightness(2.8) contrast(1.15) !important;
+  opacity: .95 !important;
+}
+
+#app input[type="checkbox"],
+#contractorsProScreen input[type="checkbox"] {
+  accent-color: #e8c79a !important;
+  filter: brightness(1.25) !important;
+}
+
+/* Keep primary/warning button text readable as designed */
+#app button.warning,
+#app button.primary,
+#app .toolbar button.warning,
+#app .toolbar button.primary {
+  text-shadow: none !important;
+}
+
+/* Bottom floating Dashboard/Suppliers/Contractors: hidden while working, appears only when pointer reaches bottom handle */
+.vpcon-float {
+  display: flex !important;
+  transform: translateY(calc(100% - 11px)) !important;
+  opacity: .18 !important;
+  transition: transform .22s ease, opacity .22s ease, box-shadow .22s ease !important;
+  pointer-events: auto !important;
+}
+.vpcon-float button {
+  pointer-events: none !important;
+}
+.vpcon-float:hover,
+.vpcon-float:focus-within,
+.vpcon-float.vpcon-open {
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+}
+.vpcon-float:hover button,
+.vpcon-float:focus-within button,
+.vpcon-float.vpcon-open button {
+  pointer-events: auto !important;
+}
+.vpcon-float::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 22px;
+}
+
+@media (hover: none) {
+  .vpcon-float {
+    transform: translateY(calc(100% - 14px)) !important;
+    opacity: .22 !important;
+  }
+  .vpcon-float:active,
+  .vpcon-float:focus-within,
+  .vpcon-float.vpcon-open {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+  }
+}
 </style>
+
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
