@@ -1692,6 +1692,66 @@ input.premium-check:checked::after,
 /* V240 keep entire system English direction */
 html, body, input, select, textarea, button, table{direction:ltr !important;}
 
+
+
+/* ===== V294 FINAL PREMIUM LEFT BORDER - NO ROW FILL ===== */
+/* Gold buttons: text must be black only on gold buttons */
+button.primary,
+button.warning,
+button.convert-order,
+button[onclick*="openConvertOrderModal"],
+.actions-bar button.primary,
+.bulk-actions button.primary,
+.table-actions button.primary {
+  color:#111111 !important;
+  text-shadow:none !important;
+}
+
+/* Do NOT paint selected rows. Keep Apple-style clean table. */
+.table-wrap tbody tr.selected,
+.table-wrap tbody tr:has(input[type="checkbox"]:checked) {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.table-wrap tbody tr.selected td,
+.table-wrap tbody tr:has(input[type="checkbox"]:checked) td {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Premium option 2: only a thin gold line on the left of the selected row */
+.table-wrap tbody tr.selected td:first-child,
+.table-wrap tbody tr:has(input[type="checkbox"]:checked) td:first-child {
+  border-left: 4px solid #d2ad83 !important;
+  box-shadow: inset 4px 0 0 #bb9061 !important;
+}
+
+/* Checkbox: one clean white V only, no duplicate text checkmark */
+input[type="checkbox"]:checked::after,
+.row-check:checked::after {
+  content:"" !important;
+  position:absolute !important;
+  left:3px !important;
+  top:0px !important;
+  width:4px !important;
+  height:8px !important;
+  border:solid #ffffff !important;
+  border-width:0 2px 2px 0 !important;
+  transform:rotate(45deg) !important;
+  background:none !important;
+}
+
+/* Keep selected checkbox gold but without heavy glow */
+input[type="checkbox"]:checked,
+.row-check:checked {
+  background:linear-gradient(145deg, #e4c9a7 0%, #d2ad83 44%, #bb9061 100%) !important;
+  border-color:#e0c2a0 !important;
+  box-shadow:none !important;
+}
+/* ===== END V294 FINAL PREMIUM LEFT BORDER ===== */
 </style>
 
 <style>
@@ -3239,108 +3299,7 @@ body.role-dn-approver .money-amber {
 .badge.credit-note-status{background:rgba(125,190,255,.16)!important;border:1px solid rgba(125,190,255,.55)!important;color:#9fd0ff!important;font-weight:900!important}
 </style>
 
-<style id="v290-clean-row-checkbox-gold-buttons">
-
-/* ===== V290 CLEAN FIX - gold buttons black text + clean selected row + clean checkbox ===== */
-#app button.warning,
-#app button.primary,
-#app .toolbar button.warning,
-#app .toolbar button.primary,
-#app button.credit-note-btn,
-#app button.add-deposit-btn,
-#app .btn.gold,
-#app .gold,
-button.warning,
-button.primary,
-button.credit-note-btn,
-button.add-deposit-btn,
-.btn.gold,
-.gold {
-  color: #050505 !important;
-  text-shadow: none !important;
-}
-
-#app .table-wrap tbody tr.selected,
-#app .table-wrap tbody tr:has(input[type="checkbox"]:checked),
-.table-wrap tbody tr.selected,
-.table-wrap tbody tr:has(input[type="checkbox"]:checked),
-tr.selected,
-tr:has(input[type="checkbox"]:checked) {
-  background: rgba(216,183,137,.07) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-#app .table-wrap tbody tr.selected td,
-#app .table-wrap tbody tr:has(input[type="checkbox"]:checked) td,
-.table-wrap tbody tr.selected td,
-.table-wrap tbody tr:has(input[type="checkbox"]:checked) td,
-tr.selected td,
-tr:has(input[type="checkbox"]:checked) td {
-  background: rgba(216,183,137,.07) !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-#app .table-wrap tbody tr.selected *,
-#app .table-wrap tbody tr:has(input[type="checkbox"]:checked) *,
-.table-wrap tbody tr.selected *,
-.table-wrap tbody tr:has(input[type="checkbox"]:checked) * {
-  background-image: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-#app input[type="checkbox"],
-#contractorsProScreen input[type="checkbox"],
-.table-wrap input[type="checkbox"],
-input[type="checkbox"] {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  width: 22px !important;
-  height: 22px !important;
-  min-width: 22px !important;
-  min-height: 22px !important;
-  border-radius: 6px !important;
-  border: 2px solid #e8c79a !important;
-  background: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  position: relative !important;
-  display: inline-grid !important;
-  place-items: center !important;
-  margin: 0 !important;
-  vertical-align: middle !important;
-}
-
-#app input[type="checkbox"]:checked,
-#contractorsProScreen input[type="checkbox"]:checked,
-.table-wrap input[type="checkbox"]:checked,
-input[type="checkbox"]:checked {
-  background: #d8b789 !important;
-  background-image: none !important;
-  border-color: #f2d5a4 !important;
-  box-shadow: none !important;
-}
-
-#app input[type="checkbox"]:checked::after,
-#contractorsProScreen input[type="checkbox"]:checked::after,
-.table-wrap input[type="checkbox"]:checked::after,
-input[type="checkbox"]:checked::after {
-  content: "✓" !important;
-  color: #ffffff !important;
-  font-size: 19px !important;
-  font-weight: 900 !important;
-  line-height: 1 !important;
-  position: absolute !important;
-  left: 3px !important;
-  top: -1px !important;
-  text-shadow: none !important;
-}
-/* ===== END V290 CLEAN FIX ===== */
-
+<style id="v292-apple-clean-final-full">
 </style>
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>

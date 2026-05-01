@@ -1,0 +1,1 @@
+V294 FINAL: full GitHub upload package. Fixes: gold button text black, one white checkbox checkmark, no selected-row fill/gradient, premium thin gold left border only. Upload/replace all files in GitHub.
