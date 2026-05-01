@@ -1,0 +1,1 @@
+V299: Floating deck buttons now navigate/open views instead of appearing as refresh only. Table/filter area is visible for Suppliers and Projects too. AI card opens AI modal. Gold buttons remain black text.

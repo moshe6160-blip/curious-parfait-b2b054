@@ -1754,6 +1754,22 @@ input[type="checkbox"]:checked,
 /* ===== END V294 FINAL PREMIUM LEFT BORDER ===== */
 
 
+
+/* ===== V299 DECK OPEN FIX ===== */
+.snap-card{
+  text-decoration:none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+.snap-card.active{
+  background:linear-gradient(145deg,#e4c9a7 0%,#d2ad83 45%,#bb9061 100%) !important;
+  color:#111 !important;
+  border-color:rgba(228,201,167,.75) !important;
+  box-shadow:0 24px 54px rgba(217,185,145,.26), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+.snap-card.active .snap-card-title,
+.snap-card.active .snap-card-sub{color:#111 !important;}
+.snap-card:active{transform:translateY(-3px) scale(.99) !important;}
+
 /* ===== V298 STABLE FLOATING SNAP DECK - NO RING ===== */
 .floating-snap-deck{
   margin:18px 0 18px;
@@ -1923,6 +1939,61 @@ input[type="checkbox"]:checked::after,
   .quick-action-strip button{min-width:145px;}
 }
 
+
+/* ===== V300 CLEAN DECK ONLY FINAL ===== */
+.deck-only-v300 .snap-deck-track{gap:12px !important;padding:12px 6px 18px !important;scroll-snap-type:x proximity !important;}
+.deck-only-v300 .snap-card{flex:0 0 clamp(155px, 15vw, 220px) !important;min-height:96px !important;border-radius:22px !important;padding:18px 20px !important;}
+.deck-only-v300 .snap-card-title{font-size:18px !important;line-height:1.12 !important;}
+.deck-only-v300 .snap-card-sub{font-size:12px !important;}
+.quick-action-strip{display:none !important;}
+/* Hide the old duplicated middle toolbar. Row-level selection/action buttons lower in the table are untouched. */
+.shell > .toolbar{display:none !important;}
+button.primary,button.warning,button.convert-order,.snap-card.active{color:#111 !important;}
+@media(max-width:900px){
+  .deck-only-v300{margin:12px 0 14px !important;padding:14px !important;}
+  .deck-only-v300 .snap-deck-title{gap:4px !important;}
+  .deck-only-v300 .snap-deck-title span{font-size:11px !important;}
+  .deck-only-v300 .snap-card{flex-basis:62% !important;min-height:94px !important;padding:16px 18px !important;}
+  .deck-only-v300 .snap-card-title{font-size:17px !important;}
+}
+
+
+/* ===== V301 DECK ONLY - NO DUPLICATE MIDDLE BUTTONS ===== */
+.deck-only-v301 .snap-deck-track{
+  gap:12px !important;
+  padding:12px 6px 18px !important;
+  scroll-snap-type:x proximity !important;
+}
+.deck-only-v301 .snap-card{
+  flex:0 0 clamp(165px, 15vw, 230px) !important;
+  min-height:96px !important;
+  border-radius:22px !important;
+  padding:18px 20px !important;
+}
+.deck-only-v301 .snap-card-title{font-size:18px !important;line-height:1.12 !important;}
+.deck-only-v301 .snap-card-sub{font-size:12px !important;}
+.deck-only-v301 .action-card{border-color:rgba(228,201,167,.22) !important;}
+/* Hide duplicated middle control strips only. Keep row-selection/table actions untouched. */
+.quick-action-strip,
+header.card > .toolbar,
+.shell > .toolbar,
+#app header.card .toolbar,
+#app .shell > .toolbar,
+.toolbar:not(.supplier-selection-toolbar):not(.filters){
+  display:none !important;
+}
+.supplier-selection-toolbar{
+  display:grid !important;
+}
+button.primary,button.warning,button.convert-order,.snap-card.active{color:#111 !important;}
+@media(max-width:900px){
+  .deck-only-v301{margin:12px 0 14px !important;padding:14px !important;}
+  .deck-only-v301 .snap-deck-title{gap:4px !important;}
+  .deck-only-v301 .snap-deck-title span{font-size:11px !important;}
+  .deck-only-v301 .snap-card{flex-basis:68% !important;min-height:94px !important;padding:16px 18px !important;}
+  .deck-only-v301 .snap-card-title{font-size:17px !important;}
+}
+/* ===== END V301 ===== */
 </style>
 
 <style>
@@ -3822,6 +3893,30 @@ window.setTab = function(tab){
   render();
 };
 
+// V299: deck cards are real navigation/actions, not a visual refresh.
+// Click/tap chooses the view, filters the content, then moves the user to the results area.
+window.openDeckTab = function(tab, ev){
+  if(ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+  if(ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+
+  if(tab === 'ai'){
+    if(typeof window.openAISearchModal === 'function') window.openAISearchModal();
+    return false;
+  }
+
+  uiState.tab = tab;
+  render();
+
+  setTimeout(() => {
+    const target = document.getElementById('mainContentTop') || document.querySelector('[data-main-content]') || document.querySelector('.table-wrap:not(.hidden)') || document.querySelector('.panel');
+    if(target && typeof target.scrollIntoView === 'function'){
+      target.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }, 60);
+
+  return false;
+};
+
 function daysOld(dateStr){
   const d = new Date(dateStr || "");
   if(Number.isNaN(d.getTime())) return 0;
@@ -4067,7 +4162,7 @@ function renderToolbarButtons(){
   if(canAccountant()) btn.push('<button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canManageLists()) btn.push('<button class="ghost" onclick="window.openListsModal()">Manage Lists</button>');
   if(canManageSettings()) btn.push('<button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>');
-  btn.push('<button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>');
+  btn.push('<button class="ghost" onclick="return window.openDeckTab('ai', event)">AI Search Pro</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.exportCurrentCsv()">Export CSV</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.openSupplierReportModal()">Supplier Report</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.printSupplierDepositReport()">Supplier Credit Statement</button>');
@@ -4805,47 +4900,34 @@ async function render(){
             <button class="red" onclick="window.logout()">Logout</button>
           </div>
         </div>
-        <div class="floating-snap-deck" aria-label="Premium navigation cards">
+        <div class="floating-snap-deck deck-only-v301" aria-label="Premium navigation and actions">
           <div class="snap-deck-title">
             <strong>Floating card deck</strong>
-            <span>Move with mouse or swipe, then click a card to choose.</span>
+            <span>Only this deck is the main control. Click a card to open.</span>
           </div>
           <div class="snap-deck-track">
-            <button type="button" class="snap-card ${uiState.tab==='dashboard'?'active':''}" onclick="window.setTab('dashboard')"><span class="snap-card-title">Dashboard</span><span class="snap-card-sub">Overview</span></button>
-            <button type="button" class="snap-card ${uiState.tab==='orders'?'active':''}" onclick="window.setTab('orders')"><span class="snap-card-title">Orders</span><span class="snap-card-sub">Purchase flow</span></button>
-            <button type="button" class="snap-card ${uiState.tab==='invoices'?'active':''}" onclick="window.setTab('invoices')"><span class="snap-card-title">Invoices</span><span class="snap-card-sub">Accounting</span></button>
-            <button type="button" class="snap-card ${uiState.tab==='suppliers'?'active':''}" onclick="window.setTab('suppliers')"><span class="snap-card-title">Suppliers</span><span class="snap-card-sub">Credit view</span></button>
-            <button type="button" class="snap-card ${uiState.tab==='projects'?'active':''}" onclick="window.setTab('projects')"><span class="snap-card-title">Projects</span><span class="snap-card-sub">Project control</span></button>
-            <button type="button" class="snap-card" onclick="window.openAISearchModal()"><span class="snap-card-title">AI Search</span><span class="snap-card-sub">Smart tools</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='dashboard'?'active':''}" onclick="return window.openDeckTab('dashboard', event)"><span class="snap-card-title">Dashboard</span><span class="snap-card-sub">Overview</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='orders'?'active':''}" onclick="return window.openDeckTab('orders', event)"><span class="snap-card-title">Orders View</span><span class="snap-card-sub">Existing orders</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='invoices'?'active':''}" onclick="return window.openDeckTab('invoices', event)"><span class="snap-card-title">Invoices View</span><span class="snap-card-sub">Existing invoices</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='suppliers'?'active':''}" onclick="return window.openDeckTab('suppliers', event)"><span class="snap-card-title">Suppliers</span><span class="snap-card-sub">Credit view</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='projects'?'active':''}" onclick="return window.openDeckTab('projects', event)"><span class="snap-card-title">Projects</span><span class="snap-card-sub">Project control</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openOrderModal();return false;"><span class="snap-card-title">New Order</span><span class="snap-card-sub">Create order</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.convertOrderToDN();return false;"><span class="snap-card-title">Delivery Note</span><span class="snap-card-sub">From selected order</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openInvoiceModal();return false;"><span class="snap-card-title">New Invoice</span><span class="snap-card-sub">Create invoice</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openDepositModal();return false;"><span class="snap-card-title">Add Deposit</span><span class="snap-card-sub">Supplier payment</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openCreditNoteModal();return false;"><span class="snap-card-title">Credit Note</span><span class="snap-card-sub">Supplier credit</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openListsModal();return false;"><span class="snap-card-title">Manage Lists</span><span class="snap-card-sub">Suppliers / projects</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openSettingsModal();return false;"><span class="snap-card-title">VAT Settings</span><span class="snap-card-sub">System settings</span></button>
+            <button type="button" class="snap-card action-card" onclick="window.openSupplierReportModal();return false;"><span class="snap-card-title">Reports</span><span class="snap-card-sub">Supplier report</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='ai'?'active':''}" onclick="return window.openDeckTab('ai', event)"><span class="snap-card-title">AI Search</span><span class="snap-card-sub">Smart tools</span></button>
           </div>
         </div>
 
-        <div class="quick-action-strip">
-          <button class="primary main-action" onclick="window.openOrderModal()">Order</button>
-          <button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>
-          <button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
-          <button class="ghost" onclick="window.openListsModal()">Manage Lists</button>
-          <button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>
-          <button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>
-        </div>
-
-        <div class="toolbar">
-          <button class="soft" onclick="window.exportCurrentCsv()">Export CSV</button>
-          <button class="soft" onclick="window.openSupplierReportModal()">Supplier Report</button>
-          <button class="soft" onclick="window.printSupplierDepositReport()">Supplier Credit Statement</button>
-          <button class="soft" onclick="window.printProjectSummary()">Project Report</button>
-          <button class="soft" onclick="window.printMonthlyReport()">Monthly Report</button>
-          <button class="warning" onclick="window.shareMonthlyToWhatsApp()">Share Monthly PDF</button>
-          <button class="soft" onclick="window.printOpenOrdersReport()">Open Orders Report</button>
-          <button class="ghost" onclick="window.openAuditLog()">Audit Log</button>
-          <button class="ghost" onclick="window.openRolesModal()">User Roles</button>
-        </div>
-
-        <div class="month-tools ${uiState.tab==='dashboard' || uiState.tab==='orders' || uiState.tab==='invoices' ? '' : 'hidden'}">
+        <div class="month-tools ${['dashboard','orders','invoices','suppliers','projects'].includes(uiState.tab) ? '' : 'hidden'}">
           ${monthNames.map((m,i)=>`<button class="month-btn ${selectedMonth===String(i+1).padStart(2,'0')?'active':''}" onclick="window.setMonthFilter('${String(i+1).padStart(2,'0')}')">${m}</button>`).join("")}
         </div>
 
-        <div class="filters ${uiState.tab==='dashboard' || uiState.tab==='orders' || uiState.tab==='invoices' ? '' : 'hidden'}">
+        <div class="filters ${['dashboard','orders','invoices','suppliers','projects'].includes(uiState.tab) ? '' : 'hidden'}">
           <div style="display:grid;grid-template-columns:1fr auto;gap:10px">
             <input class="dark" id="searchInput" placeholder="Search invoice / supplier / project / description" value="${esc(uiState.search)}">
             <button class="search-btn" onclick="window.applyFilters()">Search</button>
@@ -4874,7 +4956,7 @@ async function render(){
 
       <section class="panel">
         <div class="window-bar"><button class="window-btn red" onclick="window.windowAction(event,'close')"></button><button class="window-btn yellow" onclick="window.windowAction(event,'compact')"></button><button class="window-btn green" onclick="window.windowAction(event,'maximize')"></button></div>
-        <div class="alert-strip ${uiState.tab==='dashboard' || uiState.tab==='orders' ? '' : 'hidden'}">
+        <div class="alert-strip ${['dashboard','orders'].includes(uiState.tab) ? '' : 'hidden'}">
           <div class="alert-card"><div class="label">Open Orders</div><div class="value money-gold">${openOrders.count}</div></div>
           <div class="alert-card"><div class="label">Open Orders Value</div><div class="value money-blue">${money(openOrders.total)}</div></div>
           <div class="alert-card"><div class="label">Orders 30+ Days</div><div class="value money-amber">${openOrders.older30}</div></div>
@@ -4911,9 +4993,10 @@ async function render(){
 <button onclick="window.duplicateEntry()">Duplicate Selected</button>
 <button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>
 </div>
+        <div id="mainContentTop" data-main-content class="helper" style="margin-bottom:10px;font-weight:800;color:#e5c8a5;text-transform:uppercase;letter-spacing:.08em">Active view: ${esc((uiState.tab || "dashboard").replace(/^./, c => c.toUpperCase()))}</div>
         <div class="helper" style="margin-bottom:10px">Tip: drag the table left/right or swipe sideways to see all columns.</div>
 
-        <div class="table-wrap ${uiState.tab==='dashboard' || uiState.tab==='orders' || uiState.tab==='invoices' ? '' : 'hidden'}">
+        <div class="table-wrap ${['dashboard','orders','invoices','suppliers','projects'].includes(uiState.tab) ? '' : 'hidden'}">
           <table>
             <thead>
               <tr>
