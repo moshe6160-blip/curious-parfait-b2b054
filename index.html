@@ -3479,17 +3479,10 @@ input[type="checkbox"]:checked::after,
 }
 /* ===== END V292 APPLE CLEAN FINAL ===== */
 </style>
-
-<!-- V308 PWA APP MODE -->
-<meta name="theme-color" content="#050505" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Vardophase" />
-<meta name="mobile-web-app-capable" content="yes" />
-<link rel="manifest" href="/manifest.webmanifest" />
-<link rel="apple-touch-icon" href="/icons/icon-180.png" />
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+<!-- V309 SAFE PWA: manifest + app icons only, no service-worker cache -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
@@ -7547,17 +7540,7 @@ body.role-dn-approver .money-amber {
       <script>window.onload=()=>window.print()<\/script>
     
 
-
-<script>
-/* V308 PWA service worker registration */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function(){
-    navigator.serviceWorker.register("/service-worker.js").catch(function(err){ console.warn("Service worker registration failed", err); });
-  });
-}
-</script>
-</body>
-</html>`);
+</body></html>`);
     w.document.close();
     return;
   }
