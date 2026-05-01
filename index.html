@@ -21685,6 +21685,174 @@ window.vpGetAllSupplierRows = async function(){
   window.addEventListener('load', ()=>setTimeout(window.v295BuildFloatingUI, 500));
 })();
 
+
+
+/* === V296 DENSE MOUSE RING PATCH === */
+(function(){
+  if(window.__v296DenseMouseRing) return;
+  window.__v296DenseMouseRing = true;
+
+  const css = document.createElement('style');
+  css.id = 'v296-dense-mouse-ring-style';
+  css.textContent = `
+    /* V296: dense Apple Watch style ring, controlled by mouse/touch movement */
+    .v295-ring-shell{
+      margin:12px 0 14px !important;
+      padding:14px 12px 16px !important;
+      border-radius:28px !important;
+      min-height:188px !important;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(228,201,167,.13), transparent 42%),
+        linear-gradient(180deg, rgba(16,17,20,.72), rgba(5,6,8,.84)) !important;
+      overflow:hidden !important;
+    }
+    .v295-ring-head{margin-bottom:2px !important;font-size:11px !important;opacity:.88 !important;}
+    .v295-ring-head span:first-child{font-size:0 !important;}
+    .v295-ring-head span:first-child::after{content:"Floating Card Ring";font-size:11px;}
+    .v295-ring-head span:last-child{font-size:0 !important;}
+    .v295-ring-head span:last-child::after{content:"Move mouse / swipe to choose";font-size:11px;}
+    .v295-ring-stage{
+      height:138px !important;
+      perspective:760px !important;
+      cursor:grab !important;
+      touch-action:pan-y !important;
+    }
+    .v295-ring-stage:active{cursor:grabbing !important;}
+    .v295-ring-track{transition:transform .16s linear !important;}
+    .v295-ring-card{
+      top:16px !important;
+      width:230px !important;
+      height:104px !important;
+      margin-left:-115px !important;
+      border-radius:27px !important;
+      transition:
+        transform .18s cubic-bezier(.2,.85,.22,1),
+        opacity .18s ease,
+        filter .18s ease,
+        border-color .18s ease,
+        background .18s ease !important;
+      will-change:transform,opacity,filter !important;
+    }
+    .v295-ring-card.active{
+      transform-origin:center center !important;
+      filter:brightness(1.05) !important;
+      color:#111 !important;
+    }
+    .v295-ring-title{font-size:19px !important;}
+    .v295-ring-sub{font-size:11px !important;margin-top:5px !important;}
+    .v295-ring-controls{display:none !important;}
+
+    /* gold buttons must use black text */
+    body #app button.primary,
+    body #app button.warning,
+    body #app button.convert-order,
+    body #app button[onclick*="openConvertOrderModal"],
+    body #app button[onclick*="Credit"],
+    body #app .credit-note-btn-pro,
+    body #app .cn-pdf-btn-pro,
+    body #app header.card .toolbar button.primary,
+    body #app header.card .toolbar button.warning,
+    body #app header.card .toolbar button.convert-order{
+      color:#111 !important;
+      text-shadow:none !important;
+      font-weight:900 !important;
+    }
+
+    @media(max-width:760px){
+      .v295-ring-stage{height:128px !important;}
+      .v295-ring-card{width:196px !important;height:94px !important;margin-left:-98px !important;border-radius:24px !important;}
+      .v295-ring-title{font-size:16px !important;}
+    }
+  `;
+  document.head.appendChild(css);
+
+  function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
+
+  function applyGoldButtonText(){
+    const words = ['convert','credit note','cn pdf','delivery note','invoice','add deposit'];
+    document.querySelectorAll('#app button').forEach(btn=>{
+      const txt = (btn.textContent||'').trim().toLowerCase();
+      if(words.some(w=>txt.includes(w)) && !txt.includes('delete')){
+        btn.style.setProperty('color','#111','important');
+        btn.style.setProperty('text-shadow','none','important');
+        btn.style.setProperty('font-weight','900','important');
+      }
+    });
+  }
+
+  function applyDense(shell, index){
+    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
+    if(!cards.length) return;
+    const n = cards.length;
+    index = clamp(Math.round(index),0,n-1);
+    const stage = shell.querySelector('.v295-ring-stage');
+    const radius = Math.min(205, Math.max(155, (stage ? stage.clientWidth : shell.clientWidth) * 0.18));
+    const step = 38; // tight spacing, gives a dense ring feeling
+    cards.forEach((card,i)=>{
+      const diff = i - index;
+      const angle = diff * step;
+      const abs = Math.abs(diff);
+      const scale = i === index ? 1.04 : (abs === 1 ? .88 : abs === 2 ? .74 : .62);
+      const y = abs === 0 ? 0 : abs === 1 ? 4 : 10;
+      card.classList.toggle('active', i === index);
+      card.style.transform = `rotateY(${angle}deg) translateZ(${radius}px) translateY(${y}px) scale(${scale})`;
+      card.style.zIndex = String(100 - abs);
+      card.style.opacity = abs > 3 ? '.18' : abs === 3 ? '.34' : abs === 2 ? '.58' : '1';
+      card.style.pointerEvents = abs > 3 ? 'none' : 'auto';
+    });
+  }
+
+  function hookRing(){
+    const shell = document.querySelector('.v295-ring-shell');
+    if(!shell) return;
+    const stage = shell.querySelector('.v295-ring-stage');
+    if(!stage) return;
+    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
+    if(!cards.length) return;
+
+    if(!shell.__v296Index){ shell.__v296Index = Number(cards.find(c=>c.classList.contains('active'))?.dataset.index || 0); }
+    applyDense(shell, shell.__v296Index);
+
+    if(shell.__v296Hooked) return;
+    shell.__v296Hooked = true;
+
+    const selectFromClientX = (clientX)=>{
+      const r = stage.getBoundingClientRect();
+      const rel = clamp((clientX - r.left) / Math.max(1,r.width), 0, 1);
+      const idx = Math.round(rel * (cards.length - 1));
+      if(idx !== shell.__v296Index){
+        shell.__v296Index = idx;
+        applyDense(shell, idx);
+      }
+    };
+
+    stage.addEventListener('mousemove', e=>selectFromClientX(e.clientX));
+    stage.addEventListener('mouseenter', e=>selectFromClientX(e.clientX));
+    stage.addEventListener('touchmove', e=>{
+      const t = e.touches && e.touches[0];
+      if(t) selectFromClientX(t.clientX);
+    }, {passive:true});
+
+    stage.addEventListener('wheel', e=>{
+      e.preventDefault();
+      const dir = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) > 0 ? 1 : -1;
+      shell.__v296Index = clamp((shell.__v296Index||0)+dir,0,cards.length-1);
+      applyDense(shell, shell.__v296Index);
+    }, {passive:false});
+
+    cards.forEach((card,i)=>{
+      card.addEventListener('mouseenter', ()=>{ shell.__v296Index = i; applyDense(shell,i); });
+    });
+  }
+
+  function tick(){
+    applyGoldButtonText();
+    hookRing();
+  }
+  setInterval(tick, 350);
+  window.addEventListener('load', ()=>setTimeout(tick, 600));
+  setTimeout(tick, 800);
+})();
 </script>
 </body>
 </html>
