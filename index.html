@@ -1752,6 +1752,177 @@ input[type="checkbox"]:checked,
   box-shadow:none !important;
 }
 /* ===== END V294 FINAL PREMIUM LEFT BORDER ===== */
+
+
+/* ===== V298 STABLE FLOATING SNAP DECK - NO RING ===== */
+.floating-snap-deck{
+  margin:18px 0 18px;
+  padding:18px;
+  border-radius:28px;
+  border:1px solid rgba(217,185,145,.18);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(217,185,145,.12), transparent 38%),
+    linear-gradient(180deg, rgba(18,18,20,.78), rgba(7,7,8,.92));
+  box-shadow:
+    0 26px 60px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  overflow:hidden;
+}
+.snap-deck-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+  color:#f5f5f7;
+}
+.snap-deck-title strong{
+  font-size:13px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:#e5c8a5;
+}
+.snap-deck-title span{
+  font-size:12px;
+  color:#aeb1ba;
+}
+.snap-deck-track{
+  display:flex;
+  gap:14px;
+  overflow-x:auto;
+  overflow-y:visible;
+  padding:12px 10px 22px;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:#caa06f rgba(255,255,255,.06);
+}
+.snap-deck-track::-webkit-scrollbar{height:8px}
+.snap-deck-track::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:999px}
+.snap-deck-track::-webkit-scrollbar-thumb{background:linear-gradient(90deg,#e4c9a7,#bb9061);border-radius:999px}
+.snap-card{
+  flex:0 0 clamp(190px, 22vw, 270px);
+  min-height:116px;
+  scroll-snap-align:center;
+  border-radius:26px;
+  border:1px solid rgba(255,255,255,.10);
+  background:
+    linear-gradient(180deg, rgba(36,36,38,.84), rgba(13,13,15,.96));
+  color:#f7f7f7;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:flex-start;
+  gap:8px;
+  padding:22px 24px;
+  cursor:pointer;
+  box-shadow:
+    0 20px 44px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  transform:translateY(0) scale(.96);
+  transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease;
+  position:relative;
+  overflow:hidden;
+}
+.snap-card::before{
+  content:"";
+  position:absolute;
+  inset:-40% -20% auto auto;
+  width:140px;
+  height:140px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(228,201,167,.16), transparent 68%);
+  pointer-events:none;
+}
+.snap-card:hover,
+.snap-card:focus-visible{
+  transform:translateY(-8px) scale(1.02);
+  border-color:rgba(228,201,167,.38);
+  box-shadow:
+    0 28px 58px rgba(0,0,0,.42),
+    0 0 32px rgba(217,185,145,.12),
+    inset 0 1px 0 rgba(255,255,255,.10);
+  outline:none;
+}
+.snap-card.active{
+  background:linear-gradient(145deg,#e4c9a7 0%,#d2ad83 44%,#bb9061 100%) !important;
+  color:#111 !important;
+  border-color:rgba(255,255,255,.18);
+  transform:translateY(-6px) scale(1.04);
+  box-shadow:
+    0 30px 70px rgba(217,185,145,.28),
+    0 0 34px rgba(217,185,145,.18),
+    inset 0 1px 0 rgba(255,255,255,.30);
+}
+.snap-card-title{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:.01em;
+  line-height:1.1;
+}
+.snap-card-sub{
+  font-size:13px;
+  font-weight:700;
+  color:rgba(255,255,255,.68);
+}
+.snap-card.active .snap-card-sub{color:rgba(17,17,17,.68)}
+.quick-action-strip{
+  display:flex;
+  gap:12px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x mandatory;
+  padding:10px 2px 2px;
+  margin:0 0 16px;
+}
+.quick-action-strip button{
+  flex:0 0 auto;
+  min-width:160px;
+  scroll-snap-align:start;
+}
+/* keep gold buttons readable */
+button.primary,
+button.warning,
+button.convert-order,
+.credit-note-btn-pro,
+.add-deposit-btn,
+.snap-card.active{
+  color:#111 !important;
+}
+/* final clean selected row: only left gold line */
+.table-wrap tbody tr.selected,
+.table-wrap tbody tr:has(input[type="checkbox"]:checked){
+  background:transparent !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  position:relative !important;
+}
+.table-wrap tbody tr.selected::before,
+.table-wrap tbody tr:has(input[type="checkbox"]:checked)::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:6px;
+  bottom:6px;
+  width:3px;
+  border-radius:4px;
+  background:linear-gradient(180deg,#e4c9a7,#bb9061);
+}
+input[type="checkbox"]:checked::after,
+.row-check:checked::after{
+  border-color:#fff !important;
+}
+@media(max-width:780px){
+  .floating-snap-deck{padding:14px;border-radius:24px;margin:14px 0;}
+  .snap-deck-title{align-items:flex-start;flex-direction:column;gap:4px;margin-bottom:10px;}
+  .snap-deck-track{gap:10px;padding:10px 2px 18px;scroll-snap-type:x mandatory;}
+  .snap-card{flex-basis:78%;min-height:104px;border-radius:22px;padding:18px 20px;transform:none;}
+  .snap-card:hover,.snap-card:focus-visible{transform:translateY(-4px) scale(1.01);}
+  .snap-card.active{transform:translateY(-2px) scale(1.01);}
+  .snap-card-title{font-size:20px;}
+  .quick-action-strip button{min-width:145px;}
+}
+
 </style>
 
 <style>
@@ -4634,19 +4805,36 @@ async function render(){
             <button class="red" onclick="window.logout()">Logout</button>
           </div>
         </div>
-        <div class="toolbar">
+        <div class="floating-snap-deck" aria-label="Premium navigation cards">
+          <div class="snap-deck-title">
+            <strong>Floating card deck</strong>
+            <span>Move with mouse or swipe, then click a card to choose.</span>
+          </div>
+          <div class="snap-deck-track">
+            <button type="button" class="snap-card ${uiState.tab==='dashboard'?'active':''}" onclick="window.setTab('dashboard')"><span class="snap-card-title">Dashboard</span><span class="snap-card-sub">Overview</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='orders'?'active':''}" onclick="window.setTab('orders')"><span class="snap-card-title">Orders</span><span class="snap-card-sub">Purchase flow</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='invoices'?'active':''}" onclick="window.setTab('invoices')"><span class="snap-card-title">Invoices</span><span class="snap-card-sub">Accounting</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='suppliers'?'active':''}" onclick="window.setTab('suppliers')"><span class="snap-card-title">Suppliers</span><span class="snap-card-sub">Credit view</span></button>
+            <button type="button" class="snap-card ${uiState.tab==='projects'?'active':''}" onclick="window.setTab('projects')"><span class="snap-card-title">Projects</span><span class="snap-card-sub">Project control</span></button>
+            <button type="button" class="snap-card" onclick="window.openAISearchModal()"><span class="snap-card-title">AI Search</span><span class="snap-card-sub">Smart tools</span></button>
+          </div>
+        </div>
+
+        <div class="quick-action-strip">
           <button class="primary main-action" onclick="window.openOrderModal()">Order</button>
           <button class="warning main-action" onclick="window.openInvoiceModal()">Invoice</button>
           <button class="soft main-action add-deposit-btn" onclick="window.openDepositModal()">Add Deposit</button>
           <button class="ghost" onclick="window.openListsModal()">Manage Lists</button>
           <button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>
           <button class="ghost" onclick="window.openAISearchModal()">AI Search Pro</button>
+        </div>
+
+        <div class="toolbar">
           <button class="soft" onclick="window.exportCurrentCsv()">Export CSV</button>
           <button class="soft" onclick="window.openSupplierReportModal()">Supplier Report</button>
           <button class="soft" onclick="window.printSupplierDepositReport()">Supplier Credit Statement</button>
           <button class="soft" onclick="window.printProjectSummary()">Project Report</button>
           <button class="soft" onclick="window.printMonthlyReport()">Monthly Report</button>
-          
           <button class="warning" onclick="window.shareMonthlyToWhatsApp()">Share Monthly PDF</button>
           <button class="soft" onclick="window.printOpenOrdersReport()">Open Orders Report</button>
           <button class="ghost" onclick="window.openAuditLog()">Audit Log</button>
@@ -21335,746 +21523,6 @@ window.vpGetAllSupplierRows = async function(){
  window.printSelectedCreditNotePDF=async()=>{try{let ids=(typeof window.__vpGetSelectedIds==='function')?window.__vpGetSelectedIds():[];if(!Array.isArray(ids)||ids.length!==1)return alert('Select one Credit Note row, or the original Invoice row that has a Credit Note.');let db=window.__vpDb||window.vpSupabase;if(!db)return alert('Database connection is not ready. Refresh and try again.');let res=await db.from('suppliers').select('*').eq('id',ids[0]).single();if(res.error||!res.data)return alert((res.error&&res.error.message)||'Could not load selected row.');let r=res.data,notes=String(r.notes||'');let tag=n=>{let mm=notes.match(new RegExp('\\[\\['+n+':([\\s\\S]*?)\\]\\]','i'));return mm?String(mm[1]||'').trim():'';};let amt=Math.abs(Number(r.total||r.amount||r.net_amount||tag('CREDITAMOUNT')||tag('CREDIT')||0));if(!amt)return alert('No Credit Note amount found on the selected row.');let cn=String(r.invoice_no||tag('CREDITNO')||tag('LASTCREDITNO')||'CN-DRAFT'),date=tag('CREDITDATE')||tag('LASTCREDITDATE')||(r.created_at?String(r.created_at).slice(0,10):new Date().toISOString().slice(0,10)),inv=tag('PARENTINVOICE')||'',reason=tag('CREDITREASON')||tag('LASTCREDITREASON')||String(r.description||'').replace(/^Credit Note\s*-?\s*/i,'')||'Credit note',vat=Math.abs(Number(r.vat_amount||0)),sub=Math.max(0,amt-vat);openR('Credit Note','Official Accounting Document · '+cn,'<div class="grid"><div class="card"><div class="label">Supplier</div><div class="value">'+esc(r.supplier||'')+'</div></div><div class="card"><div class="label">Date</div><div class="value">'+esc(date)+'</div></div><div class="card"><div class="label">Original Invoice</div><div class="value">'+esc(inv)+'</div></div><div class="card"><div class="label">Order / Project</div><div class="value">'+esc(r.order_no||'')+(r.project?' · '+esc(r.project):'')+'</div></div></div>'+table(['Description','VAT','Credit Amount'],[[reason,m(vat),'-'+m(amt)]])+cards([['Subtotal','-'+m(sub)],['VAT','-'+m(vat)],['Total Credit','-'+m(amt)]])+'<div class="note"><b>Accounting note:</b> This credit note is linked to the original invoice. It reduces the net payable amount for that invoice and does not create a free supplier credit balance.</div>');}catch(e){alert((e&&e.message)?e.message:'Credit Note PDF error');}};
 })();
 
-
-
-/* === V295 FLOATING WINDOWS + APPLE WATCH STYLE RING SELECTOR === */
-(function(){
-  if(window.__v295FloatingWindows) return;
-  window.__v295FloatingWindows = true;
-
-  const style = document.createElement('style');
-  style.id = 'v295-floating-windows-style';
-  style.textContent = `
-    :root{
-      --v295-gold:#e4c9a7;
-      --v295-gold2:#bb9061;
-      --v295-glass:rgba(18,18,21,.62);
-      --v295-line:rgba(228,201,167,.22);
-    }
-
-    body::before{
-      content:"";
-      position:fixed;
-      inset:-20%;
-      pointer-events:none;
-      z-index:0;
-      background:
-        radial-gradient(circle at 18% 14%, rgba(228,201,167,.13), transparent 24%),
-        radial-gradient(circle at 82% 18%, rgba(255,255,255,.055), transparent 18%),
-        radial-gradient(circle at 50% 92%, rgba(187,144,97,.10), transparent 28%);
-      filter: blur(2px);
-      animation:v295Ambient 12s ease-in-out infinite alternate;
-    }
-    @keyframes v295Ambient{
-      from{transform:translate3d(-1.5%,0,0) scale(1)}
-      to{transform:translate3d(1.5%,-1%,0) scale(1.03)}
-    }
-
-    #app .shell{perspective:1500px;}
-
-    #app .card,
-    #app .panel,
-    #app .alert-card,
-    #app .stat,
-    #app .table-wrap,
-    #app .modal-box{
-      backdrop-filter: blur(22px) saturate(135%) !important;
-      -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
-      transform-style:preserve-3d;
-      transition:transform .28s ease, box-shadow .28s ease, border-color .28s ease;
-    }
-
-    #app .card:hover,
-    #app .panel:hover,
-    #app .alert-card:hover,
-    #app .stat:hover,
-    #app .table-wrap:hover{
-      transform:translateY(-5px) translateZ(18px);
-      border-color:rgba(228,201,167,.34) !important;
-      box-shadow:
-        0 38px 92px rgba(0,0,0,.58),
-        0 0 42px rgba(228,201,167,.11),
-        inset 0 1px 0 rgba(255,255,255,.06) !important;
-    }
-
-    #app .stats,
-    #app .alert-strip{
-      perspective:1200px;
-    }
-    #app .stats .stat,
-    #app .alert-strip .alert-card{
-      border-radius:26px !important;
-      background:linear-gradient(180deg, rgba(28,29,34,.68), rgba(7,8,11,.78)) !important;
-      box-shadow:
-        0 30px 70px rgba(0,0,0,.42),
-        0 1px 0 rgba(255,255,255,.05) inset !important;
-    }
-
-    .v295-ring-shell{
-      margin:18px 0 20px;
-      padding:18px 16px 20px;
-      border:1px solid var(--v295-line);
-      border-radius:30px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(228,201,167,.13), transparent 38%),
-        linear-gradient(180deg, rgba(20,20,23,.72), rgba(7,7,9,.80));
-      box-shadow:0 28px 72px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
-      overflow:hidden;
-      position:relative;
-    }
-    .v295-ring-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      color:#f5e6cf;
-      font-weight:900;
-      letter-spacing:.04em;
-      text-transform:uppercase;
-      font-size:12px;
-      margin-bottom:10px;
-      opacity:.96;
-    }
-    .v295-ring-stage{
-      position:relative;
-      height:164px;
-      perspective:1200px;
-      touch-action:pan-y;
-      user-select:none;
-    }
-    .v295-ring-track{
-      position:absolute;
-      inset:0;
-      transform-style:preserve-3d;
-      transition:transform .55s cubic-bezier(.2,.8,.2,1);
-    }
-    .v295-ring-card{
-      position:absolute;
-      top:20px;
-      left:50%;
-      width:min(210px, 54vw);
-      height:116px;
-      margin-left:calc(min(210px, 54vw) / -2);
-      border-radius:28px;
-      border:1px solid rgba(228,201,167,.28);
-      background:
-        radial-gradient(circle at 22% 16%, rgba(255,255,255,.12), transparent 28%),
-        linear-gradient(145deg, rgba(33,34,40,.88), rgba(7,8,12,.93));
-      box-shadow:
-        0 26px 54px rgba(0,0,0,.44),
-        0 0 26px rgba(228,201,167,.10),
-        inset 0 1px 0 rgba(255,255,255,.08);
-      color:#fff;
-      display:grid;
-      place-items:center;
-      text-align:center;
-      cursor:pointer;
-      transform-style:preserve-3d;
-      backface-visibility:hidden;
-      overflow:hidden;
-    }
-    .v295-ring-card::after{
-      content:"";
-      position:absolute;
-      left:0;top:18px;bottom:18px;width:3px;
-      border-radius:3px;
-      background:linear-gradient(180deg,var(--v295-gold),var(--v295-gold2));
-      opacity:.65;
-    }
-    .v295-ring-card.active{
-      border-color:rgba(228,201,167,.62);
-      background:linear-gradient(145deg, #e4c9a7 0%, #d2ad83 48%, #bb9061 100%);
-      color:#111;
-      box-shadow:
-        0 30px 68px rgba(228,201,167,.24),
-        0 0 34px rgba(228,201,167,.24),
-        inset 0 1px 0 rgba(255,255,255,.30);
-    }
-    .v295-ring-title{font-size:18px;font-weight:900;line-height:1.15;position:relative;z-index:1;}
-    .v295-ring-sub{font-size:11px;font-weight:800;opacity:.72;margin-top:7px;position:relative;z-index:1;}
-    .v295-ring-controls{
-      display:flex;
-      justify-content:center;
-      gap:12px;
-      margin-top:6px;
-    }
-    .v295-ring-controls button,
-    .v295-ring-btn{
-      width:44px !important;
-      height:44px !important;
-      border-radius:50% !important;
-      padding:0 !important;
-      display:grid !important;
-      place-items:center !important;
-      font-size:20px !important;
-      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) !important;
-      color:#f5e6cf !important;
-      border:1px solid rgba(228,201,167,.22) !important;
-      box-shadow:0 12px 26px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05) !important;
-    }
-
-    #app header.card .toolbar{
-      display:flex !important;
-      gap:14px !important;
-      overflow-x:auto !important;
-      scroll-snap-type:x mandatory;
-      padding:16px !important;
-      border-radius:28px !important;
-      background:linear-gradient(180deg, rgba(20,20,23,.64), rgba(8,8,10,.76)) !important;
-      border:1px solid rgba(228,201,167,.20) !important;
-      box-shadow:0 26px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04) !important;
-    }
-    #app header.card .toolbar button{
-      flex:0 0 190px;
-      min-height:74px;
-      border-radius:24px !important;
-      scroll-snap-align:center;
-      transform:translateZ(0);
-      white-space:normal;
-    }
-    #app header.card .toolbar button:hover{
-      transform:translateY(-4px) scale(1.03) !important;
-    }
-
-    button.primary,
-    button.warning,
-    button.convert-order,
-    .credit-note-btn-pro,
-    .cn-pdf-btn-pro{
-      color:#111 !important;
-      text-shadow:none !important;
-      font-weight:900 !important;
-    }
-
-    .table-wrap tbody tr.selected,
-    .table-wrap tbody tr:has(input[type="checkbox"]:checked){
-      background:transparent !important;
-      background-image:none !important;
-      box-shadow:none !important;
-      position:relative !important;
-    }
-    .table-wrap tbody tr.selected::before,
-    .table-wrap tbody tr:has(input[type="checkbox"]:checked)::before{
-      content:"";
-      position:absolute;
-      left:0;
-      top:7px;
-      bottom:7px;
-      width:3px;
-      border-radius:3px;
-      background:linear-gradient(180deg,#e4c9a7,#bb9061);
-      box-shadow:0 0 10px rgba(228,201,167,.38);
-    }
-    input[type="checkbox"]:checked::after,
-    .row-check:checked::after{
-      border-color:#fff !important;
-    }
-
-    @media(max-width:760px){
-      .v295-ring-stage{height:150px;}
-      .v295-ring-card{width:178px;height:104px;margin-left:-89px;border-radius:24px;}
-      .v295-ring-title{font-size:16px;}
-      #app header.card .toolbar button{flex-basis:168px;min-height:68px;}
-    }
-  `;
-  document.head.appendChild(style);
-
-  const items = [
-    {tab:'dashboard', title:'Dashboard', sub:'Overview'},
-    {tab:'orders', title:'Orders', sub:'Purchase flow'},
-    {tab:'invoices', title:'Invoices', sub:'Accounting'},
-    {tab:'suppliers', title:'Suppliers', sub:'Credit view'},
-    {tab:'reports', title:'Reports', sub:'PDF / CSV'},
-    {tab:'settings', title:'Settings', sub:'Lists / VAT'}
-  ];
-
-  let ringIndex = 0;
-
-  function buildRing(){
-    const header = document.querySelector('#app header.card');
-    if(!header || header.querySelector('.v295-ring-shell')) return;
-    const toolbar = header.querySelector('.toolbar');
-    const shell = document.createElement('div');
-    shell.className = 'v295-ring-shell';
-    shell.innerHTML = `
-      <div class="v295-ring-head">
-        <span>Floating Window Ring</span>
-        <span>Swipe / tap to choose</span>
-      </div>
-      <div class="v295-ring-stage">
-        <div class="v295-ring-track"></div>
-      </div>
-      <div class="v295-ring-controls">
-        <button type="button" class="v295-prev" aria-label="Previous">‹</button>
-        <button type="button" class="v295-next" aria-label="Next">›</button>
-      </div>`;
-    (toolbar || header).insertAdjacentElement('beforebegin', shell);
-
-    const track = shell.querySelector('.v295-ring-track');
-    items.forEach((it,i)=>{
-      const card = document.createElement('div');
-      card.className = 'v295-ring-card';
-      card.dataset.index = String(i);
-      card.dataset.tab = it.tab;
-      card.innerHTML = `<div><div class="v295-ring-title">${it.title}</div><div class="v295-ring-sub">${it.sub}</div></div>`;
-      card.addEventListener('click', ()=>{
-        ringIndex = i;
-        rotateRing(shell);
-        if(typeof window.setTab === 'function' && ['dashboard','orders','invoices'].includes(it.tab)) window.setTab(it.tab);
-        if(it.tab === 'suppliers' && typeof window.openSupplierReportModal === 'function') window.openSupplierReportModal();
-        if(it.tab === 'reports' && typeof window.printMonthlyReport === 'function') window.printMonthlyReport();
-        if(it.tab === 'settings' && typeof window.openListsModal === 'function') window.openListsModal();
-      });
-      track.appendChild(card);
-    });
-
-    shell.querySelector('.v295-prev').onclick = ()=>{ ringIndex = (ringIndex - 1 + items.length) % items.length; rotateRing(shell); };
-    shell.querySelector('.v295-next').onclick = ()=>{ ringIndex = (ringIndex + 1) % items.length; rotateRing(shell); };
-
-    let startX = null;
-    shell.querySelector('.v295-ring-stage').addEventListener('touchstart', e=>{ startX = e.touches?.[0]?.clientX ?? null; }, {passive:true});
-    shell.querySelector('.v295-ring-stage').addEventListener('touchend', e=>{
-      if(startX == null) return;
-      const endX = e.changedTouches?.[0]?.clientX ?? startX;
-      const dx = endX - startX;
-      if(Math.abs(dx) > 34){ ringIndex = (ringIndex + (dx < 0 ? 1 : -1) + items.length) % items.length; rotateRing(shell); }
-      startX = null;
-    }, {passive:true});
-
-    const activeTab = (window.uiState && window.uiState.tab) || 'dashboard';
-    const start = items.findIndex(x=>x.tab===activeTab);
-    ringIndex = start >= 0 ? start : 0;
-    rotateRing(shell);
-  }
-
-  function rotateRing(shell){
-    const track = shell.querySelector('.v295-ring-track');
-    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-    const n = cards.length;
-    const radius = Math.min(340, Math.max(230, shell.clientWidth * .34));
-    cards.forEach((card,i)=>{
-      const angle = (360 / n) * (i - ringIndex);
-      card.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
-      card.classList.toggle('active', i === ringIndex);
-      card.style.opacity = Math.abs(angle) > 130 && Math.abs(angle) < 230 ? '.28' : '1';
-    });
-    track.style.transform = 'rotateY(0deg)';
-  }
-
-  const originalSetTabHook = () => {
-    if(window.__v295SetTabHooked || typeof window.setTab !== 'function') return;
-    window.__v295SetTabHooked = true;
-    const old = window.setTab;
-    window.setTab = function(tab){
-      const result = old.apply(this, arguments);
-      setTimeout(()=>{
-        const shell = document.querySelector('.v295-ring-shell');
-        const idx = items.findIndex(x=>x.tab===tab);
-        if(shell && idx >= 0){ ringIndex = idx; rotateRing(shell); }
-      }, 120);
-      return result;
-    };
-  };
-
-  window.v295BuildFloatingUI = function(){
-    originalSetTabHook();
-    buildRing();
-  };
-
-  setInterval(window.v295BuildFloatingUI, 700);
-  window.addEventListener('load', ()=>setTimeout(window.v295BuildFloatingUI, 500));
-})();
-
-
-
-/* === V296 DENSE MOUSE RING PATCH === */
-(function(){
-  if(window.__v296DenseMouseRing) return;
-  window.__v296DenseMouseRing = true;
-
-  const css = document.createElement('style');
-  css.id = 'v296-dense-mouse-ring-style';
-  css.textContent = `
-    /* V296: dense Apple Watch style ring, controlled by mouse/touch movement */
-    .v295-ring-shell{
-      margin:12px 0 14px !important;
-      padding:14px 12px 16px !important;
-      border-radius:28px !important;
-      min-height:188px !important;
-      background:
-        radial-gradient(circle at 50% 50%, rgba(228,201,167,.13), transparent 42%),
-        linear-gradient(180deg, rgba(16,17,20,.72), rgba(5,6,8,.84)) !important;
-      overflow:hidden !important;
-    }
-    .v295-ring-head{margin-bottom:2px !important;font-size:11px !important;opacity:.88 !important;}
-    .v295-ring-head span:first-child{font-size:0 !important;}
-    .v295-ring-head span:first-child::after{content:"Floating Card Ring";font-size:11px;}
-    .v295-ring-head span:last-child{font-size:0 !important;}
-    .v295-ring-head span:last-child::after{content:"Move mouse / swipe to choose";font-size:11px;}
-    .v295-ring-stage{
-      height:138px !important;
-      perspective:760px !important;
-      cursor:grab !important;
-      touch-action:pan-y !important;
-    }
-    .v295-ring-stage:active{cursor:grabbing !important;}
-    .v295-ring-track{transition:transform .16s linear !important;}
-    .v295-ring-card{
-      top:16px !important;
-      width:230px !important;
-      height:104px !important;
-      margin-left:-115px !important;
-      border-radius:27px !important;
-      transition:
-        transform .18s cubic-bezier(.2,.85,.22,1),
-        opacity .18s ease,
-        filter .18s ease,
-        border-color .18s ease,
-        background .18s ease !important;
-      will-change:transform,opacity,filter !important;
-    }
-    .v295-ring-card.active{
-      transform-origin:center center !important;
-      filter:brightness(1.05) !important;
-      color:#111 !important;
-    }
-    .v295-ring-title{font-size:19px !important;}
-    .v295-ring-sub{font-size:11px !important;margin-top:5px !important;}
-    .v295-ring-controls{display:none !important;}
-
-    /* gold buttons must use black text */
-    body #app button.primary,
-    body #app button.warning,
-    body #app button.convert-order,
-    body #app button[onclick*="openConvertOrderModal"],
-    body #app button[onclick*="Credit"],
-    body #app .credit-note-btn-pro,
-    body #app .cn-pdf-btn-pro,
-    body #app header.card .toolbar button.primary,
-    body #app header.card .toolbar button.warning,
-    body #app header.card .toolbar button.convert-order{
-      color:#111 !important;
-      text-shadow:none !important;
-      font-weight:900 !important;
-    }
-
-    @media(max-width:760px){
-      .v295-ring-stage{height:128px !important;}
-      .v295-ring-card{width:196px !important;height:94px !important;margin-left:-98px !important;border-radius:24px !important;}
-      .v295-ring-title{font-size:16px !important;}
-    }
-  `;
-  document.head.appendChild(css);
-
-  function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
-
-  function applyGoldButtonText(){
-    const words = ['convert','credit note','cn pdf','delivery note','invoice','add deposit'];
-    document.querySelectorAll('#app button').forEach(btn=>{
-      const txt = (btn.textContent||'').trim().toLowerCase();
-      if(words.some(w=>txt.includes(w)) && !txt.includes('delete')){
-        btn.style.setProperty('color','#111','important');
-        btn.style.setProperty('text-shadow','none','important');
-        btn.style.setProperty('font-weight','900','important');
-      }
-    });
-  }
-
-  function applyDense(shell, index){
-    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-    if(!cards.length) return;
-    const n = cards.length;
-    index = clamp(Math.round(index),0,n-1);
-    const stage = shell.querySelector('.v295-ring-stage');
-    const radius = Math.min(205, Math.max(155, (stage ? stage.clientWidth : shell.clientWidth) * 0.18));
-    const step = 38; // tight spacing, gives a dense ring feeling
-    cards.forEach((card,i)=>{
-      const diff = i - index;
-      const angle = diff * step;
-      const abs = Math.abs(diff);
-      const scale = i === index ? 1.04 : (abs === 1 ? .88 : abs === 2 ? .74 : .62);
-      const y = abs === 0 ? 0 : abs === 1 ? 4 : 10;
-      card.classList.toggle('active', i === index);
-      card.style.transform = `rotateY(${angle}deg) translateZ(${radius}px) translateY(${y}px) scale(${scale})`;
-      card.style.zIndex = String(100 - abs);
-      card.style.opacity = abs > 3 ? '.18' : abs === 3 ? '.34' : abs === 2 ? '.58' : '1';
-      card.style.pointerEvents = abs > 3 ? 'none' : 'auto';
-    });
-  }
-
-  function hookRing(){
-    const shell = document.querySelector('.v295-ring-shell');
-    if(!shell) return;
-    const stage = shell.querySelector('.v295-ring-stage');
-    if(!stage) return;
-    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-    if(!cards.length) return;
-
-    if(!shell.__v296Index){ shell.__v296Index = Number(cards.find(c=>c.classList.contains('active'))?.dataset.index || 0); }
-    applyDense(shell, shell.__v296Index);
-
-    if(shell.__v296Hooked) return;
-    shell.__v296Hooked = true;
-
-    const selectFromClientX = (clientX)=>{
-      const r = stage.getBoundingClientRect();
-      const rel = clamp((clientX - r.left) / Math.max(1,r.width), 0, 1);
-      const idx = Math.round(rel * (cards.length - 1));
-      if(idx !== shell.__v296Index){
-        shell.__v296Index = idx;
-        applyDense(shell, idx);
-      }
-    };
-
-    stage.addEventListener('mousemove', e=>selectFromClientX(e.clientX));
-    stage.addEventListener('mouseenter', e=>selectFromClientX(e.clientX));
-    stage.addEventListener('touchmove', e=>{
-      const t = e.touches && e.touches[0];
-      if(t) selectFromClientX(t.clientX);
-    }, {passive:true});
-
-    stage.addEventListener('wheel', e=>{
-      e.preventDefault();
-      const dir = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) > 0 ? 1 : -1;
-      shell.__v296Index = clamp((shell.__v296Index||0)+dir,0,cards.length-1);
-      applyDense(shell, shell.__v296Index);
-    }, {passive:false});
-
-    cards.forEach((card,i)=>{
-      card.addEventListener('mouseenter', ()=>{ shell.__v296Index = i; applyDense(shell,i); });
-    });
-  }
-
-  function tick(){
-    applyGoldButtonText();
-    hookRing();
-  }
-  setInterval(tick, 350);
-  window.addEventListener('load', ()=>setTimeout(tick, 600));
-  setTimeout(tick, 800);
-})();
-
-
-/* === V297 SMOOTH POINTER COVERFLOW RING FIX === */
-(function(){
-  if(window.__v297SmoothPointerRing) return;
-  window.__v297SmoothPointerRing = true;
-
-  const css = document.createElement('style');
-  css.id = 'v297-smooth-pointer-coverflow-style';
-  css.textContent = `
-    /* V297: smoother Apple-watch/coverflow selection. No arrows. Mouse/touch moves selection before click. */
-    .v295-ring-controls,
-    .v295-ring-controls button,
-    .v295-prev,
-    .v295-next{
-      display:none !important;
-      visibility:hidden !important;
-      opacity:0 !important;
-      pointer-events:none !important;
-      width:0 !important;
-      height:0 !important;
-      margin:0 !important;
-      padding:0 !important;
-      overflow:hidden !important;
-    }
-    .v295-ring-shell{
-      margin:14px 0 18px !important;
-      padding:16px 14px 18px !important;
-      border-radius:30px !important;
-      overflow:hidden !important;
-    }
-    .v295-ring-stage{
-      height:170px !important;
-      perspective:950px !important;
-      cursor:ew-resize !important;
-      touch-action:pan-y !important;
-      overflow:hidden !important;
-      border-radius:26px !important;
-      background:
-        radial-gradient(circle at 50% 58%, rgba(228,201,167,.12), transparent 38%),
-        linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.06)) !important;
-    }
-    .v295-ring-track{
-      transition:none !important;
-      transform-style:preserve-3d !important;
-    }
-    .v295-ring-card{
-      top:28px !important;
-      width:228px !important;
-      height:106px !important;
-      margin-left:-114px !important;
-      border-radius:28px !important;
-      transition:
-        transform .12s linear,
-        opacity .12s linear,
-        filter .12s linear,
-        background .12s linear,
-        border-color .12s linear !important;
-      will-change:transform,opacity,filter !important;
-    }
-    .v295-ring-card.active{
-      filter:brightness(1.05) saturate(1.04) !important;
-      color:#111 !important;
-    }
-    .v295-ring-card:not(.active){
-      color:#fff !important;
-    }
-
-    /* Mobile: compact and readable. Cards do not sit on top of each other. */
-    @media(max-width:760px){
-      .v295-ring-shell{
-        margin:12px 0 16px !important;
-        padding:14px 10px 16px !important;
-        min-height:190px !important;
-      }
-      .v295-ring-head{
-        display:grid !important;
-        grid-template-columns:1fr !important;
-        gap:2px !important;
-        text-align:left !important;
-      }
-      .v295-ring-head span:last-child::after{content:"Swipe / move finger to choose" !important;}
-      .v295-ring-stage{
-        height:144px !important;
-        perspective:760px !important;
-      }
-      .v295-ring-card{
-        top:25px !important;
-        width:158px !important;
-        height:82px !important;
-        margin-left:-79px !important;
-        border-radius:22px !important;
-      }
-      .v295-ring-title{font-size:15px !important;line-height:1.05 !important;}
-      .v295-ring-sub{font-size:10px !important;margin-top:4px !important;}
-    }
-
-    @media(min-width:761px){
-      .v295-ring-shell{max-width:980px !important;margin-left:auto !important;margin-right:auto !important;}
-    }
-
-    /* Gold buttons: black text only on real gold buttons */
-    body #app button.primary,
-    body #app button.warning,
-    body #app button.convert-order,
-    body #app button[onclick*="openConvertOrderModal"],
-    body #app button[onclick*="Invoice"],
-    body #app button[onclick*="Delivery"],
-    body #app button[onclick*="Credit"],
-    body #app button[onclick*="Deposit"],
-    body #app .credit-note-btn-pro,
-    body #app .cn-pdf-btn-pro{
-      color:#111 !important;
-      text-shadow:none !important;
-      font-weight:900 !important;
-    }
-  `;
-  document.head.appendChild(css);
-
-  const clamp = (n,min,max)=>Math.max(min, Math.min(max,n));
-  const smooth = (a,b,t)=>a+(b-a)*t;
-
-  function cardAction(card){
-    const tab = card && card.dataset ? card.dataset.tab : '';
-    if(!tab) return;
-    if(typeof window.setTab === 'function' && ['dashboard','orders','invoices'].includes(tab)) return window.setTab(tab);
-    if(tab === 'suppliers' && typeof window.openSupplierReportModal === 'function') return window.openSupplierReportModal();
-    if(tab === 'reports' && typeof window.printMonthlyReport === 'function') return window.printMonthlyReport();
-    if(tab === 'settings' && typeof window.openListsModal === 'function') return window.openListsModal();
-  }
-
-  function layout(shell, targetIndex, instant){
-    const stage = shell.querySelector('.v295-ring-stage');
-    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-    if(!stage || !cards.length) return;
-    const n = cards.length;
-    const maxIndex = n - 1;
-    targetIndex = clamp(targetIndex, 0, maxIndex);
-    shell.__v297Target = targetIndex;
-    if(shell.__v297Float == null || instant) shell.__v297Float = targetIndex;
-    shell.__v297Float = smooth(shell.__v297Float, targetIndex, instant ? 1 : .36);
-    const current = shell.__v297Float;
-    const w = stage.clientWidth || shell.clientWidth || 700;
-    const mobile = w < 620;
-    const spacing = mobile ? Math.max(78, Math.min(94, w * .27)) : Math.max(118, Math.min(154, w * .19));
-    const depth = mobile ? 68 : 110;
-
-    cards.forEach((card,i)=>{
-      const diff = i - current;
-      const abs = Math.abs(diff);
-      const center = Math.abs(i - targetIndex) < .5;
-      const x = diff * spacing;
-      const rot = clamp(diff * -18, -54, 54);
-      const scale = clamp(1 - abs * (mobile ? .13 : .11), mobile ? .66 : .60, 1.05);
-      const z = center ? 92 : depth - abs * 26;
-      const opacity = abs > (mobile ? 2.45 : 3.15) ? 0 : clamp(1 - abs * .24, .20, 1);
-      card.classList.toggle('active', center);
-      card.style.transform = `translateX(${x}px) translateZ(${z}px) rotateY(${rot}deg) scale(${scale})`;
-      card.style.zIndex = String(200 - Math.round(abs * 20));
-      card.style.opacity = String(opacity);
-      card.style.pointerEvents = abs > (mobile ? 2.6 : 3.3) ? 'none' : 'auto';
-    });
-  }
-
-  function install(shell){
-    if(!shell || shell.__v297Installed) return;
-    const stage = shell.querySelector('.v295-ring-stage');
-    if(!stage) return;
-    shell.__v297Installed = true;
-    shell.__v297Target = Number(shell.querySelector('.v295-ring-card.active')?.dataset.index || 0);
-    layout(shell, shell.__v297Target, true);
-
-    function indexFromX(clientX){
-      const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-      const r = stage.getBoundingClientRect();
-      const rel = clamp((clientX - r.left) / Math.max(1, r.width), 0, 1);
-      return Math.round(rel * (cards.length - 1));
-    }
-
-    const move = e=>{
-      const x = e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX);
-      if(x == null) return;
-      layout(shell, indexFromX(x), false);
-    };
-    stage.addEventListener('mousemove', move, {passive:true});
-    stage.addEventListener('mouseenter', move, {passive:true});
-    stage.addEventListener('pointermove', move, {passive:true});
-    stage.addEventListener('touchstart', move, {passive:true});
-    stage.addEventListener('touchmove', move, {passive:true});
-
-    stage.addEventListener('wheel', e=>{
-      e.preventDefault();
-      const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
-      const dir = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) > 0 ? 1 : -1;
-      layout(shell, clamp((shell.__v297Target||0)+dir,0,cards.length-1), true);
-    }, {passive:false});
-
-    stage.addEventListener('click', e=>{
-      const active = shell.querySelector('.v295-ring-card.active');
-      const clicked = e.target.closest && e.target.closest('.v295-ring-card');
-      if(clicked && clicked !== active){
-        layout(shell, Number(clicked.dataset.index||0), true);
-        return;
-      }
-      cardAction(active || clicked);
-    });
-
-    window.addEventListener('resize', ()=>layout(shell, shell.__v297Target||0, true));
-  }
-
-  function tick(){
-    document.querySelectorAll('.v295-ring-shell').forEach(shell=>{
-      install(shell);
-      layout(shell, shell.__v297Target ?? 0, false);
-      const controls = shell.querySelector('.v295-ring-controls');
-      if(controls) controls.remove();
-    });
-  }
-  setInterval(tick, 250);
-  window.addEventListener('load', ()=>setTimeout(tick, 500));
-  setTimeout(tick, 500);
-})();
 </script>
 </body>
 </html>
