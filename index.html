@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#d4af7f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vardophase">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico">
 <title>Vardophase Suppliers Cloud Pro</title>
 <style>
 :root{
@@ -21413,6 +21420,9 @@ window.vpGetAllSupplierRows = async function(){
  window.printSelectedCreditNotePDF=async()=>{try{let ids=(typeof window.__vpGetSelectedIds==='function')?window.__vpGetSelectedIds():[];if(!Array.isArray(ids)||ids.length!==1)return alert('Select one Credit Note row, or the original Invoice row that has a Credit Note.');let db=window.__vpDb||window.vpSupabase;if(!db)return alert('Database connection is not ready. Refresh and try again.');let res=await db.from('suppliers').select('*').eq('id',ids[0]).single();if(res.error||!res.data)return alert((res.error&&res.error.message)||'Could not load selected row.');let r=res.data,notes=String(r.notes||'');let tag=n=>{let mm=notes.match(new RegExp('\\[\\['+n+':([\\s\\S]*?)\\]\\]','i'));return mm?String(mm[1]||'').trim():'';};let amt=Math.abs(Number(r.total||r.amount||r.net_amount||tag('CREDITAMOUNT')||tag('CREDIT')||0));if(!amt)return alert('No Credit Note amount found on the selected row.');let cn=String(r.invoice_no||tag('CREDITNO')||tag('LASTCREDITNO')||'CN-DRAFT'),date=tag('CREDITDATE')||tag('LASTCREDITDATE')||(r.created_at?String(r.created_at).slice(0,10):new Date().toISOString().slice(0,10)),inv=tag('PARENTINVOICE')||'',reason=tag('CREDITREASON')||tag('LASTCREDITREASON')||String(r.description||'').replace(/^Credit Note\s*-?\s*/i,'')||'Credit note',vat=Math.abs(Number(r.vat_amount||0)),sub=Math.max(0,amt-vat);openR('Credit Note','Official Accounting Document · '+cn,'<div class="grid"><div class="card"><div class="label">Supplier</div><div class="value">'+esc(r.supplier||'')+'</div></div><div class="card"><div class="label">Date</div><div class="value">'+esc(date)+'</div></div><div class="card"><div class="label">Original Invoice</div><div class="value">'+esc(inv)+'</div></div><div class="card"><div class="label">Order / Project</div><div class="value">'+esc(r.order_no||'')+(r.project?' · '+esc(r.project):'')+'</div></div></div>'+table(['Description','VAT','Credit Amount'],[[reason,m(vat),'-'+m(amt)]])+cards([['Subtotal','-'+m(sub)],['VAT','-'+m(vat)],['Total Credit','-'+m(amt)]])+'<div class="note"><b>Accounting note:</b> This credit note is linked to the original invoice. It reduces the net payable amount for that invoice and does not create a free supplier credit balance.</div>');}catch(e){alert((e&&e.message)?e.message:'Credit Note PDF error');}};
 })();
 
+</script>
+<script>
+(function(){if("serviceWorker" in navigator && location.protocol !== "file:"){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(e){console.warn("SW registration failed",e);});});}})();
 </script>
 </body>
 </html>
