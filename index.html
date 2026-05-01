@@ -21335,6 +21335,356 @@ window.vpGetAllSupplierRows = async function(){
  window.printSelectedCreditNotePDF=async()=>{try{let ids=(typeof window.__vpGetSelectedIds==='function')?window.__vpGetSelectedIds():[];if(!Array.isArray(ids)||ids.length!==1)return alert('Select one Credit Note row, or the original Invoice row that has a Credit Note.');let db=window.__vpDb||window.vpSupabase;if(!db)return alert('Database connection is not ready. Refresh and try again.');let res=await db.from('suppliers').select('*').eq('id',ids[0]).single();if(res.error||!res.data)return alert((res.error&&res.error.message)||'Could not load selected row.');let r=res.data,notes=String(r.notes||'');let tag=n=>{let mm=notes.match(new RegExp('\\[\\['+n+':([\\s\\S]*?)\\]\\]','i'));return mm?String(mm[1]||'').trim():'';};let amt=Math.abs(Number(r.total||r.amount||r.net_amount||tag('CREDITAMOUNT')||tag('CREDIT')||0));if(!amt)return alert('No Credit Note amount found on the selected row.');let cn=String(r.invoice_no||tag('CREDITNO')||tag('LASTCREDITNO')||'CN-DRAFT'),date=tag('CREDITDATE')||tag('LASTCREDITDATE')||(r.created_at?String(r.created_at).slice(0,10):new Date().toISOString().slice(0,10)),inv=tag('PARENTINVOICE')||'',reason=tag('CREDITREASON')||tag('LASTCREDITREASON')||String(r.description||'').replace(/^Credit Note\s*-?\s*/i,'')||'Credit note',vat=Math.abs(Number(r.vat_amount||0)),sub=Math.max(0,amt-vat);openR('Credit Note','Official Accounting Document · '+cn,'<div class="grid"><div class="card"><div class="label">Supplier</div><div class="value">'+esc(r.supplier||'')+'</div></div><div class="card"><div class="label">Date</div><div class="value">'+esc(date)+'</div></div><div class="card"><div class="label">Original Invoice</div><div class="value">'+esc(inv)+'</div></div><div class="card"><div class="label">Order / Project</div><div class="value">'+esc(r.order_no||'')+(r.project?' · '+esc(r.project):'')+'</div></div></div>'+table(['Description','VAT','Credit Amount'],[[reason,m(vat),'-'+m(amt)]])+cards([['Subtotal','-'+m(sub)],['VAT','-'+m(vat)],['Total Credit','-'+m(amt)]])+'<div class="note"><b>Accounting note:</b> This credit note is linked to the original invoice. It reduces the net payable amount for that invoice and does not create a free supplier credit balance.</div>');}catch(e){alert((e&&e.message)?e.message:'Credit Note PDF error');}};
 })();
 
+
+
+/* === V295 FLOATING WINDOWS + APPLE WATCH STYLE RING SELECTOR === */
+(function(){
+  if(window.__v295FloatingWindows) return;
+  window.__v295FloatingWindows = true;
+
+  const style = document.createElement('style');
+  style.id = 'v295-floating-windows-style';
+  style.textContent = `
+    :root{
+      --v295-gold:#e4c9a7;
+      --v295-gold2:#bb9061;
+      --v295-glass:rgba(18,18,21,.62);
+      --v295-line:rgba(228,201,167,.22);
+    }
+
+    body::before{
+      content:"";
+      position:fixed;
+      inset:-20%;
+      pointer-events:none;
+      z-index:0;
+      background:
+        radial-gradient(circle at 18% 14%, rgba(228,201,167,.13), transparent 24%),
+        radial-gradient(circle at 82% 18%, rgba(255,255,255,.055), transparent 18%),
+        radial-gradient(circle at 50% 92%, rgba(187,144,97,.10), transparent 28%);
+      filter: blur(2px);
+      animation:v295Ambient 12s ease-in-out infinite alternate;
+    }
+    @keyframes v295Ambient{
+      from{transform:translate3d(-1.5%,0,0) scale(1)}
+      to{transform:translate3d(1.5%,-1%,0) scale(1.03)}
+    }
+
+    #app .shell{perspective:1500px;}
+
+    #app .card,
+    #app .panel,
+    #app .alert-card,
+    #app .stat,
+    #app .table-wrap,
+    #app .modal-box{
+      backdrop-filter: blur(22px) saturate(135%) !important;
+      -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
+      transform-style:preserve-3d;
+      transition:transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+    }
+
+    #app .card:hover,
+    #app .panel:hover,
+    #app .alert-card:hover,
+    #app .stat:hover,
+    #app .table-wrap:hover{
+      transform:translateY(-5px) translateZ(18px);
+      border-color:rgba(228,201,167,.34) !important;
+      box-shadow:
+        0 38px 92px rgba(0,0,0,.58),
+        0 0 42px rgba(228,201,167,.11),
+        inset 0 1px 0 rgba(255,255,255,.06) !important;
+    }
+
+    #app .stats,
+    #app .alert-strip{
+      perspective:1200px;
+    }
+    #app .stats .stat,
+    #app .alert-strip .alert-card{
+      border-radius:26px !important;
+      background:linear-gradient(180deg, rgba(28,29,34,.68), rgba(7,8,11,.78)) !important;
+      box-shadow:
+        0 30px 70px rgba(0,0,0,.42),
+        0 1px 0 rgba(255,255,255,.05) inset !important;
+    }
+
+    .v295-ring-shell{
+      margin:18px 0 20px;
+      padding:18px 16px 20px;
+      border:1px solid var(--v295-line);
+      border-radius:30px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(228,201,167,.13), transparent 38%),
+        linear-gradient(180deg, rgba(20,20,23,.72), rgba(7,7,9,.80));
+      box-shadow:0 28px 72px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
+      overflow:hidden;
+      position:relative;
+    }
+    .v295-ring-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      color:#f5e6cf;
+      font-weight:900;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      font-size:12px;
+      margin-bottom:10px;
+      opacity:.96;
+    }
+    .v295-ring-stage{
+      position:relative;
+      height:164px;
+      perspective:1200px;
+      touch-action:pan-y;
+      user-select:none;
+    }
+    .v295-ring-track{
+      position:absolute;
+      inset:0;
+      transform-style:preserve-3d;
+      transition:transform .55s cubic-bezier(.2,.8,.2,1);
+    }
+    .v295-ring-card{
+      position:absolute;
+      top:20px;
+      left:50%;
+      width:min(210px, 54vw);
+      height:116px;
+      margin-left:calc(min(210px, 54vw) / -2);
+      border-radius:28px;
+      border:1px solid rgba(228,201,167,.28);
+      background:
+        radial-gradient(circle at 22% 16%, rgba(255,255,255,.12), transparent 28%),
+        linear-gradient(145deg, rgba(33,34,40,.88), rgba(7,8,12,.93));
+      box-shadow:
+        0 26px 54px rgba(0,0,0,.44),
+        0 0 26px rgba(228,201,167,.10),
+        inset 0 1px 0 rgba(255,255,255,.08);
+      color:#fff;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      cursor:pointer;
+      transform-style:preserve-3d;
+      backface-visibility:hidden;
+      overflow:hidden;
+    }
+    .v295-ring-card::after{
+      content:"";
+      position:absolute;
+      left:0;top:18px;bottom:18px;width:3px;
+      border-radius:3px;
+      background:linear-gradient(180deg,var(--v295-gold),var(--v295-gold2));
+      opacity:.65;
+    }
+    .v295-ring-card.active{
+      border-color:rgba(228,201,167,.62);
+      background:linear-gradient(145deg, #e4c9a7 0%, #d2ad83 48%, #bb9061 100%);
+      color:#111;
+      box-shadow:
+        0 30px 68px rgba(228,201,167,.24),
+        0 0 34px rgba(228,201,167,.24),
+        inset 0 1px 0 rgba(255,255,255,.30);
+    }
+    .v295-ring-title{font-size:18px;font-weight:900;line-height:1.15;position:relative;z-index:1;}
+    .v295-ring-sub{font-size:11px;font-weight:800;opacity:.72;margin-top:7px;position:relative;z-index:1;}
+    .v295-ring-controls{
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      margin-top:6px;
+    }
+    .v295-ring-controls button,
+    .v295-ring-btn{
+      width:44px !important;
+      height:44px !important;
+      border-radius:50% !important;
+      padding:0 !important;
+      display:grid !important;
+      place-items:center !important;
+      font-size:20px !important;
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) !important;
+      color:#f5e6cf !important;
+      border:1px solid rgba(228,201,167,.22) !important;
+      box-shadow:0 12px 26px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05) !important;
+    }
+
+    #app header.card .toolbar{
+      display:flex !important;
+      gap:14px !important;
+      overflow-x:auto !important;
+      scroll-snap-type:x mandatory;
+      padding:16px !important;
+      border-radius:28px !important;
+      background:linear-gradient(180deg, rgba(20,20,23,.64), rgba(8,8,10,.76)) !important;
+      border:1px solid rgba(228,201,167,.20) !important;
+      box-shadow:0 26px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04) !important;
+    }
+    #app header.card .toolbar button{
+      flex:0 0 190px;
+      min-height:74px;
+      border-radius:24px !important;
+      scroll-snap-align:center;
+      transform:translateZ(0);
+      white-space:normal;
+    }
+    #app header.card .toolbar button:hover{
+      transform:translateY(-4px) scale(1.03) !important;
+    }
+
+    button.primary,
+    button.warning,
+    button.convert-order,
+    .credit-note-btn-pro,
+    .cn-pdf-btn-pro{
+      color:#111 !important;
+      text-shadow:none !important;
+      font-weight:900 !important;
+    }
+
+    .table-wrap tbody tr.selected,
+    .table-wrap tbody tr:has(input[type="checkbox"]:checked){
+      background:transparent !important;
+      background-image:none !important;
+      box-shadow:none !important;
+      position:relative !important;
+    }
+    .table-wrap tbody tr.selected::before,
+    .table-wrap tbody tr:has(input[type="checkbox"]:checked)::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:7px;
+      bottom:7px;
+      width:3px;
+      border-radius:3px;
+      background:linear-gradient(180deg,#e4c9a7,#bb9061);
+      box-shadow:0 0 10px rgba(228,201,167,.38);
+    }
+    input[type="checkbox"]:checked::after,
+    .row-check:checked::after{
+      border-color:#fff !important;
+    }
+
+    @media(max-width:760px){
+      .v295-ring-stage{height:150px;}
+      .v295-ring-card{width:178px;height:104px;margin-left:-89px;border-radius:24px;}
+      .v295-ring-title{font-size:16px;}
+      #app header.card .toolbar button{flex-basis:168px;min-height:68px;}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const items = [
+    {tab:'dashboard', title:'Dashboard', sub:'Overview'},
+    {tab:'orders', title:'Orders', sub:'Purchase flow'},
+    {tab:'invoices', title:'Invoices', sub:'Accounting'},
+    {tab:'suppliers', title:'Suppliers', sub:'Credit view'},
+    {tab:'reports', title:'Reports', sub:'PDF / CSV'},
+    {tab:'settings', title:'Settings', sub:'Lists / VAT'}
+  ];
+
+  let ringIndex = 0;
+
+  function buildRing(){
+    const header = document.querySelector('#app header.card');
+    if(!header || header.querySelector('.v295-ring-shell')) return;
+    const toolbar = header.querySelector('.toolbar');
+    const shell = document.createElement('div');
+    shell.className = 'v295-ring-shell';
+    shell.innerHTML = `
+      <div class="v295-ring-head">
+        <span>Floating Window Ring</span>
+        <span>Swipe / tap to choose</span>
+      </div>
+      <div class="v295-ring-stage">
+        <div class="v295-ring-track"></div>
+      </div>
+      <div class="v295-ring-controls">
+        <button type="button" class="v295-prev" aria-label="Previous">‹</button>
+        <button type="button" class="v295-next" aria-label="Next">›</button>
+      </div>`;
+    (toolbar || header).insertAdjacentElement('beforebegin', shell);
+
+    const track = shell.querySelector('.v295-ring-track');
+    items.forEach((it,i)=>{
+      const card = document.createElement('div');
+      card.className = 'v295-ring-card';
+      card.dataset.index = String(i);
+      card.dataset.tab = it.tab;
+      card.innerHTML = `<div><div class="v295-ring-title">${it.title}</div><div class="v295-ring-sub">${it.sub}</div></div>`;
+      card.addEventListener('click', ()=>{
+        ringIndex = i;
+        rotateRing(shell);
+        if(typeof window.setTab === 'function' && ['dashboard','orders','invoices'].includes(it.tab)) window.setTab(it.tab);
+        if(it.tab === 'suppliers' && typeof window.openSupplierReportModal === 'function') window.openSupplierReportModal();
+        if(it.tab === 'reports' && typeof window.printMonthlyReport === 'function') window.printMonthlyReport();
+        if(it.tab === 'settings' && typeof window.openListsModal === 'function') window.openListsModal();
+      });
+      track.appendChild(card);
+    });
+
+    shell.querySelector('.v295-prev').onclick = ()=>{ ringIndex = (ringIndex - 1 + items.length) % items.length; rotateRing(shell); };
+    shell.querySelector('.v295-next').onclick = ()=>{ ringIndex = (ringIndex + 1) % items.length; rotateRing(shell); };
+
+    let startX = null;
+    shell.querySelector('.v295-ring-stage').addEventListener('touchstart', e=>{ startX = e.touches?.[0]?.clientX ?? null; }, {passive:true});
+    shell.querySelector('.v295-ring-stage').addEventListener('touchend', e=>{
+      if(startX == null) return;
+      const endX = e.changedTouches?.[0]?.clientX ?? startX;
+      const dx = endX - startX;
+      if(Math.abs(dx) > 34){ ringIndex = (ringIndex + (dx < 0 ? 1 : -1) + items.length) % items.length; rotateRing(shell); }
+      startX = null;
+    }, {passive:true});
+
+    const activeTab = (window.uiState && window.uiState.tab) || 'dashboard';
+    const start = items.findIndex(x=>x.tab===activeTab);
+    ringIndex = start >= 0 ? start : 0;
+    rotateRing(shell);
+  }
+
+  function rotateRing(shell){
+    const track = shell.querySelector('.v295-ring-track');
+    const cards = Array.from(shell.querySelectorAll('.v295-ring-card'));
+    const n = cards.length;
+    const radius = Math.min(340, Math.max(230, shell.clientWidth * .34));
+    cards.forEach((card,i)=>{
+      const angle = (360 / n) * (i - ringIndex);
+      card.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+      card.classList.toggle('active', i === ringIndex);
+      card.style.opacity = Math.abs(angle) > 130 && Math.abs(angle) < 230 ? '.28' : '1';
+    });
+    track.style.transform = 'rotateY(0deg)';
+  }
+
+  const originalSetTabHook = () => {
+    if(window.__v295SetTabHooked || typeof window.setTab !== 'function') return;
+    window.__v295SetTabHooked = true;
+    const old = window.setTab;
+    window.setTab = function(tab){
+      const result = old.apply(this, arguments);
+      setTimeout(()=>{
+        const shell = document.querySelector('.v295-ring-shell');
+        const idx = items.findIndex(x=>x.tab===tab);
+        if(shell && idx >= 0){ ringIndex = idx; rotateRing(shell); }
+      }, 120);
+      return result;
+    };
+  };
+
+  window.v295BuildFloatingUI = function(){
+    originalSetTabHook();
+    buildRing();
+  };
+
+  setInterval(window.v295BuildFloatingUI, 700);
+  window.addEventListener('load', ()=>setTimeout(window.v295BuildFloatingUI, 500));
+})();
+
 </script>
 </body>
 </html>
