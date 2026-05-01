@@ -1,0 +1,1 @@
+V306 Rose Gold Safe: based on V305/V292 stable. Visual CSS-only patch: rose-gold accents/buttons, black text on rose-gold buttons, clean selected row, single white checkbox tick. No JavaScript changes.
