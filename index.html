@@ -3477,11 +3477,39 @@ input[type="checkbox"]:checked::after,
   background:rgba(255,255,255,.025) !important;
   background-image:none !important;
 }
+
+/* ===== V310 CUSTOM VARDOPHASE LOGO EVERYWHERE ===== */
+:root{
+  --vardophase-logo-url: url('icons/vardophase-logo.png');
+}
+.logo,
+.login-brand .brand-logo{
+  background-image: var(--vardophase-logo-url) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  text-indent: -9999px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(244,204,180,.42) !important;
+  box-shadow: 0 14px 32px rgba(244,204,180,.18), inset 0 1px 0 rgba(255,255,255,.20) !important;
+}
+.logo::before, .logo::after,
+.login-brand .brand-logo::before, .login-brand .brand-logo::after{
+  content: none !important;
+  display: none !important;
+}
+/* ===== END V310 CUSTOM VARDOPHASE LOGO ===== */
+
 /* ===== END V292 APPLE CLEAN FINAL ===== */
 </style>
 <!-- V309 SAFE PWA: manifest + app icons only, no service-worker cache -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
