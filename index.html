@@ -4162,7 +4162,7 @@ function renderToolbarButtons(){
   if(canAccountant()) btn.push('<button class="soft main-action credit-note-btn" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canManageLists()) btn.push('<button class="ghost" onclick="window.openListsModal()">Manage Lists</button>');
   if(canManageSettings()) btn.push('<button class="ghost" onclick="window.openSettingsModal()">VAT Settings</button>');
-  btn.push('<button class="ghost" onclick="return window.openDeckTab('ai', event)">AI Search Pro</button>');
+  btn.push('<button class="ghost" onclick="return window.openDeckTab(\'ai\', event)">AI Search Pro</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.exportCurrentCsv()">Export CSV</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.openSupplierReportModal()">Supplier Report</button>');
   if(canAccountant()) btn.push('<button class="soft" onclick="window.printSupplierDepositReport()">Supplier Credit Statement</button>');
