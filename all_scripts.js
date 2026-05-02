@@ -18157,3 +18157,159 @@ window.vpGetAllSupplierRows = async function(){
 
 <!-- V334 marker: Order in Process items are saved and restored by PO and row id -->
 
+/* V336: source-of-truth fix for draft order workflow.
+   Rule: order rows keep their items in suppliers.notes while status is Order in Process.
+   Finalize only changes status to Final Order. DN conversion stays a separate next step. */
+(function(){
+  if(window.__v336OrderProcessSourceOfTruthFix) return;
+  window.__v336OrderProcessSourceOfTruthFix = true;
+
+  const GL_TAG = 'GL_ITEMS';
+  const LEGACY_GL_TAG = 'GLITEMS';
+  const SUP_TAG = 'SUPPLIER_ORDER';
+
+  function db(){ return window.supabase || window.vpSupabase || window.__vpDb || null; }
+  function norm(v){ return String(v == null ? '' : v).trim(); }
+  function num(v){ const n = Number(String(v == null ? '' : v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
+  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
+  function dec(str){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(str || ''))))); }catch(e){ return []; } }
+  function tagRe(tag){ return new RegExp('\\n?\\[\\[' + tag + ':([\\s\\S]*?)\\]\\]', 'i'); }
+  function readTag(notes, tag){ const m = String(notes || '').match(tagRe(tag)); return m ? norm(m[1]) : ''; }
+  function stripTag(notes, tag){ return String(notes || '').replace(tagRe(tag), '').trim(); }
+  function stripWorkflowTags(notes){ return stripTag(stripTag(stripTag(String(notes || ''), GL_TAG), LEGACY_GL_TAG), SUP_TAG).trim(); }
+  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
+  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
+  function message(txt, type){ try{ if(typeof setEntryStatus === 'function') return setEntryStatus(txt, type || 'ok'); }catch(e){} const el=document.getElementById('entryStatusMsg'); if(el){ el.className='status '+(type||'ok'); el.textContent=txt; } }
+  function ensureStatusOption(v){ const st=document.getElementById('entryStatus'); if(!st) return; if(!Array.from(st.options||[]).some(o=>o.value===v)){ const opt=document.createElement('option'); opt.value=v; opt.textContent=v; st.appendChild(opt); } }
+  function forceOrderMode(){ const mode=document.getElementById('entryMode'); if(mode) mode.value='order'; const type=document.getElementById('entryType'); if(type) type.value='invoice'; ensureStatusOption('Order in Process'); ensureStatusOption('Final Order'); }
+  function isOrderMode(){ const mode=norm(document.getElementById('entryMode')?.value).toLowerCase(); const orderNo=norm(document.getElementById('entryOrderNo')?.value); const invoiceNo=norm(document.getElementById('entryInvoiceNo')?.value); return mode === 'order' || (!!orderNo && !invoiceNo); }
+  function normalizeItem(it){ const qty=num(it.qty); const unitPrice=num(it.unitPrice ?? it.unit_price ?? it.price); const discountPercent=num(it.discountPercent ?? it.discount ?? 0); const netPrice=Math.max(0, unitPrice - unitPrice*discountPercent/100); const totalExVat=qty*netPrice; return { productCode:norm(it.productCode ?? it.product_code), description:norm(it.description), qty, unitPrice, discountPercent, netPrice, totalExVat, glCode:norm(it.glCode ?? it.gl_code), glDescription:norm(it.glDescription ?? it.gl_description) }; }
+  function cleanItems(items){ return (Array.isArray(items)?items:[]).map(normalizeItem).filter(x=>x.productCode||x.description||x.qty||x.unitPrice||x.discountPercent||x.glCode||x.glDescription); }
+  function collectItems(){
+    let rows=[];
+    try{ if(typeof window.vardoGlCollectItems === 'function') rows = window.vardoGlCollectItems() || []; }catch(e){ rows=[]; }
+    if(!rows.length){
+      rows = Array.from(document.querySelectorAll('#glItemsBody tr')).map(tr=>({
+        productCode: tr.querySelector('.gli-code')?.value,
+        description: tr.querySelector('.gli-desc')?.value,
+        qty: tr.querySelector('.gli-qty')?.value,
+        unitPrice: tr.querySelector('.gli-price')?.value,
+        discountPercent: tr.querySelector('.gli-disc')?.value,
+        glCode: tr.querySelector('.gli-gl')?.value,
+        glDescription: tr.querySelector('.gli-gldesc')?.value
+      }));
+    }
+    return cleanItems(rows);
+  }
+  function itemsFromNotes(notes){ let arr = dec(readTag(notes, GL_TAG)); if(!Array.isArray(arr) || !arr.length) arr = dec(readTag(notes, LEGACY_GL_TAG)); return cleanItems(arr); }
+  function calcAmounts(items){ const net=cleanItems(items).reduce((s,x)=>s+num(x.totalExVat),0); let vat=0; try{ const supplier=norm(document.getElementById('entrySupplier')?.value); vat = supplier && typeof getSupplierVatType === 'function' && getSupplierVatType(supplier)==='not_registered' ? 0 : net * ((typeof getVatRate === 'function' ? num(getVatRate()) : 15)/100); }catch(e){ vat = net * 0.15; } return {net, vat, total:net+vat}; }
+  function firstDescription(items){ const arr=cleanItems(items); const it=arr.find(x=>x.description)||arr[0]; return it ? (it.description || it.productCode || 'Order items') : 'Order items'; }
+  function loadItems(items){
+    const run=function(){
+      const body=document.getElementById('glItemsBody');
+      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
+      body.innerHTML='';
+      const arr=cleanItems(items);
+      if(arr.length) arr.forEach(it=>window.vardoGlAddItem(it)); else window.vardoGlAddItem({});
+      try{ window.vardoGlRecalcItems && window.vardoGlRecalcItems(); }catch(e){}
+      return true;
+    };
+    if(!run()){ setTimeout(run,200); setTimeout(run,700); setTimeout(run,1400); }
+  }
+  async function nextOrderNo(){
+    try{ if(typeof window.vardoNextOrderNo === 'function'){ const n=await window.vardoNextOrderNo(); if(/^PO-?\d+/i.test(n)) return n; } }catch(e){}
+    const client=db(); let max=0;
+    function scan(rows,field){ (rows||[]).forEach(r=>{ const m=String(r[field]||'').match(/PO[- ]?(\d+)/i); if(m) max=Math.max(max, Number(m[1]||0)); }); }
+    try{ if(client){ const s=await client.from('suppliers').select('order_no').not('order_no','is',null); if(!s.error) scan(s.data,'order_no'); } }catch(e){}
+    return 'PO-' + String(max+1).padStart(3,'0');
+  }
+  async function ensureOrderNo(){ const el=document.getElementById('entryOrderNo'); if(!el) return ''; if(!norm(el.value)){ el.value=await nextOrderNo(); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } return norm(el.value); }
+  function cleanNotesWithItems(items){ const clean=stripWorkflowTags(document.getElementById('entryNotes')?.value || ''); const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')?.value); return clean + (supplierOrder?'\n[['+SUP_TAG+':'+supplierOrder+']]':'') + (items.length?'\n[['+GL_TAG+':'+enc(items)+']]':''); }
+  async function upsertOrder(status){
+    const client=db(); if(!client){ message('Database connection is not ready. Refresh and try again.','error'); return; }
+    forceOrderMode();
+    try{ window.vardoGlRecalcItems && window.vardoGlRecalcItems(); }catch(e){}
+    const supplier=norm(document.getElementById('entrySupplier')?.value);
+    const project=norm(document.getElementById('entryProject')?.value);
+    if(!supplier || !project){ message('Fill supplier and project. Items and prices can be completed later.','error'); return; }
+    const orderNo=await ensureOrderNo();
+    const items=collectItems();
+    if(!items.length){ message('Add at least one item line before saving the order.','error'); return; }
+    const amounts=calcAmounts(items);
+    const notes=cleanNotesWithItems(items);
+    const payload={ supplier, order_no:orderNo, invoice_no:null, project, description:firstDescription(items), net_amount:amounts.net, vat_amount:amounts.vat, total:amounts.total, amount:amounts.total, status:status, notes:notes, entry_type:'order', created_by:(typeof currentUser !== 'undefined' && currentUser?.email) ? currentUser.email : '' };
+    const eid=getEditingId();
+    let res;
+    if(eid) res=await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
+    else res=await client.from('suppliers').insert([payload]).select('id').single();
+    if(res && res.error && /entry_type|created_by|amount/i.test(res.error.message||'')){
+      const lean=Object.assign({}, payload); delete lean.entry_type; delete lean.created_by; delete lean.amount;
+      res = eid ? await client.from('suppliers').update(lean).eq('id', eid).select('id').single() : await client.from('suppliers').insert([lean]).select('id').single();
+    }
+    if(res && res.error){ message(res.error.message || 'Save failed','error'); return; }
+    const savedId = res?.data?.id || eid;
+    if(savedId) setEditingId(savedId);
+    try{ localStorage.setItem('vardophase_po_items_'+orderNo, JSON.stringify(items)); if(savedId) localStorage.setItem('vardophase_po_items_row_'+savedId, JSON.stringify(items)); }catch(e){}
+    message(status === 'Final Order' ? 'Final Order saved. Now you can convert it to DN.' : 'Order saved in Process with items.','ok');
+    try{ if(typeof logAudit === 'function') await logAudit(status === 'Final Order' ? 'finalize_order' : 'save_order_process', supplier+' | '+project+' | '+orderNo); }catch(e){}
+    if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
+    if(typeof render === 'function') await render();
+  }
+
+  window.saveOrderInProcess = function(){ return upsertOrder('Order in Process'); };
+  window.finalizeOrder = function(){ return upsertOrder('Final Order'); };
+
+  const oldSave = window.saveEntry;
+  window.saveEntry = async function(){
+    if(isOrderMode()) return upsertOrder(norm(document.getElementById('entryStatus')?.value) === 'Final Order' ? 'Final Order' : 'Order in Process');
+    return oldSave ? oldSave.apply(this, arguments) : undefined;
+  };
+
+  const oldOpen = window.openEntryModal;
+  if(typeof oldOpen === 'function'){
+    window.openEntryModal = async function(id=null, forcedMode=''){
+      const ret = await oldOpen.apply(this, arguments);
+      const run = async function(){
+        ensureStatusOption('Order in Process'); ensureStatusOption('Final Order');
+        if(!id && String(forcedMode||'').toLowerCase()==='order'){ forceOrderMode(); await ensureOrderNo(); loadItems([]); return; }
+        if(!id) return;
+        try{
+          const client=db(); if(!client) return;
+          const r=await client.from('suppliers').select('*').eq('id',id).single(); if(r.error || !r.data) return;
+          const row=r.data; const hasOrder=!!norm(row.order_no), hasInvoice=!!norm(row.invoice_no);
+          if(!hasOrder || hasInvoice) return;
+          forceOrderMode();
+          const status=norm(row.status)||'Order in Process'; ensureStatusOption(status); const st=document.getElementById('entryStatus'); if(st) st.value=status;
+          const orderEl=document.getElementById('entryOrderNo'); if(orderEl) orderEl.value=row.order_no||orderEl.value||'';
+          const notesEl=document.getElementById('entryNotes'); if(notesEl) notesEl.value=stripWorkflowTags(row.notes||'');
+          const supEl=document.getElementById('entrySupplierOrderNo'); if(supEl) supEl.value=readTag(row.notes||'', SUP_TAG);
+          let items=itemsFromNotes(row.notes||'');
+          if(!items.length){ try{ items=cleanItems(JSON.parse(localStorage.getItem('vardophase_po_items_row_'+id)||'[]')); }catch(e){} }
+          if(!items.length){ try{ items=cleanItems(JSON.parse(localStorage.getItem('vardophase_po_items_'+(row.order_no||''))||'[]')); }catch(e){} }
+          loadItems(items);
+        }catch(e){ console.warn('V336 open order restore failed', e); }
+      };
+      run(); setTimeout(run,250); setTimeout(run,900); setTimeout(run,1600);
+      return ret;
+    };
+  }
+
+  try{
+    const previousLabel = (typeof processStatusLabel === 'function') ? processStatusLabel : null;
+    processStatusLabel = function(row){
+      const hasOrder=!!norm(row && row.order_no), hasInvoice=!!norm(row && row.invoice_no);
+      const hasDN=(typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
+      const st=norm(row && row.status).toLowerCase();
+      if(hasOrder && !hasInvoice && !hasDN) return st === 'final order' ? 'Final Order' : 'Order in Process';
+      return previousLabel ? previousLabel(row) : (hasDN ? 'Delivery Note' : (hasInvoice ? 'Invoice' : 'Order'));
+    };
+    const previousClass = (typeof processStatusClass === 'function') ? processStatusClass : null;
+    processStatusClass = function(row){ const label=processStatusLabel(row); if(label==='Order in Process') return 'unpaid'; if(label==='Final Order') return 'vat'; return previousClass ? previousClass(row) : 'unpaid'; };
+  }catch(e){}
+
+  try{
+    const oldVisible = (typeof visibleNotes === 'function') ? visibleNotes : null;
+    visibleNotes = function(row){ let n = oldVisible ? oldVisible(row) : String(row?.notes || ''); return stripWorkflowTags(n); };
+  }catch(e){}
+})();
+</script>
