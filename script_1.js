@@ -11604,3 +11604,11 @@ setInterval(window.addTransparencyButtons, 1000);
   st.textContent = ".credit-note-btn{color:#111!important;background:linear-gradient(145deg,#efd3ab,#b88754)!important;font-weight:900!important}.credit-note-value{color:#f5c26b!important}";
   document.head.appendChild(st);
 })();
+
+// V303 runtime style: dropdown/chips no text-shadow
+(function(){
+  const css = `#app .custom-select-menu,#app .custom-select-menu *,#loginScreen .custom-select-menu,#loginScreen .custom-select-menu *,#contractorsProScreen .custom-select-menu,#contractorsProScreen .custom-select-menu *,.custom-select-menu,.custom-select-menu *,.custom-select-item,div[role="option"],.custom-select-menu [role="option"]{text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important;color:#050505!important;-webkit-text-fill-color:#050505!important;font-weight:400!important}#app .chips,#app .chips *,#app .chip,#app .chip *,#contractorsProScreen .chips,#contractorsProScreen .chips *,#contractorsProScreen .chip,#contractorsProScreen .chip *,.table-wrap .chip,.table-wrap .chip *{text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important}#app .modal-box .custom-select-btn,#app .modal-box .custom-select-btn *,#app .modal-box input,#app .modal-box textarea,#app .modal-box select{text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important}`;
+  if (typeof document !== 'undefined' && !document.getElementById('v303-runtime-no-shadow')) {
+    const st = document.createElement('style'); st.id='v303-runtime-no-shadow'; st.textContent=css; document.head.appendChild(st);
+  }
+})();

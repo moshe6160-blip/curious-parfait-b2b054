@@ -3233,6 +3233,62 @@ body.role-dn-approver .money-amber {
 }
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
@@ -7237,6 +7293,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
       <h1>Supplier Statement</h1>
       <div class="meta">Supplier: ${esc(supplier)} • Period: ${reportMonthLabel()} • Basis: ${getDepositBasis()==="net" ? "Before VAT" : "After VAT / Total"}</div>
@@ -8504,6 +8616,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Credit Statement - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Deposits Added</th><th>Orders</th><th>Invoices Total</th><th>Deposit Applied</th><th>Outstanding</th><th>Carry Forward Credit</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -9681,6 +9849,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -10917,6 +11141,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Project Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Project</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -12235,6 +12515,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Monthly Report - ${reportMonthLabel()}</h1><div class="cards"><div class="card">Invoices Total: ${money(sum.invoiceTotal)}</div><div class="card">Deposits Added: ${money(sum.depositTotal)}</div><div class="card">Deposit Applied: ${money(sum.depositApplied)}</div><div class="card">Outstanding After Deposit: ${money(sum.outstanding)}</div><div class="card">Carry Forward Credit: ${money(sum.carryForward)}</div></div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Process</th><th>Order No</th><th>Invoice No</th><th>Project</th><th>Description</th><th>Net</th><th>VAT</th><th>Total</th><th>Deposit Applied</th><th>Amount Due</th><th>Status</th><th>Created By</th><th>Notes</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(localDateFromAnyV97(r.created_at))}</td><td>${esc(r.supplier||"")}</td><td>${esc(processStatusLabel(r))}</td><td>${esc(r.order_no||"")}</td><td>${esc(r.invoice_no||"")}</td><td>${esc(r.project||"")}</td><td>${esc(r.description||"")}</td><td>${money(r.net_amount||0)}</td><td>${money(r.vat_amount||0)}</td><td>${money(r.total||r.amount||0)}</td><td>${money(r.deposit_applied||0)}</td><td>${money(r.amount_due||0)}</td><td>${esc(r.status||"")}</td><td>${esc(r.created_by||"")}</td><td>${esc(r.notes||"")}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -13633,6 +13969,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Open Orders Report - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Order No</th><th>Project</th><th>Amount</th><th>Days Open</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -14800,6 +15192,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Audit Log</h1><div class="audit-badge">Showing last 200 actions</div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 
 
@@ -18476,6 +18924,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Transparency Report</h1><div>Generated: ${new Date().toLocaleString()}</div>
     <div class="cards">
       <div class="card"><div class="k">Orders</div><div class="v">${money(m.order)}</div></div>
@@ -19999,6 +20503,62 @@ body.role-dn-approver .money-amber {
 /* V169: role dropdown includes DN Approver. Login untouched. */
 </style>
 
+
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Project Transparency Report</h1>${sections}<script>window.onload=()=>window.print()<\/script>
 
 
@@ -20536,8 +21096,232 @@ setInterval(window.addTransparencyButtons, 1000);
         @media print{body{padding:0!important;}}
       </style>
     `;
-    if(h.includes("</head>")) return h.replace("</head>", reportCss + "</head>");
-    return "<!doctype html><html><head>" + reportCss + "</head><body>" + h + "</body></html>";
+    if(h.includes("
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
+</head>")) return h.replace("
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
+</head>", reportCss + "
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
+</head>");
+    return "<!doctype html><html><head>" + reportCss + "
+<style id="v303-clean-no-text-shadow-final">
+/* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
+#app .custom-select-menu,
+#app .custom-select-menu *,
+#loginScreen .custom-select-menu,
+#loginScreen .custom-select-menu *,
+#contractorsProScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu *,
+.custom-select-menu,
+.custom-select-menu *,
+.custom-select-item,
+div[role="option"],
+.custom-select-menu [role="option"] {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+#app .custom-select-menu .custom-select-item.placeholder,
+#contractorsProScreen .custom-select-menu .custom-select-item.placeholder {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+}
+
+/* Remove the glow/shadow from the description chips under Manage Lists */
+#app .chips,
+#app .chips *,
+#app .chip,
+#app .chip *,
+#contractorsProScreen .chips,
+#contractorsProScreen .chips *,
+#contractorsProScreen .chip,
+#contractorsProScreen .chip *,
+.table-wrap .chip,
+.table-wrap .chip * {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+
+/* Keep dark field labels readable, but remove only the heavy glow where it affects form/menu UI */
+#app .modal-box .custom-select-btn,
+#app .modal-box .custom-select-btn *,
+#app .modal-box input,
+#app .modal-box textarea,
+#app .modal-box select {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+</style>
+</head><body>" + h + "</body></html>";
   }
 
   window.openReportInlineV148 = function(title, url){
