@@ -3387,65 +3387,63 @@ input[type="checkbox"]:checked::after,
 @media (max-width:760px){#app button.main-action:not(.red):not(.delete-selected-btn),#app button.delete-selected-btn{min-height:50px!important;font-size:15px!important;}}
 </style>
 
-<style id="v300-dropdown-rosegold-black-text-final">
-/* V300: make every opened dropdown menu rose-gold with BLACK readable text. Visual only. */
+<style id="v301-dropdown-rosegold-black-normal-final">
+/* V301: all opened dropdown menus = rose-gold, black regular text, not bold. Logic untouched. */
 #app .custom-select-menu,
 #loginScreen .custom-select-menu,
-#contractorsProScreen .custom-select-menu,
-.custom-select-menu{
-  background:linear-gradient(180deg,#f7dfb8 0%,#e6bf8e 48%,#c9935e 100%) !important;
-  border:1px solid rgba(255,225,185,.78) !important;
-  box-shadow:0 22px 46px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.48) !important;
+#contractorsProScreen .custom-select-menu {
+  background: linear-gradient(180deg, #f4d8ad 0%, #e2bd8d 48%, #cc9b66 100%) !important;
+  border: 1px solid rgba(255, 229, 190, .75) !important;
+  box-shadow: 0 18px 42px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.32) !important;
 }
+#app .custom-select-menu .custom-select-item,
 #app .custom-select-item,
-#app .custom-select-item *,
+#loginScreen .custom-select-menu .custom-select-item,
 #loginScreen .custom-select-item,
-#loginScreen .custom-select-item *,
+#contractorsProScreen .custom-select-menu .custom-select-item,
 #contractorsProScreen .custom-select-item,
-#contractorsProScreen .custom-select-item *,
-.custom-select-item,
-.custom-select-item *{
-  color:#050505 !important;
-  -webkit-text-fill-color:#050505 !important;
-  text-shadow:none !important;
-  opacity:1 !important;
-  font-weight:850 !important;
+div[role="option"],
+.custom-select-menu [role="option"] {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+  letter-spacing: 0 !important;
+}
+#app .custom-select-menu .custom-select-item *,
+#loginScreen .custom-select-menu .custom-select-item *,
+#contractorsProScreen .custom-select-menu .custom-select-item * {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
 }
 #app .custom-select-item:hover,
 #loginScreen .custom-select-item:hover,
-#contractorsProScreen .custom-select-item:hover,
-.custom-select-item:hover{
-  background:rgba(255,255,255,.24) !important;
-  color:#000 !important;
-  -webkit-text-fill-color:#000 !important;
+#contractorsProScreen .custom-select-item:hover {
+  background: rgba(255,255,255,.18) !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
 }
 #app .custom-select-item.active,
 #loginScreen .custom-select-item.active,
-#contractorsProScreen .custom-select-item.active,
-.custom-select-item.active{
-  background:rgba(0,0,0,.12) !important;
-  color:#000 !important;
-  -webkit-text-fill-color:#000 !important;
-  box-shadow:inset 4px 0 0 rgba(90,45,15,.55) !important;
+#contractorsProScreen .custom-select-item.active {
+  background: rgba(0,0,0,.08) !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
 }
-#app .custom-select-item.placeholder,
-#loginScreen .custom-select-item.placeholder,
-#contractorsProScreen .custom-select-item.placeholder,
-.custom-select-item.placeholder{
-  color:#111 !important;
-  -webkit-text-fill-color:#111 !important;
-}
-/* Native select popup/options fallback for iPhone/Safari */
-#app select.dark option,
 #app select option,
 #loginScreen select option,
-#contractorsProScreen select option,
-select.dark option,
-select option{
-  background:#e6bf8e !important;
-  color:#050505 !important;
-  -webkit-text-fill-color:#050505 !important;
-  text-shadow:none !important;
+#contractorsProScreen select option {
+  background: #e2bd8d !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
 }
 </style>
 </head>
