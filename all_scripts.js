@@ -17515,3 +17515,323 @@ window.vpGetAllSupplierRows = async function(){
     const st = document.createElement('style'); st.id='v303-runtime-no-shadow'; st.textContent=css; document.head.appendChild(st);
   }
 })();
+
+
+
+/* V330 real order engine: PO auto number + persistent item save/load.
+   Keeps the existing app list on suppliers, and mirrors items into orders/order_items when available. */
+(function(){
+  if(window.__v330RealOrderEngineFinal) return;
+  window.__v330RealOrderEngineFinal = true;
+
+  const GL_TAG = 'GL_ITEMS';
+  const SUP_TAG = 'SUPPLIER_ORDER';
+
+  function db(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
+  function norm(v){ return String(v == null ? '' : v).trim(); }
+  function num(v){ const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
+  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
+  function dec(str){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(str || ''))))); }catch(e){ return []; } }
+  function tagRe(name){ return new RegExp('\\n?\\[\\[' + name + ':([\\s\\S]*?)\\]\\]', 'i'); }
+  function readTag(notes, name){ const m = String(notes || '').match(tagRe(name)); return m ? norm(m[1]) : ''; }
+  function stripTags(notes){ let s = String(notes || ''); [GL_TAG, 'GLITEMS', SUP_TAG].forEach(t => { s = s.replace(tagRe(t), ''); }); return s.trim(); }
+
+  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
+  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
+
+  function cleanItems(items){
+    return (Array.isArray(items) ? items : []).map(it => {
+      const qty = num(it.qty);
+      const unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
+      const discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
+      const netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
+      const totalExVat = qty * netPrice;
+      return {
+        productCode: norm(it.productCode || it.product_code || ''),
+        description: norm(it.description || ''),
+        qty: qty,
+        unitPrice: unitPrice,
+        discountPercent: discountPercent,
+        netPrice: netPrice,
+        totalExVat: totalExVat,
+        glCode: norm(it.glCode || it.gl_code || ''),
+        glDescription: norm(it.glDescription || it.gl_description || '')
+      };
+    }).filter(it => it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription);
+  }
+
+  function collectItems(){
+    try{
+      if(typeof window.vardoGlCollectItems === 'function') return cleanItems(window.vardoGlCollectItems());
+    }catch(e){}
+    const rows = Array.from(document.querySelectorAll('#glItemsBody tr'));
+    return cleanItems(rows.map(tr => ({
+      productCode: tr.querySelector('.gli-code')?.value,
+      description: tr.querySelector('.gli-desc')?.value,
+      qty: tr.querySelector('.gli-qty')?.value,
+      unitPrice: tr.querySelector('.gli-price')?.value,
+      discountPercent: tr.querySelector('.gli-disc')?.value,
+      glCode: tr.querySelector('.gli-gl')?.value,
+      glDescription: tr.querySelector('.gli-gldesc')?.value
+    })));
+  }
+
+  function subtotal(items){ return cleanItems(items).reduce((s,it) => s + num(it.totalExVat), 0); }
+  function amountsFromItems(items){
+    const net = subtotal(items);
+    const vat = net > 0 ? net * 0.15 : 0;
+    return { net, vat, total: net + vat };
+  }
+
+  function loadItemsIntoTable(items){
+    items = cleanItems(items);
+    const run = function(){
+      const body = document.getElementById('glItemsBody');
+      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
+      body.innerHTML = '';
+      if(items.length) items.forEach(it => window.vardoGlAddItem(it));
+      else window.vardoGlAddItem({});
+      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+      return true;
+    };
+    if(!run()){ setTimeout(run, 250); setTimeout(run, 700); setTimeout(run, 1300); }
+  }
+
+  async function nextOrderNo(){
+    const client = db();
+    let max = 0;
+    function scan(rows, field){
+      (rows || []).forEach(r => {
+        const s = String(r[field] || '');
+        const m = s.match(/(?:PO|INV)[- ]?(\d+)/i);
+        if(m) max = Math.max(max, Number(m[1] || 0));
+      });
+    }
+    try{
+      if(client){
+        const s = await client.from('suppliers').select('order_no').not('order_no','is',null);
+        if(!s.error) scan(s.data, 'order_no');
+        const o = await client.from('orders').select('po_number').not('po_number','is',null);
+        if(!o.error) scan(o.data, 'po_number');
+      }
+    }catch(e){}
+    return 'PO-' + String(max + 1).padStart(3, '0');
+  }
+  window.vardoNextOrderNo = nextOrderNo;
+
+  async function ensureOrderNumber(){
+    const mode = norm(document.getElementById('entryMode')?.value);
+    const el = document.getElementById('entryOrderNo');
+    if(!el) return '';
+    if((mode === 'order' || !norm(el.value)) && !norm(el.value)){
+      el.value = await nextOrderNo();
+      el.dispatchEvent(new Event('input', {bubbles:true}));
+      el.dispatchEvent(new Event('change', {bubbles:true}));
+    }
+    return norm(el.value);
+  }
+
+  async function mirrorToOrdersAndItems(orderNo, supplier, status, items){
+    const client = db();
+    if(!client || !orderNo) return;
+    try{
+      let orderId = null;
+      const found = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      if(found && found.data && found.data.id) orderId = found.data.id;
+      if(orderId){
+        await client.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
+      }else{
+        const inserted = await client.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
+        if(inserted && inserted.data && inserted.data.id) orderId = inserted.data.id;
+      }
+      if(!orderId) return;
+      await client.from('order_items').delete().eq('order_id', orderId);
+      const rows = cleanItems(items).map(it => ({
+        order_id: orderId,
+        description: it.description || it.productCode || 'Item',
+        qty: num(it.qty),
+        unit_price: num(it.unitPrice),
+        discount: num(it.discountPercent)
+      }));
+      if(rows.length) await client.from('order_items').insert(rows);
+    }catch(e){
+      console.warn('V330 mirror orders/order_items skipped:', e && e.message ? e.message : e);
+    }
+  }
+
+  async function loadItemsFromMirror(orderNo){
+    const client = db();
+    if(!client || !orderNo) return [];
+    try{
+      const ord = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      const oid = ord && ord.data && ord.data.id;
+      if(!oid) return [];
+      const res = await client.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
+      if(res.error) return [];
+      return cleanItems((res.data || []).map(r => ({
+        description: r.description,
+        qty: r.qty,
+        unitPrice: r.unit_price,
+        discountPercent: r.discount
+      })));
+    }catch(e){ return []; }
+  }
+
+  const previousOpen = window.openEntryModal;
+  if(typeof previousOpen === 'function'){
+    window.openEntryModal = async function(id=null, forcedMode=''){
+      const result = await previousOpen.apply(this, arguments);
+      async function finishOpen(){
+        try{
+          if(!id && (forcedMode === 'order' || norm(document.getElementById('entryMode')?.value) === 'order')){
+            await ensureOrderNumber();
+            const st = document.getElementById('entryStatus'); if(st) st.value = 'Order in Process';
+            loadItemsIntoTable([]);
+            return;
+          }
+          if(id){
+            const client = db();
+            if(!client) return;
+            const res = await client.from('suppliers').select('*').eq('id', id).single();
+            if(res.error || !res.data) return;
+            const row = res.data;
+            const notes = String(row.notes || '');
+            let items = cleanItems(dec(readTag(notes, GL_TAG)));
+            if(!items.length) items = await loadItemsFromMirror(row.order_no || '');
+            loadItemsIntoTable(items);
+            const notesEl = document.getElementById('entryNotes'); if(notesEl) notesEl.value = stripTags(notes);
+            const supEl = document.getElementById('entrySupplierOrderNo'); if(supEl) supEl.value = readTag(notes, SUP_TAG);
+            const st = document.getElementById('entryStatus');
+            if(st && norm(document.getElementById('entryMode')?.value) === 'order' && !row.invoice_no) st.value = row.status || 'Order in Process';
+          }
+        }catch(e){ console.warn('V330 open load failed', e); }
+      }
+      setTimeout(finishOpen, 150); setTimeout(finishOpen, 650); setTimeout(finishOpen, 1300);
+      return result;
+    };
+  }
+
+  window.saveEntry = async function(){
+    try{
+      const client = db();
+      if(!client){ alert('Database connection is not ready. Refresh and try again.'); return; }
+      if(typeof currentRole !== 'undefined' && currentRole === 'viewer'){
+        if(typeof setEntryStatus === 'function') setEntryStatus('Viewer role cannot create or edit entries.', 'error');
+        else alert('Viewer role cannot create or edit entries.');
+        return;
+      }
+      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+
+      const mode = norm(document.getElementById('entryMode')?.value) || 'invoice';
+      const supplier = norm(document.getElementById('entrySupplier')?.value);
+      const project = norm(document.getElementById('entryProject')?.value);
+      if(!supplier || !project){
+        if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project. Prices can be completed later.', 'error');
+        else alert('Fill supplier and project.');
+        return;
+      }
+
+      let orderNo = norm(document.getElementById('entryOrderNo')?.value);
+      if(mode === 'order' && !orderNo) orderNo = await ensureOrderNumber();
+      if(!orderNo && mode !== 'deposit') orderNo = await ensureOrderNumber();
+
+      const invoiceNo = norm(document.getElementById('entryInvoiceNo')?.value);
+      const supplierOrder = norm(document.getElementById('entrySupplierOrderNo')?.value);
+      const items = collectItems();
+      const amounts = amountsFromItems(items);
+
+      let entryType = norm(document.getElementById('entryType')?.value) || 'invoice';
+      if(mode === 'deposit') entryType = 'deposit';
+      const effectiveType = mode === 'delivery_note' ? 'delivery_note' : (mode === 'order' ? 'order' : (entryType === 'deposit' ? 'deposit' : (invoiceNo ? 'invoice' : 'order')));
+
+      let manualNet = num(document.getElementById('entryNetAmount')?.value);
+      let manualVat = num(document.getElementById('entryVatAmount')?.value);
+      let manualTotal = num(document.getElementById('entryTotal')?.value);
+      const useItemTotals = items.length > 0;
+      const net = useItemTotals ? amounts.net : manualNet;
+      const vat = useItemTotals ? amounts.vat : manualVat;
+      const total = useItemTotals ? amounts.total : manualTotal;
+
+      let status = norm(document.getElementById('entryStatus')?.value);
+      if(effectiveType === 'order' && !invoiceNo) status = status && status !== 'Unpaid' && status !== 'Open' ? status : 'Order in Process';
+      if(effectiveType === 'invoice') status = status || 'Paid';
+      if(effectiveType === 'deposit') status = 'Paid';
+
+      const cleanNotes = stripTags(document.getElementById('entryNotes')?.value || '');
+      const notes = cleanNotes +
+        (supplierOrder ? '\n[[' + SUP_TAG + ':' + supplierOrder + ']]' : '') +
+        (items.length ? '\n[[' + GL_TAG + ':' + enc(items) + ']]' : '');
+
+      const firstItem = items.find(x => x.description) || items[0];
+      const description = norm(document.getElementById('entryDescription')?.value) || (firstItem ? (firstItem.description || firstItem.productCode) : 'Order items');
+
+      const payload = {
+        supplier: supplier,
+        order_no: orderNo || null,
+        invoice_no: (effectiveType === 'order' || effectiveType === 'deposit') ? null : (invoiceNo || null),
+        project: project,
+        description: description,
+        net_amount: net,
+        vat_amount: vat,
+        total: total,
+        status: status,
+        notes: notes,
+        entry_type: effectiveType,
+        created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : '',
+        amount: total
+      };
+
+      const eid = getEditingId();
+      let savedId = eid;
+      let res;
+      if(eid){
+        res = await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
+      }else{
+        res = await client.from('suppliers').insert([payload]).select('id').single();
+      }
+      if(res.error){
+        if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message);
+        return;
+      }
+      if(res.data && res.data.id) savedId = res.data.id;
+      setEditingId(savedId);
+
+      if(effectiveType === 'order') await mirrorToOrdersAndItems(orderNo, supplier, status, items);
+
+      try{ if(typeof logAudit === 'function') await logAudit(eid ? 'update_entry' : 'create_entry', supplier + ' | ' + project + ' | ' + (orderNo || '-')); }catch(e){}
+      if(typeof setEntryStatus === 'function') setEntryStatus('Saved', 'ok');
+      if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
+      if(typeof render === 'function') await render();
+    }catch(err){
+      const msg = (err && err.message) ? err.message : 'Save error';
+      if(typeof setEntryStatus === 'function') setEntryStatus(msg, 'error'); else alert(msg);
+    }
+  };
+
+  try{
+    if(typeof processStatusLabel === 'function'){
+      processStatusLabel = function(row){
+        if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'credit_note') return 'Credit Note';
+        if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'deposit') return 'Deposit';
+        const hasOrder = !!norm(row && row.order_no);
+        const hasInvoice = !!norm(row && row.invoice_no);
+        const hasDN = (typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
+        if(hasOrder && !hasDN && !hasInvoice) return 'Order in Process';
+        if(hasOrder && hasDN && !hasInvoice) return 'Delivery Note';
+        if(hasOrder && hasInvoice) return 'Invoice';
+        if(hasInvoice && !hasOrder) return 'Done';
+        return 'Order in Process';
+      };
+    }
+  }catch(e){}
+
+  setInterval(function(){
+    const modal = document.getElementById('entryModal');
+    if(!modal || !modal.classList.contains('show')) return;
+    const mode = norm(document.getElementById('entryMode')?.value);
+    const orderEl = document.getElementById('entryOrderNo');
+    if(mode === 'order' && orderEl && !norm(orderEl.value)) ensureOrderNumber();
+  }, 900);
+})();
+
+// V330 marker
