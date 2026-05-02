@@ -22752,175 +22752,305 @@ div[role="option"],
 })();
 </script>
 
-<script id="v337-supabase-orders-items-final-lock">
-/* V337: Supabase order workflow final lock
-   Real flow: Save In Process -> reopen + keep items -> Final Order -> DN.
-   Uses user's schema: orders(order_number,status,updated_at), order_items(order_id,description,qty,price).
-   Keeps suppliers as the existing app list so the UI stays unchanged. */
+
+<script id="v343-final-order-items-persistence-guard">
+/* V343 FINAL ORDER ITEMS PERSISTENCE GUARD
+   Purpose: existing Order rows must never lose item rows on reopen/save.
+   Rules:
+   1) Notes tags are the primary source of truth: VPO_ITEMS + GL_ITEMS + GLITEMS.
+   2) order_items mirror is only replaced when we have non-empty UI items.
+   3) Existing order save with an empty UI preserves previous items instead of writing empty notes.
+*/
 (function(){
-  if(window.__v337SupabaseOrdersItemsFinalLock) return;
-  window.__v337SupabaseOrdersItemsFinalLock = true;
+  if(window.__v343FinalOrderItemsPersistenceGuard) return;
+  window.__v343FinalOrderItemsPersistenceGuard = true;
 
-  const GL_TAG='GL_ITEMS_V337';
-  const OLD_TAGS=['GL_ITEMS','GLITEMS'];
-  const SUP_TAG='SUPPLIER_ORDER';
-  const LS_PREFIX='vardophase_v337_items_';
+  var TAGS = ['VPO_ITEMS','GL_ITEMS','GLITEMS'];
+  var FINAL_TAG = 'FINAL_ORDER';
 
-  function client(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
+  function db(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
   function norm(v){ return String(v == null ? '' : v).trim(); }
-  function num(v){ const n=Number(String(v == null ? '' : v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
-  function enc(obj){ try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[]))));}catch(e){return '';} }
-  function dec(s){ try{return JSON.parse(decodeURIComponent(escape(atob(String(s||'')))));}catch(e){return [];} }
-  function tagRe(name){ return new RegExp('\\n?\\[\\['+name+':([\\s\\S]*?)\\]\\]','i'); }
-  function readTag(notes,name){ const m=String(notes||'').match(tagRe(name)); return m?norm(m[1]):''; }
-  function stripTags(notes){ let s=String(notes||''); [GL_TAG,SUP_TAG].concat(OLD_TAGS).forEach(t=>{s=s.replace(tagRe(t),'');}); return s.trim(); }
-  function setMsg(msg,type){ try{ if(typeof setEntryStatus==='function') return setEntryStatus(msg,type||'ok'); }catch(e){} const el=document.getElementById('entryStatusMsg'); if(el){el.textContent=msg; el.className='status '+(type||'ok');} else if(type==='error') alert(msg); }
-  function getEditingId(){ try{return (typeof editingId!=='undefined')?editingId:null;}catch(e){return null;} }
-  function setEditingId(v){ try{ if(typeof editingId!=='undefined') editingId=v; }catch(e){} }
-  function esc(v){ return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  function normalizeItem(it){
-    const qty=num(it.qty);
-    const unitPrice=num(it.unitPrice ?? it.unit_price ?? it.price ?? 0);
-    const discountPercent=num(it.discountPercent ?? it.discount ?? 0);
-    const netPrice=Math.max(0, unitPrice-(unitPrice*discountPercent/100));
-    const totalExVat=qty*netPrice;
-    return {productCode:norm(it.productCode||it.product_code||''),description:norm(it.description||it.item_name||it.name||''),qty,unitPrice,discountPercent,netPrice,totalExVat,glCode:norm(it.glCode||it.gl_code||''),glDescription:norm(it.glDescription||it.gl_description||'')};
+  function num(v){ var n = Number(String(v == null ? '' : v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
+  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
+  function dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s || ''))))); }catch(e){ return []; } }
+  function tagRe(tag){ return new RegExp('\\n?\\[\\[' + tag + ':([\\s\\S]*?)\\]\\]', 'i'); }
+  function readTag(notes, tag){ var m = String(notes || '').match(tagRe(tag)); return m ? norm(m[1]) : ''; }
+  function stripTags(notes){
+    var s = String(notes || '');
+    TAGS.concat([FINAL_TAG]).forEach(function(t){ s = s.replace(tagRe(t), ''); });
+    return s.trim();
   }
-  function cleanItems(items){ return (Array.isArray(items)?items:[]).map(normalizeItem).filter(i=>i.productCode||i.description||i.qty||i.unitPrice||i.discountPercent||i.glCode||i.glDescription); }
+  function withItemsTags(notes, items, finalize){
+    var clean = stripTags(notes);
+    var arr = cleanItems(items);
+    var out = clean;
+    if(arr.length){
+      var payload = enc(arr);
+      out += (out ? '\n' : '') + '[[VPO_ITEMS:' + payload + ']]';
+      out += '\n[[GL_ITEMS:' + payload + ']]';
+      out += '\n[[GLITEMS:' + payload + ']]';
+    }
+    if(finalize) out += (out ? '\n' : '') + '[[FINAL_ORDER:1]]';
+    return out;
+  }
+  function cleanItems(items){
+    return (Array.isArray(items) ? items : []).map(function(it){
+      var qty = num(it.qty);
+      var unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
+      var discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
+      var netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
+      var totalExVat = qty * netPrice;
+      return {
+        productCode: norm(it.productCode || it.product_code || ''),
+        description: norm(it.description || ''),
+        qty: qty,
+        unitPrice: unitPrice,
+        discountPercent: discountPercent,
+        discountAmount: num(it.discountAmount || it.discount_amount || ((unitPrice - netPrice) * qty)),
+        netPrice: netPrice,
+        totalExVat: totalExVat,
+        glCode: norm(it.glCode || it.gl_code || ''),
+        glDescription: norm(it.glDescription || it.gl_description || '')
+      };
+    }).filter(function(it){ return it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription; });
+  }
   function collectItems(){
-    try{ if(typeof window.vardoGlCollectItems==='function'){ const a=cleanItems(window.vardoGlCollectItems()); if(a.length) return a; } }catch(e){}
-    return cleanItems(Array.from(document.querySelectorAll('#glItemsBody tr')).map(tr=>({
-      productCode:tr.querySelector('.gli-code')?.value,
-      description:tr.querySelector('.gli-desc')?.value,
-      qty:tr.querySelector('.gli-qty')?.value,
-      unitPrice:tr.querySelector('.gli-price')?.value,
-      discountPercent:tr.querySelector('.gli-disc')?.value,
-      glCode:tr.querySelector('.gli-gl')?.value,
-      glDescription:tr.querySelector('.gli-gldesc')?.value
-    })));
+    try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+    try{
+      if(typeof window.vardoGlCollectItems === 'function'){
+        var a = cleanItems(window.vardoGlCollectItems());
+        if(a.length) return a;
+      }
+    }catch(e){}
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#glItemsBody tr'));
+    return cleanItems(rows.map(function(tr){
+      return {
+        productCode: tr.querySelector('.gli-code') && tr.querySelector('.gli-code').value,
+        description: tr.querySelector('.gli-desc') && tr.querySelector('.gli-desc').value,
+        qty: tr.querySelector('.gli-qty') && tr.querySelector('.gli-qty').value,
+        unitPrice: tr.querySelector('.gli-price') && tr.querySelector('.gli-price').value,
+        discountPercent: tr.querySelector('.gli-disc') && tr.querySelector('.gli-disc').value,
+        glCode: tr.querySelector('.gli-gl') && tr.querySelector('.gli-gl').value,
+        glDescription: tr.querySelector('.gli-gldesc') && tr.querySelector('.gli-gldesc').value
+      };
+    }));
   }
-  function subtotal(items){ return cleanItems(items).reduce((s,i)=>s+num(i.totalExVat),0); }
-  function amounts(items){ const net=subtotal(items); let vat=net*0.15; try{ const supplier=norm(document.getElementById('entrySupplier')?.value); if(supplier && typeof getSupplierVatType==='function' && getSupplierVatType(supplier)==='not_registered') vat=0; else if(typeof getVatRate==='function') vat=net*(num(getVatRate())||15)/100; }catch(e){} return {net,vat,total:net+vat}; }
-  function currentOrderNo(){ return norm(document.getElementById('entryOrderNo')?.value); }
-  function isOrderScreen(){ const mode=norm(document.getElementById('entryMode')?.value).toLowerCase(); const inv=norm(document.getElementById('entryInvoiceNo')?.value); return mode==='order' || (!!currentOrderNo() && !inv); }
-  function firstDesc(items){ const i=items.find(x=>x.description)||items[0]; return i?(i.description||i.productCode||'Order items'):'Order items'; }
-
-  function rowHtml(item){ const it=normalizeItem(item||{}); return '<tr>'+ 
-    '<td><input class="dark gli-code" type="text" value="'+esc(it.productCode)+'" placeholder="Product Code"></td>'+ 
-    '<td><input class="dark gli-desc" type="text" value="'+esc(it.description)+'" placeholder="Item description"></td>'+ 
-    '<td><input class="dark gli-qty" type="number" step="0.01" min="0" value="'+esc(it.qty||'')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-price" type="number" step="0.01" min="0" value="'+esc(it.unitPrice||'')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-disc" type="number" step="0.01" min="0" max="100" value="'+esc(it.discountPercent||'')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-net" readonly value="'+esc((it.netPrice||0).toFixed(2))+'"></td>'+ 
-    '<td><input class="dark gli-total" readonly value="'+esc((it.totalExVat||0).toFixed(2))+'"></td>'+ 
-    '<td><input class="dark gli-gl" type="text" value="'+esc(it.glCode)+'" placeholder="GL Code"></td>'+ 
-    '<td><input class="dark gli-gldesc" type="text" value="'+esc(it.glDescription)+'" placeholder="GL Description"></td>'+ 
-    '<td><button type="button" class="ghost" onclick="this.closest(\'tr\').remove();window.vardoGlRecalcItems&&window.vardoGlRecalcItems();">×</button></td></tr>'; }
-  function ensureItemsUi(){
-    let body=document.getElementById('glItemsBody'); if(body) return body;
-    const form=document.querySelector('#entryModal .form-grid') || document.querySelector('.form-grid'); if(!form) return null;
-    const box=document.createElement('div'); box.id='glItemsSection'; box.className='full gl-items-section'; box.style.gridColumn='1 / -1';
-    box.innerHTML='<div class="gl-title-row"><div><b>Order Items</b><div class="helper">Items are saved in Process and restored when reopening the order.</div></div><button type="button" class="primary" onclick="window.vardoGlAddItem&&window.vardoGlAddItem({})">+ Add Item</button></div><div class="gl-table-wrap"><table class="gl-items-table"><thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th><th></th></tr></thead><tbody id="glItemsBody"></tbody></table></div><div class="gl-totals"><span>Subtotal: <b id="glSubTotal">0.00</b></span><span>VAT: <b id="glVatTotal">0.00</b></span><span>Total: <b id="glGrandTotal">0.00</b></span></div>';
-    const anchor=document.getElementById('entryNetAmount')?.closest('label') || document.getElementById('entryStatusWrap'); if(anchor) form.insertBefore(box,anchor); else form.appendChild(box);
-    return document.getElementById('glItemsBody');
-  }
-  function installItemUi(){
-    const oldAdd=window.vardoGlAddItem;
-    window.vardoGlAddItem=function(item){ const body=ensureItemsUi(); if(!body) return; body.insertAdjacentHTML('beforeend',rowHtml(item||{})); window.vardoGlRecalcItems&&window.vardoGlRecalcItems(); };
-    window.vardoGlAddItem.__v337=true;
-    const oldRec=window.vardoGlRecalcItems;
-    window.vardoGlRecalcItems=function(){
-      try{ if(oldRec && !oldRec.__v337_running){ oldRec.__v337_running=true; oldRec.apply(this,arguments); oldRec.__v337_running=false; } }catch(e){}
-      let sub=0,disc=0; Array.from(document.querySelectorAll('#glItemsBody tr')).forEach(tr=>{ const q=num(tr.querySelector('.gli-qty')?.value), p=num(tr.querySelector('.gli-price')?.value), d=num(tr.querySelector('.gli-disc')?.value); const net=Math.max(0,p-p*d/100), total=q*net; sub+=total; disc+=q*(p-net); const ne=tr.querySelector('.gli-net'), te=tr.querySelector('.gli-total'); if(ne)ne.value=net.toFixed(2); if(te)te.value=total.toFixed(2); });
-      let vat=sub*0.15; try{ if(typeof getVatRate==='function') vat=sub*(num(getVatRate())||15)/100; }catch(e){} const grand=sub+vat;
-      [['glSubTotal',sub],['glDiscountTotal',disc],['glVatTotal',vat],['glGrandTotal',grand]].forEach(([id,v])=>{const el=document.getElementById(id); if(el)el.textContent=v.toFixed(2);});
-      const netEl=document.getElementById('entryNetAmount'), vatEl=document.getElementById('entryVatAmount'), totalEl=document.getElementById('entryTotal'); if(netEl)netEl.value=sub.toFixed(2); if(vatEl)vatEl.value=vat.toFixed(2); if(totalEl)totalEl.value=grand.toFixed(2);
+  function loadItems(items){
+    var arr = cleanItems(items);
+    var run = function(){
+      var body = document.getElementById('glItemsBody');
+      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
+      body.innerHTML = '';
+      if(arr.length) arr.forEach(function(it){ window.vardoGlAddItem(it); });
+      else window.vardoGlAddItem({});
+      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+      return true;
     };
+    if(!run()){
+      setTimeout(run, 150);
+      setTimeout(run, 600);
+      setTimeout(run, 1300);
+    }
   }
-  function loadItemsIntoUi(items){ installItemUi(); const body=ensureItemsUi(); if(!body) return false; body.innerHTML=''; const arr=cleanItems(items); if(arr.length) arr.forEach(i=>window.vardoGlAddItem(i)); else window.vardoGlAddItem({}); window.vardoGlRecalcItems&&window.vardoGlRecalcItems(); return true; }
-
-  function cacheSet(orderNo,rowId,items){ const arr=cleanItems(items); try{ if(orderNo) localStorage.setItem(LS_PREFIX+orderNo,JSON.stringify(arr)); }catch(e){} try{ if(rowId) localStorage.setItem(LS_PREFIX+'row_'+rowId,JSON.stringify(arr)); }catch(e){} }
-  function cacheGet(orderNo,rowId){ try{ if(rowId){ const a=cleanItems(JSON.parse(localStorage.getItem(LS_PREFIX+'row_'+rowId)||'[]')); if(a.length)return a; } }catch(e){} try{ if(orderNo){ const a=cleanItems(JSON.parse(localStorage.getItem(LS_PREFIX+orderNo)||'[]')); if(a.length)return a; } }catch(e){} return []; }
-  function itemsFromNotes(notes){ let arr=dec(readTag(notes,GL_TAG)); if(arr.length)return cleanItems(arr); for(const t of OLD_TAGS){ arr=dec(readTag(notes,t)); if(arr.length)return cleanItems(arr); } return []; }
+  function itemsFromNotes(notes){
+    for(var i=0;i<TAGS.length;i++){
+      var arr = cleanItems(dec(readTag(notes, TAGS[i])));
+      if(arr.length) return arr;
+    }
+    return [];
+  }
+  function saveLocal(rowId, orderNo, items){
+    var arr = cleanItems(items);
+    try{ if(rowId && arr.length) localStorage.setItem('vardo_po_items_row_' + rowId, JSON.stringify(arr)); }catch(e){}
+    try{ if(orderNo && arr.length) localStorage.setItem('vardo_po_items_no_' + orderNo, JSON.stringify(arr)); }catch(e){}
+  }
+  function readLocal(rowId, orderNo){
+    var arr = [];
+    try{ if(rowId) arr = JSON.parse(localStorage.getItem('vardo_po_items_row_' + rowId) || '[]'); }catch(e){ arr = []; }
+    if(!arr.length){ try{ if(orderNo) arr = JSON.parse(localStorage.getItem('vardo_po_items_no_' + orderNo) || '[]'); }catch(e){ arr = []; } }
+    return cleanItems(arr);
+  }
+  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
+  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
 
   async function nextOrderNo(){
-    let max=0; const c=client(); const scan=(rows,field)=>{(rows||[]).forEach(r=>{const m=String(r[field]||'').match(/PO[- ]?(\d+)/i); if(m)max=Math.max(max,Number(m[1]||0));});};
-    try{ const s=await c.from('suppliers').select('order_no').not('order_no','is',null); if(!s.error) scan(s.data,'order_no'); }catch(e){}
-    try{ const o=await c.from('orders').select('order_number').not('order_number','is',null); if(!o.error) scan(o.data,'order_number'); }catch(e){}
-    return 'PO-'+String(max+1).padStart(3,'0');
+    var client = db(), max = 0;
+    function scan(rows, field){ (rows || []).forEach(function(r){ var m = String(r[field] || '').match(/PO[- ]?(\d+)/i); if(m) max = Math.max(max, Number(m[1] || 0)); }); }
+    try{
+      if(client){
+        var s = await client.from('suppliers').select('order_no').not('order_no','is',null); if(!s.error) scan(s.data, 'order_no');
+        var o = await client.from('orders').select('po_number').not('po_number','is',null); if(!o.error) scan(o.data, 'po_number');
+      }
+    }catch(e){}
+    return 'PO-' + String(max + 1).padStart(3,'0');
   }
-  async function ensureOrderNo(){ const el=document.getElementById('entryOrderNo'); if(!el)return ''; if(!norm(el.value)){ el.value=await nextOrderNo(); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } return norm(el.value); }
-  function ensureOption(value,label){ const s=document.getElementById('entryStatus'); if(!s)return; if(!Array.from(s.options||[]).some(o=>o.value===value)){ const o=document.createElement('option'); o.value=value; o.textContent=label||value; s.appendChild(o); } }
-  function ensureButtons(){ const actions=document.querySelector('#entryModal .modal-actions'); if(!actions || document.getElementById('v337ProcessButtons'))return; const box=document.createElement('div'); box.id='v337ProcessButtons'; box.style.cssText='display:flex;gap:8px;flex-wrap:wrap'; box.innerHTML='<button type="button" class="soft" onclick="window.saveOrderInProcess()">Save In Process</button><button type="button" class="primary" onclick="window.finalizeOrder()">Finalize Order</button><button type="button" class="soft" onclick="window.convertOrderToDN&&window.convertOrderToDN()">Convert Order → DN</button>'; actions.insertBefore(box,actions.firstChild); }
-
-  async function getOrderId(orderNo){
-    const c=client(); if(!c||!orderNo)return null;
-    try{ const f=await c.from('orders').select('id,status').eq('order_number',orderNo).limit(1).maybeSingle(); if(f?.data?.id)return f.data.id; }catch(e){}
-    try{ const ins=await c.from('orders').insert([{order_number:orderNo,status:'process'}]).select('id').single(); if(ins?.data?.id)return ins.data.id; }catch(e){}
-    return null;
+  async function ensureOrderNo(){
+    var el = document.getElementById('entryOrderNo');
+    if(!el) return '';
+    if(!norm(el.value)) el.value = await nextOrderNo();
+    return norm(el.value);
   }
-  async function mirrorSave(orderNo,status,items){
-    const c=client(); if(!c||!orderNo)return;
-    const oid=await getOrderId(orderNo); if(!oid)return;
-    try{ await c.from('orders').update({status:status,updated_at:new Date().toISOString()}).eq('id',oid); }catch(e){ try{ await c.from('orders').update({status:status}).eq('id',oid); }catch(_){} }
-    try{ await c.from('order_items').delete().eq('order_id',oid); }catch(e){}
-    const rows=cleanItems(items).map(i=>({order_id:oid,description:i.description||i.productCode||'Item',qty:num(i.qty),price:num(i.unitPrice)}));
-    if(!rows.length)return;
-    try{ const r=await c.from('order_items').insert(rows); if(!r.error)return; }catch(e){}
-    try{ await c.from('order_items').insert(rows.map(({order_id,description,qty})=>({order_id,description,qty}))); }catch(e){}
+  async function itemsFromOrderItems(orderNo){
+    var client = db(); if(!client || !orderNo) return [];
+    try{
+      var ord = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      var oid = ord && ord.data && ord.data.id; if(!oid) return [];
+      var res = await client.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
+      if(res.error) return [];
+      return cleanItems((res.data || []).map(function(r){ return { description:r.description, qty:r.qty, unitPrice:r.unit_price, discountPercent:r.discount }; }));
+    }catch(e){ return []; }
   }
-  async function mirrorLoad(orderNo){
-    const c=client(); if(!c||!orderNo)return [];
-    try{ const o=await c.from('orders').select('id').eq('order_number',orderNo).limit(1).maybeSingle(); const oid=o?.data?.id; if(!oid)return []; const r=await c.from('order_items').select('*').eq('order_id',oid).order('created_at',{ascending:true}); if(r.error)return []; return cleanItems((r.data||[]).map(x=>({description:x.description||x.item_name,qty:x.qty,unitPrice:x.price??x.unit_price}))); }catch(e){return [];} }
+  async function readExistingItems(rowId, orderNo){
+    var client = db();
+    var row = null;
+    try{
+      if(client && rowId){
+        var res = await client.from('suppliers').select('notes,order_no').eq('id', rowId).single();
+        if(!res.error && res.data) row = res.data;
+      }
+    }catch(e){}
+    var no = orderNo || (row && row.order_no) || '';
+    var items = row ? itemsFromNotes(row.notes) : [];
+    if(!items.length) items = await itemsFromOrderItems(no);
+    if(!items.length) items = readLocal(rowId, no);
+    return items;
+  }
+  async function mirror(orderNo, supplier, status, items){
+    var client = db(); if(!client || !orderNo) return;
+    var arr = cleanItems(items);
+    try{
+      var orderId = null;
+      var found = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      if(found && found.data && found.data.id) orderId = found.data.id;
+      if(orderId) await client.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
+      else{
+        var ins = await client.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
+        if(ins && ins.data && ins.data.id) orderId = ins.data.id;
+      }
+      // SAFETY: never delete existing DB item rows when the UI collection is empty.
+      if(orderId && arr.length){
+        await client.from('order_items').delete().eq('order_id', orderId);
+        var rows = arr.map(function(it){ return { order_id:orderId, description:it.description || it.productCode || 'Item', qty:num(it.qty), unit_price:num(it.unitPrice), discount:num(it.discountPercent) }; });
+        if(rows.length) await client.from('order_items').insert(rows);
+      }
+    }catch(e){ console.warn('V343 mirror skipped', e && e.message ? e.message : e); }
+  }
+  function setStatusValue(value){
+    var st = document.getElementById('entryStatus'); if(!st) return;
+    var exists = Array.prototype.slice.call(st.options || []).some(function(o){ return o.value === value; });
+    if(!exists) st.insertAdjacentHTML('beforeend','<option value="' + value + '">' + value + '</option>');
+    st.value = value;
+  }
+  function installButtons(){
+    var actions = document.querySelector('#entryModal .modal-actions');
+    if(!actions) return;
+    if(!actions.querySelector('[data-v343-save-process]')){
+      var html = '<button type="button" class="soft" data-v343-save-process onclick="window.saveOrderInProcess()">Save In Process</button><button type="button" class="primary" data-v343-finalize onclick="window.finalizeOrder()">Finalize Order</button>';
+      var spacer = actions.querySelector('.spacer');
+      if(spacer) spacer.insertAdjacentHTML('beforebegin', html); else actions.insertAdjacentHTML('afterbegin', html);
+    }
+  }
 
-  async function loadExisting(id){
-    installItemUi(); ensureItemsUi(); ensureButtons(); ensureOption('Order in Process'); ensureOption('Final Order'); ensureOption('process','Order in Process');
-    if(!id){ if(isOrderScreen()){ await ensureOrderNo(); loadItemsIntoUi([]); const s=document.getElementById('entryStatus'); if(s)s.value='Order in Process'; } return; }
-    const c=client(); if(!c)return; try{ const r=await c.from('suppliers').select('*').eq('id',id).single(); if(r.error||!r.data)return; const row=r.data; const orderNo=norm(row.order_no||currentOrderNo()); let items=itemsFromNotes(row.notes||''); if(!items.length)items=await mirrorLoad(orderNo); if(!items.length)items=cacheGet(orderNo,id); loadItemsIntoUi(items); const n=document.getElementById('entryNotes'); if(n)n.value=stripTags(row.notes||''); const st=document.getElementById('entryStatus'); if(st && orderNo&&!row.invoice_no){ ensureOption(row.status||'Order in Process'); st.value=(row.status==='process'?'Order in Process':(row.status||'Order in Process')); } }catch(e){} }
-
-  const prevOpen=window.openEntryModal;
-  if(typeof prevOpen==='function'){
-    window.openEntryModal=async function(id=null,forcedMode=''){
-      const r=await prevOpen.apply(this,arguments);
-      const run=()=>loadExisting(id); run(); setTimeout(run,250); setTimeout(run,900); setTimeout(run,1600);
-      return r;
+  var oldOpen = window.openEntryModal;
+  if(typeof oldOpen === 'function'){
+    window.openEntryModal = async function(id, forcedMode){
+      window.__vardoOpeningExistingOrder = !!id;
+      var result = await oldOpen.apply(this, arguments);
+      installButtons();
+      if(id){
+        var run = async function(){
+          try{
+            var client = db(); if(!client) return;
+            var res = await client.from('suppliers').select('*').eq('id', id).single();
+            if(res.error || !res.data) return;
+            var row = res.data;
+            var orderNo = norm(row.order_no);
+            var items = itemsFromNotes(row.notes);
+            if(!items.length) items = await itemsFromOrderItems(orderNo);
+            if(!items.length) items = readLocal(id, orderNo);
+            loadItems(items);
+            saveLocal(id, orderNo, items);
+            var notesEl = document.getElementById('entryNotes'); if(notesEl) notesEl.value = stripTags(row.notes || '');
+            var orderEl = document.getElementById('entryOrderNo'); if(orderEl && orderNo) orderEl.value = orderNo;
+            if(row.order_no && !row.invoice_no) setStatusValue(row.status || 'Order in Process');
+          }catch(e){ console.warn('V343 open reload failed', e); }
+        };
+        setTimeout(run, 80); setTimeout(run, 500); setTimeout(run, 1200);
+      }else if(forcedMode === 'order' || norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) === 'order'){
+        setStatusValue('Order in Process');
+        setTimeout(function(){ ensureOrderNo(); loadItems([]); }, 100);
+      }
+      return result;
     };
   }
 
-  async function saveWorkflow(finalFlag){
-    const c=client(); if(!c){ setMsg('Database connection is not ready.','error'); return; }
-    installItemUi(); ensureItemsUi(); ensureButtons();
-    const supplier=norm(document.getElementById('entrySupplier')?.value), project=norm(document.getElementById('entryProject')?.value); if(!supplier||!project){ setMsg('Fill supplier and project.','error'); return; }
-    const orderNo=await ensureOrderNo(); const items=collectItems(); const a=amounts(items); const eid=getEditingId();
-    const uiStatus=finalFlag?'Final Order':'Order in Process'; const dbStatus=finalFlag?'order':'process'; ensureOption(uiStatus); const st=document.getElementById('entryStatus'); if(st)st.value=uiStatus;
-    const clean=stripTags(document.getElementById('entryNotes')?.value||''); const supOrder=norm(document.getElementById('entrySupplierOrderNo')?.value);
-    const notes=clean+(supOrder?'\n[['+SUP_TAG+':'+supOrder+']]':'')+(items.length?'\n[['+GL_TAG+':'+enc(items)+']]':'');
-    const payload={supplier,order_no:orderNo,invoice_no:null,project,description:norm(document.getElementById('entryDescription')?.value)||firstDesc(items),net_amount:a.net,vat_amount:a.vat,total:a.total,amount:a.total,status:uiStatus,notes,entry_type:'order',created_by:(window.currentUser&&currentUser.email)||''};
-    let res; if(eid) res=await c.from('suppliers').update(payload).eq('id',eid).select('id').single(); else res=await c.from('suppliers').insert([payload]).select('id').single();
-    if(res.error){ setMsg(res.error.message,'error'); return; }
-    const savedId=res.data?.id||eid; setEditingId(savedId); cacheSet(orderNo,savedId,items); await mirrorSave(orderNo,dbStatus,items);
-    setMsg(finalFlag?'Final Order saved':'Order in Process saved','ok');
-    if(typeof window.closeEntryModal==='function') window.closeEntryModal(); if(typeof render==='function') await render();
+  var oldSave = window.saveEntry;
+  async function saveOrderCore(finalize){
+    var client = db();
+    if(!client){ alert('Database connection missing.'); return; }
+    var eid = getEditingId();
+    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) || 'order';
+    var supplier = norm(document.getElementById('entrySupplier') && document.getElementById('entrySupplier').value);
+    var project = norm(document.getElementById('entryProject') && document.getElementById('entryProject').value);
+    if(!supplier || !project){ if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project.', 'error'); else alert('Fill supplier and project.'); return; }
+    var orderNo = norm(document.getElementById('entryOrderNo') && document.getElementById('entryOrderNo').value);
+    if(!orderNo) orderNo = await ensureOrderNo();
+    var invoiceNo = norm(document.getElementById('entryInvoiceNo') && document.getElementById('entryInvoiceNo').value);
+    var items = collectItems();
+    if(!items.length && eid) items = await readExistingItems(eid, orderNo);
+    // Guard: for an existing order, an empty UI must not overwrite saved item data.
+    if(eid && !items.length){
+      var before = await readExistingItems(eid, orderNo);
+      if(before.length) items = before;
+    }
+    var net = items.reduce(function(s,it){ return s + num(it.totalExVat); }, 0);
+    var vatRate = (typeof getVatRate === 'function') ? Number(getVatRate() || 15) : 15;
+    var vat = net ? net * (vatRate / 100) : num(document.getElementById('entryVatAmount') && document.getElementById('entryVatAmount').value);
+    var total = net ? net + vat : num(document.getElementById('entryTotal') && document.getElementById('entryTotal').value);
+    var status = finalize ? 'Final Order' : 'Order in Process';
+    var rawNotes = document.getElementById('entryNotes') && document.getElementById('entryNotes').value;
+    var notes = withItemsTags(rawNotes || '', items, finalize);
+    var first = items.find(function(x){ return x.description; }) || items[0];
+    var description = norm(document.getElementById('entryDescription') && document.getElementById('entryDescription').value) || (first ? (first.description || first.productCode) : 'Order items');
+    var payload = {
+      supplier: supplier,
+      order_no: orderNo || null,
+      invoice_no: (mode === 'order' && !finalize) ? null : (invoiceNo || null),
+      project: project,
+      description: description,
+      net_amount: net,
+      vat_amount: vat,
+      total: total,
+      amount: total,
+      status: status,
+      notes: notes,
+      entry_type: 'order',
+      created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : ''
+    };
+    var res;
+    if(eid) res = await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
+    else res = await client.from('suppliers').insert([payload]).select('id').single();
+    if(res.error){ if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message); return; }
+    var savedId = res.data && res.data.id ? res.data.id : eid;
+    setEditingId(savedId);
+    saveLocal(savedId, orderNo, items);
+    await mirror(orderNo, supplier, status, items);
+    if(typeof setEntryStatus === 'function') setEntryStatus(finalize ? 'Final Order saved' : 'Order saved in process', 'ok');
+    if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
+    if(typeof render === 'function') await render();
   }
 
-  const prevSave=window.saveEntry;
-  window.saveEntry=function(){ if(isOrderScreen()) return saveWorkflow(false); return prevSave?prevSave.apply(this,arguments):undefined; };
-  window.saveOrderInProcess=function(){ const m=document.getElementById('entryMode'); if(m)m.value='order'; return saveWorkflow(false); };
-  window.finalizeOrder=function(){ const m=document.getElementById('entryMode'); if(m)m.value='order'; return saveWorkflow(true); };
-  window.convertOrderToDN=async function(){
-    const c=client(); const eid=getEditingId(); if(!c||!eid){ setMsg('Open an existing final order first.','error'); return; }
-    const row=await c.from('suppliers').select('*').eq('id',eid).single(); if(row.error||!row.data){ setMsg('Could not load order.','error'); return; }
-    const orderNo=norm(row.data.order_no); await c.from('suppliers').update({entry_type:'delivery_note',status:'Delivery Note',invoice_no:null}).eq('id',eid); try{ await mirrorSave(orderNo,'dn',itemsFromNotes(row.data.notes||'').length?itemsFromNotes(row.data.notes||''):await mirrorLoad(orderNo)); }catch(e){}
-    setMsg('Converted to Delivery Note','ok'); if(typeof window.closeEntryModal==='function') window.closeEntryModal(); if(typeof render==='function') await render();
+  window.saveOrderInProcess = function(){ return saveOrderCore(false); };
+  window.finalizeOrder = function(){ return saveOrderCore(true); };
+  window.saveEntry = function(){
+    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
+    if(mode === 'order') return saveOrderCore(false);
+    if(typeof oldSave === 'function') return oldSave.apply(this, arguments);
+    return saveOrderCore(false);
   };
-
-  try{ if(typeof processStatusLabel==='function'){ const old=processStatusLabel; processStatusLabel=function(row){ const st=norm(row?.status).toLowerCase(); const hasOrder=!!norm(row?.order_no), hasInv=!!norm(row?.invoice_no); const isDN=(row?.entry_type==='delivery_note') || st==='delivery note' || st==='dn'; if(hasOrder&&!hasInv&&!isDN){ if(st==='final order'||st==='order')return 'Final Order'; return 'Order in Process'; } if(isDN)return 'Delivery Note'; return old(row); }; } }catch(e){}
-
-  setInterval(function(){ const modal=document.getElementById('entryModal'); if(!modal||!modal.classList.contains('show'))return; installItemUi(); ensureItemsUi(); ensureButtons(); ensureOption('Order in Process'); ensureOption('Final Order'); if(isOrderScreen()) ensureOrderNo(); },800);
 })();
-</script>
 
+</script>
 </body>
 </html>
 <!-- V266 marker -->
@@ -23404,324 +23534,331 @@ div[role="option"],
 </script>
 <!-- V330 marker: real PO auto-number and item persistence fixed -->
 
-
-<script id="v334-order-items-hard-save-reopen-fix">
-/* V334: final hard fix for Order in Process items.
-   - Saves order item rows into suppliers.notes [[GL_ITEMS:...]] and mirrors into orders/order_items.
-   - Reopens an existing PO and restores its items by suppliers row id / order_no.
-   - Preserves items while status is Order in Process; only Finalize Order changes status. */
+<!-- V339 marker: existing order edit does not reset items -->
+<script id="v339-existing-order-items-lock-fix">
 (function(){
-  if(window.__v334OrderItemsHardFix) return;
-  window.__v334OrderItemsHardFix = true;
+  if(window.__v339ExistingOrderItemsFix) return;
+  window.__v339ExistingOrderItemsFix = true;
 
-  const GL_TAG = 'GL_ITEMS';
-  const SUP_TAG = 'SUPPLIER_ORDER';
-  const LS_PREFIX = 'vardophase_po_items_';
+  var ITEM_TAG = 'VPO_ITEMS';
+  var LEGACY_TAG = 'GL_ITEMS';
+  var FINAL_TAG = 'FINAL_ORDER';
 
-  function db(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
+  function client(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
   function norm(v){ return String(v == null ? '' : v).trim(); }
-  function num(v){ const n = Number(String(v == null ? '' : v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
+  function num(v){ var n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
   function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
-  function dec(str){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(str || ''))))); }catch(e){ return []; } }
-  function tagRe(name){ return new RegExp('\\n?\\[\\[' + name + ':([\\s\\S]*?)\\]\\]', 'i'); }
-  function readTag(notes, name){ const m = String(notes || '').match(tagRe(name)); return m ? norm(m[1]) : ''; }
-  function stripTag(notes, name){ return String(notes || '').replace(tagRe(name), '').trim(); }
-  function stripOurTags(notes){ return stripTag(stripTag(stripTag(notes, GL_TAG), 'GLITEMS'), SUP_TAG); }
-  function vatRate(){ try{ return Number(getVatRate && getVatRate()) || 15; }catch(e){ return 15; } }
-  function isOrderMode(){
-    const mode = norm(document.getElementById('entryMode')?.value).toLowerCase();
-    const orderNo = norm(document.getElementById('entryOrderNo')?.value);
-    const invoiceNo = norm(document.getElementById('entryInvoiceNo')?.value);
-    return mode === 'order' || (!!orderNo && !invoiceNo);
+  function dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s || ''))))); }catch(e){ return []; } }
+  function tagRe(tag){ return new RegExp('\\n?\\[\\[' + tag + ':([\\s\\S]*?)\\]\\]', 'i'); }
+  function readTag(notes, tag){ var m = String(notes || '').match(tagRe(tag)); return m ? norm(m[1]) : ''; }
+  function stripOurTags(notes){
+    var s = String(notes || '');
+    [ITEM_TAG, LEGACY_TAG, FINAL_TAG].forEach(function(t){ s = s.replace(tagRe(t), ''); });
+    return s.trim();
   }
-  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
-  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
-  function setStatus(msg, type){
-    try{ if(typeof setEntryStatus === 'function') return setEntryStatus(msg, type || 'ok'); }catch(e){}
-    const el = document.getElementById('entryStatusMsg'); if(el){ el.textContent = msg || ''; el.className = 'status ' + (type || 'ok'); }
+  function withItemsTag(notes, items){
+    var clean = stripOurTags(notes);
+    var out = clean;
+    if(items && items.length){
+      out += (out ? '\n' : '') + '[[' + ITEM_TAG + ':' + enc(items) + ']]';
+      out += '\n[[' + LEGACY_TAG + ':' + enc(items) + ']]';
+    }
+    return out;
   }
-  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function currentEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
+  function setCurrentEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
 
-  function normalizeItem(it){
-    const qty = num(it.qty);
-    const unitPrice = num(it.unitPrice != null ? it.unitPrice : (it.unit_price != null ? it.unit_price : it.price));
-    const discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
-    const netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
-    const totalExVat = qty * netPrice;
-    return {
-      productCode: norm(it.productCode || it.product_code || ''),
-      description: norm(it.description || ''),
-      qty, unitPrice, discountPercent, netPrice, totalExVat,
-      glCode: norm(it.glCode || it.gl_code || ''),
-      glDescription: norm(it.glDescription || it.gl_description || '')
-    };
-  }
   function cleanItems(items){
-    return (Array.isArray(items) ? items : []).map(normalizeItem).filter(it =>
-      it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription
-    );
-  }
-  function collectItems(){
-    let items = [];
-    try{ if(typeof window.vardoGlCollectItems === 'function') items = window.vardoGlCollectItems() || []; }catch(e){ items = []; }
-    if(!items.length){
-      items = Array.from(document.querySelectorAll('#glItemsBody tr')).map(tr => ({
-        productCode: tr.querySelector('.gli-code')?.value,
-        description: tr.querySelector('.gli-desc')?.value,
-        qty: tr.querySelector('.gli-qty')?.value,
-        unitPrice: tr.querySelector('.gli-price')?.value,
-        discountPercent: tr.querySelector('.gli-disc')?.value,
-        glCode: tr.querySelector('.gli-gl')?.value,
-        glDescription: tr.querySelector('.gli-gldesc')?.value
-      }));
-    }
-    return cleanItems(items);
-  }
-  function subtotal(items){ return cleanItems(items).reduce((s,it)=>s + num(it.totalExVat), 0); }
-  function calcAmounts(items){
-    const net = subtotal(items);
-    const supplier = norm(document.getElementById('entrySupplier')?.value);
-    let vat = 0;
-    try{ vat = supplier && getSupplierVatType && getSupplierVatType(supplier) === 'not_registered' ? 0 : net * (vatRate()/100); }
-    catch(e){ vat = net * 0.15; }
-    return { net, vat, total: net + vat };
-  }
-  function firstDescription(items){ const it = items.find(x=>x.description) || items[0]; return it ? (it.description || it.productCode || 'Order items') : 'Order items'; }
-
-  function itemRowHtml(item={}){
-    const it = normalizeItem(item);
-    return '<tr>'+
-      '<td><input class="dark gli-code" type="text" value="'+esc(it.productCode)+'" placeholder="Product Code"></td>'+ 
-      '<td><input class="dark gli-desc" type="text" value="'+esc(it.description)+'" placeholder="Item description"></td>'+ 
-      '<td><input class="dark gli-qty" type="number" step="0.01" min="0" value="'+esc(it.qty || '')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-      '<td><input class="dark gli-price" type="number" step="0.01" min="0" value="'+esc(it.unitPrice || '')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-      '<td><input class="dark gli-disc" type="number" step="0.01" min="0" max="100" value="'+esc(it.discountPercent || '')+'" oninput="window.vardoGlRecalcItems&&window.vardoGlRecalcItems()"></td>'+ 
-      '<td><input class="dark gli-net" readonly value="'+esc((it.netPrice || 0).toFixed ? it.netPrice.toFixed(2) : '0.00')+'"></td>'+ 
-      '<td><input class="dark gli-total" readonly value="'+esc((it.totalExVat || 0).toFixed ? it.totalExVat.toFixed(2) : '0.00')+'"></td>'+ 
-      '<td><input class="dark gli-gl" type="text" value="'+esc(it.glCode)+'" placeholder="GL Code"></td>'+ 
-      '<td><input class="dark gli-gldesc" type="text" value="'+esc(it.glDescription)+'" placeholder="GL Description"></td>'+ 
-      '<td><button type="button" class="ghost gli-remove" onclick="this.closest(\'tr\').remove(); window.vardoGlRecalcItems&&window.vardoGlRecalcItems();">×</button></td>'+ 
-    '</tr>';
-  }
-  function ensureItemsUi(){
-    let body = document.getElementById('glItemsBody');
-    if(body) return body;
-    const form = document.querySelector('#entryModal .form-grid');
-    if(!form) return null;
-    const anchor = document.getElementById('entryNetAmount')?.closest('label') || document.getElementById('entryStatusWrap');
-    const box = document.createElement('div');
-    box.id = 'glItemsSection';
-    box.className = 'full gl-items-section';
-    box.style.gridColumn = '1 / -1';
-    box.innerHTML = '<div class="gl-title-row"><div><b>Order / Invoice Items</b><div class="helper">Items stay saved while the order is in process.</div></div><button type="button" class="primary" onclick="window.vardoGlAddItem&&window.vardoGlAddItem({})">+ Add Item</button></div>'+
-      '<div class="gl-table-wrap"><table class="gl-items-table"><thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net Price</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th><th></th></tr></thead><tbody id="glItemsBody"></tbody></table></div>'+
-      '<div class="gl-totals"><span>Subtotal Excl VAT: <b id="glSubTotal">0.00</b></span><span>Discount Total: <b id="glDiscountTotal">0.00</b></span><span>VAT: <b id="glVatTotal">0.00</b></span><span>Grand Total: <b id="glGrandTotal">0.00</b></span></div>';
-    if(anchor) form.insertBefore(box, anchor); else form.appendChild(box);
-    return document.getElementById('glItemsBody');
-  }
-  function patchAddAndRecalc(){
-    if(!window.vardoGlAddItem || window.vardoGlAddItem.__v334){
-      const add = function(item){ const body = ensureItemsUi(); if(!body) return; body.insertAdjacentHTML('beforeend', itemRowHtml(item || {})); if(window.vardoGlRecalcItems) window.vardoGlRecalcItems(); };
-      add.__v334 = true;
-      window.vardoGlAddItem = add;
-    }
-    const oldRecalc = window.vardoGlRecalcItems;
-    if(!oldRecalc || !oldRecalc.__v334){
-      const recalc = function(){
-        try{ if(oldRecalc && oldRecalc !== recalc) oldRecalc.apply(this, arguments); }catch(e){}
-        let sub=0, disc=0;
-        Array.from(document.querySelectorAll('#glItemsBody tr')).forEach(tr=>{
-          const qty = num(tr.querySelector('.gli-qty')?.value), price = num(tr.querySelector('.gli-price')?.value), dp = num(tr.querySelector('.gli-disc')?.value);
-          const net = Math.max(0, price - price*dp/100), total = qty*net;
-          sub += total; disc += qty*(price-net);
-          const ne = tr.querySelector('.gli-net'), te = tr.querySelector('.gli-total');
-          if(ne) ne.value = net.toFixed(2); if(te) te.value = total.toFixed(2);
-        });
-        const vat = sub * (vatRate()/100), grand = sub + vat;
-        [['glSubTotal',sub],['glDiscountTotal',disc],['glVatTotal',vat],['glGrandTotal',grand]].forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.textContent = v.toFixed(2); });
-        if(isOrderMode()){
-          const netEl=document.getElementById('entryNetAmount'), vatEl=document.getElementById('entryVatAmount'), totalEl=document.getElementById('entryTotal');
-          if(netEl) netEl.value = sub.toFixed(2); if(vatEl) vatEl.value = vat.toFixed(2); if(totalEl) totalEl.value = grand.toFixed(2);
-        }
+    return (Array.isArray(items) ? items : []).map(function(it){
+      var qty = num(it.qty);
+      var unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
+      var discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
+      var netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
+      var totalExVat = qty * netPrice;
+      return {
+        productCode: norm(it.productCode || it.product_code || ''),
+        description: norm(it.description || ''),
+        qty: qty,
+        unitPrice: unitPrice,
+        discountPercent: discountPercent,
+        netPrice: netPrice,
+        totalExVat: totalExVat,
+        glCode: norm(it.glCode || it.gl_code || ''),
+        glDescription: norm(it.glDescription || it.gl_description || '')
       };
-      recalc.__v334 = true;
-      window.vardoGlRecalcItems = recalc;
-    }
-  }
-  function loadItemsIntoTable(items, keepBlankIfEmpty=true){
-    patchAddAndRecalc();
-    const body = ensureItemsUi();
-    if(!body) return false;
-    const arr = cleanItems(items);
-    body.innerHTML = '';
-    if(arr.length) arr.forEach(it => window.vardoGlAddItem(it));
-    else if(keepBlankIfEmpty) window.vardoGlAddItem({});
-    try{ window.vardoGlRecalcItems && window.vardoGlRecalcItems(); }catch(e){}
-    return true;
+    }).filter(function(it){ return it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription; });
   }
 
-  function cacheSet(orderNo, rowId, items){
-    const arr = cleanItems(items);
-    try{ if(orderNo) localStorage.setItem(LS_PREFIX + orderNo, JSON.stringify(arr)); }catch(e){}
-    try{ if(rowId) localStorage.setItem(LS_PREFIX + 'row_' + rowId, JSON.stringify(arr)); }catch(e){}
+  function collectItems(){
+    try{
+      if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems();
+      if(typeof window.vardoGlCollectItems === 'function'){
+        var a = cleanItems(window.vardoGlCollectItems());
+        if(a.length) return a;
+      }
+    }catch(e){}
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#glItemsBody tr'));
+    return cleanItems(rows.map(function(tr){
+      return {
+        productCode: tr.querySelector('.gli-code') && tr.querySelector('.gli-code').value,
+        description: tr.querySelector('.gli-desc') && tr.querySelector('.gli-desc').value,
+        qty: tr.querySelector('.gli-qty') && tr.querySelector('.gli-qty').value,
+        unitPrice: tr.querySelector('.gli-price') && tr.querySelector('.gli-price').value,
+        discountPercent: tr.querySelector('.gli-disc') && tr.querySelector('.gli-disc').value,
+        glCode: tr.querySelector('.gli-gl') && tr.querySelector('.gli-gl').value,
+        glDescription: tr.querySelector('.gli-gldesc') && tr.querySelector('.gli-gldesc').value
+      };
+    }));
   }
-  function cacheGet(orderNo, rowId){
-    try{ if(rowId){ const a = JSON.parse(localStorage.getItem(LS_PREFIX + 'row_' + rowId) || '[]'); if(a.length) return cleanItems(a); } }catch(e){}
-    try{ if(orderNo){ const a = JSON.parse(localStorage.getItem(LS_PREFIX + orderNo) || '[]'); if(a.length) return cleanItems(a); } }catch(e){}
-    return [];
+
+  function loadItems(items){
+    items = cleanItems(items);
+    var run = function(){
+      var body = document.getElementById('glItemsBody');
+      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
+      body.innerHTML = '';
+      if(items.length) items.forEach(function(it){ window.vardoGlAddItem(it); });
+      else window.vardoGlAddItem({});
+      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+      return true;
+    };
+    if(!run()){
+      setTimeout(run, 150);
+      setTimeout(run, 500);
+      setTimeout(run, 1100);
+    }
   }
-  function itemsFromNotes(notes){
-    let arr = dec(readTag(notes, GL_TAG));
-    if(!Array.isArray(arr) || !arr.length) arr = dec(readTag(notes, 'GLITEMS'));
+
+  function saveLocal(rowId, orderNo, items){
+    items = cleanItems(items);
+    try{ if(rowId) localStorage.setItem('vardo_po_items_row_' + rowId, JSON.stringify(items)); }catch(e){}
+    try{ if(orderNo) localStorage.setItem('vardo_po_items_no_' + orderNo, JSON.stringify(items)); }catch(e){}
+  }
+  function readLocal(rowId, orderNo){
+    var arr = [];
+    try{ if(rowId) arr = JSON.parse(localStorage.getItem('vardo_po_items_row_' + rowId) || '[]'); }catch(e){ arr = []; }
+    if(!arr.length){ try{ if(orderNo) arr = JSON.parse(localStorage.getItem('vardo_po_items_no_' + orderNo) || '[]'); }catch(e){ arr = []; } }
     return cleanItems(arr);
   }
-  async function mirrorSave(orderNo, supplier, status, items){
-    const client = db(); if(!client || !orderNo) return;
-    try{
-      let orderId = null;
-      const found = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      if(found?.data?.id) orderId = found.data.id;
-      if(orderId) await client.from('orders').update({supplier: supplier || '', status: status || 'Order in Process'}).eq('id', orderId);
-      else{
-        const ins = await client.from('orders').insert([{po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process'}]).select('id').single();
-        if(ins?.data?.id) orderId = ins.data.id;
-      }
-      if(!orderId) return;
-      await client.from('order_items').delete().eq('order_id', orderId);
-      const rows = cleanItems(items).map(it => ({order_id: orderId, description: it.description || it.productCode || 'Item', qty: num(it.qty), unit_price: num(it.unitPrice), discount: num(it.discountPercent)}));
-      if(rows.length) await client.from('order_items').insert(rows);
-    }catch(e){ console.warn('V334 mirror save skipped', e?.message || e); }
+
+  function itemsFromNotes(notes){
+    var a = cleanItems(dec(readTag(notes, ITEM_TAG)));
+    if(!a.length) a = cleanItems(dec(readTag(notes, LEGACY_TAG)));
+    return a;
   }
-  async function mirrorLoad(orderNo){
-    const client = db(); if(!client || !orderNo) return [];
+
+  async function itemsFromOrderItems(orderNo){
+    var db = client();
+    if(!db || !orderNo) return [];
     try{
-      const ord = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      const oid = ord?.data?.id; if(!oid) return [];
-      const res = await client.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
+      var ord = await db.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      var oid = ord && ord.data && ord.data.id;
+      if(!oid) return [];
+      var res = await db.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
       if(res.error) return [];
-      return cleanItems((res.data || []).map(r => ({description:r.description, qty:r.qty, unitPrice:r.unit_price, discountPercent:r.discount})));
+      return cleanItems((res.data || []).map(function(r){
+        return { description: r.description, qty: r.qty, unitPrice: r.unit_price, discountPercent: r.discount };
+      }));
     }catch(e){ return []; }
   }
-  async function nextOrderNo(){
-    const client = db(); let max = 0;
-    function scan(rows, field){ (rows || []).forEach(r=>{ const m=String(r[field]||'').match(/PO[- ]?(\d+)/i); if(m) max=Math.max(max, Number(m[1]||0)); }); }
-    try{ if(window.vardoNextOrderNo){ const n = await window.vardoNextOrderNo(); if(/^PO-\d+/i.test(n)) return n; } }catch(e){}
-    try{ if(client){ const s=await client.from('suppliers').select('order_no').not('order_no','is',null); if(!s.error) scan(s.data,'order_no'); const o=await client.from('orders').select('po_number').not('po_number','is',null); if(!o.error) scan(o.data,'po_number'); } }catch(e){}
-    return 'PO-' + String(max+1).padStart(3,'0');
+
+  async function mirror(orderNo, supplier, status, items){
+    var db = client();
+    if(!db || !orderNo) return;
+    try{
+      var orderId = null;
+      var found = await db.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
+      if(found && found.data && found.data.id) orderId = found.data.id;
+      if(orderId){
+        await db.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
+      }else{
+        var ins = await db.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
+        if(ins && ins.data && ins.data.id) orderId = ins.data.id;
+      }
+      if(orderId){
+        await db.from('order_items').delete().eq('order_id', orderId);
+        var rows = cleanItems(items).map(function(it){
+          return { order_id: orderId, description: it.description || it.productCode || 'Item', qty: num(it.qty), unit_price: num(it.unitPrice), discount: num(it.discountPercent) };
+        });
+        if(rows.length) await db.from('order_items').insert(rows);
+      }
+    }catch(e){ console.warn('V339 order mirror skipped', e && e.message ? e.message : e); }
   }
+
+  function setStatusOptionsValue(value){
+    var st = document.getElementById('entryStatus');
+    if(!st) return;
+    var exists = Array.prototype.slice.call(st.options || []).some(function(o){ return o.value === value; });
+    if(!exists) st.insertAdjacentHTML('beforeend', '<option value="' + value + '">' + value + '</option>');
+    st.value = value;
+  }
+
+  async function nextOrderNo(){
+    var db = client();
+    var max = 0;
+    function scan(rows, field){ (rows || []).forEach(function(r){ var m = String(r[field] || '').match(/PO[- ]?(\d+)/i); if(m) max = Math.max(max, Number(m[1] || 0)); }); }
+    try{
+      if(db){
+        var s = await db.from('suppliers').select('order_no').not('order_no','is',null);
+        if(!s.error) scan(s.data, 'order_no');
+        var o = await db.from('orders').select('po_number').not('po_number','is',null);
+        if(!o.error) scan(o.data, 'po_number');
+      }
+    }catch(e){}
+    return 'PO-' + String(max + 1).padStart(3, '0');
+  }
+
   async function ensureOrderNo(){
-    const el = document.getElementById('entryOrderNo'); if(!el) return '';
-    if(!norm(el.value)){ el.value = await nextOrderNo(); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+    var el = document.getElementById('entryOrderNo');
+    if(!el) return '';
+    if(!norm(el.value)) el.value = await nextOrderNo();
     return norm(el.value);
   }
-  function ensureStatusOption(v){ const st=document.getElementById('entryStatus'); if(!st) return; if(!Array.from(st.options||[]).some(o=>o.value===v)){ const opt=document.createElement('option'); opt.value=v; opt.textContent=v; st.appendChild(opt); } }
-  function ensureWorkflowButtons(){
-    const actions = document.querySelector('#entryModal .modal-actions'); if(!actions) return;
-    if(!document.getElementById('saveProcessBtn')){
-      const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='8px'; wrap.style.flexWrap='wrap';
-      wrap.innerHTML = '<button id="saveProcessBtn" type="button" class="soft" onclick="window.saveOrderInProcess&&window.saveOrderInProcess()">Save In Process</button><button id="finalizeOrderBtn" type="button" class="primary" onclick="window.finalizeOrder&&window.finalizeOrder()">Finalize Order</button>';
-      actions.insertBefore(wrap, actions.querySelector('.spacer') || actions.firstChild);
-    }
+
+  function installButtons(){
+    var actions = document.querySelector('#entryModal .modal-actions');
+    if(!actions || actions.dataset.v339Buttons === '1') return;
+    actions.dataset.v339Buttons = '1';
+    var saveBtn = actions.querySelector('button.primary[onclick*="saveEntry"]');
+    if(saveBtn) saveBtn.textContent = 'Save Entry';
+    var spacer = actions.querySelector('.spacer');
+    var html = '<button type="button" class="soft" onclick="window.saveOrderInProcess()">Save In Process</button><button type="button" class="primary" onclick="window.finalizeOrder()">Finalize Order</button>';
+    if(spacer) spacer.insertAdjacentHTML('beforebegin', html); else actions.insertAdjacentHTML('afterbegin', html);
   }
 
-  async function loadForOpen(id){
+  function isFinal(){
+    var notes = document.getElementById('entryNotes') && document.getElementById('entryNotes').value;
+    return readTag(notes || '', FINAL_TAG) === '1';
+  }
+
+  async function loadExistingItemsForId(id){
+    var db = client();
+    if(!db || !id) return;
     try{
-      patchAddAndRecalc(); ensureItemsUi(); ensureWorkflowButtons(); ensureStatusOption('Order in Process'); ensureStatusOption('Final Order');
-      if(!id){ if(isOrderMode()) { await ensureOrderNo(); loadItemsIntoTable([], true); } return; }
-      const client = db(); if(!client) return;
-      const res = await client.from('suppliers').select('*').eq('id', id).single();
+      var res = await db.from('suppliers').select('*').eq('id', id).single();
       if(res.error || !res.data) return;
-      const row = res.data;
-      const orderNo = norm(row.order_no || document.getElementById('entryOrderNo')?.value);
-      let items = itemsFromNotes(row.notes || '');
-      if(!items.length) items = await mirrorLoad(orderNo);
-      if(!items.length) items = cacheGet(orderNo, id);
-      loadItemsIntoTable(items, true);
-      const notesEl = document.getElementById('entryNotes'); if(notesEl) notesEl.value = stripOurTags(row.notes || '');
-      const supEl = document.getElementById('entrySupplierOrderNo'); if(supEl) supEl.value = readTag(row.notes || '', SUP_TAG);
-      const st = document.getElementById('entryStatus'); if(st && orderNo && !norm(row.invoice_no)) { ensureStatusOption(row.status || 'Order in Process'); st.value = row.status || 'Order in Process'; }
-    }catch(e){ console.warn('V334 load failed', e?.message || e); }
+      var row = res.data;
+      var orderNo = norm(row.order_no);
+      var items = itemsFromNotes(row.notes);
+      if(!items.length) items = await itemsFromOrderItems(orderNo);
+      if(!items.length) items = readLocal(id, orderNo);
+      loadItems(items);
+      saveLocal(id, orderNo, items);
+      var notesEl = document.getElementById('entryNotes');
+      if(notesEl) notesEl.value = stripOurTags(row.notes || '');
+      if(norm(row.order_no)){
+        var orderEl = document.getElementById('entryOrderNo');
+        if(orderEl) orderEl.value = row.order_no;
+      }
+      if(norm(row.status) === 'Order in Process' || (row.order_no && !row.invoice_no)) setStatusOptionsValue('Order in Process');
+    }catch(e){ console.warn('V339 load existing items failed', e); }
   }
 
-  const oldOpen = window.openEntryModal;
-  if(typeof oldOpen === 'function' && !oldOpen.__v334){
-    const wrapped = async function(id=null, forcedMode=''){
-      const r = await oldOpen.apply(this, arguments);
-      const run = () => loadForOpen(id);
-      run(); setTimeout(run, 250); setTimeout(run, 900); setTimeout(run, 1700);
+  var oldOpen = window.openEntryModal;
+  if(typeof oldOpen === 'function'){
+    window.openEntryModal = async function(id, forcedMode){
+      window.__vardoOpeningExistingOrder = !!id;
+      var r = await oldOpen.apply(this, arguments);
+      installButtons();
+      var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
+      if(id){
+        setTimeout(function(){ loadExistingItemsForId(id); }, 120);
+        setTimeout(function(){ loadExistingItemsForId(id); }, 650);
+      }else if(forcedMode === 'order' || mode === 'order'){
+        setStatusOptionsValue('Order in Process');
+        setTimeout(function(){ ensureOrderNo(); loadItems([]); }, 120);
+      }
       return r;
     };
-    wrapped.__v334 = true;
-    window.openEntryModal = wrapped;
   }
 
-  const oldSave = window.saveEntry;
-  window.saveEntry = async function(){
-    if(!isOrderMode()) return oldSave ? oldSave.apply(this, arguments) : undefined;
-    try{
-      const client = db(); if(!client){ setStatus('Database connection is not ready. Refresh and try again.','error'); return; }
-      patchAddAndRecalc(); ensureItemsUi();
-      try{ window.vardoGlRecalcItems && window.vardoGlRecalcItems(); }catch(e){}
-      const supplier = norm(document.getElementById('entrySupplier')?.value);
-      const project = norm(document.getElementById('entryProject')?.value);
-      if(!supplier || !project){ setStatus('Fill supplier and project. Prices can be completed later.','error'); return; }
-      const orderNo = await ensureOrderNo();
-      let items = collectItems();
-      const eid = getEditingId();
-      if(!items.length){
-        items = cacheGet(orderNo, eid);
-        if(!items.length) items = await mirrorLoad(orderNo);
+  async function saveCore(finalize){
+    var db = client();
+    if(!db){ alert('Database connection missing.'); return; }
+    try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
+    var eid = currentEditingId();
+    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) || 'order';
+    var supplier = norm(document.getElementById('entrySupplier') && document.getElementById('entrySupplier').value);
+    var project = norm(document.getElementById('entryProject') && document.getElementById('entryProject').value);
+    if(!supplier || !project){ if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project.', 'error'); else alert('Fill supplier and project.'); return; }
+    var orderNo = norm(document.getElementById('entryOrderNo') && document.getElementById('entryOrderNo').value);
+    if(mode === 'order' && !orderNo) orderNo = await ensureOrderNo();
+    var invoiceNo = norm(document.getElementById('entryInvoiceNo') && document.getElementById('entryInvoiceNo').value);
+
+    var items = collectItems();
+    if(!items.length && eid){
+      var prev = await db.from('suppliers').select('notes,order_no').eq('id', eid).single();
+      if(prev && prev.data){
+        items = itemsFromNotes(prev.data.notes);
+        if(!items.length) items = await itemsFromOrderItems(prev.data.order_no || orderNo);
+        if(!items.length) items = readLocal(eid, prev.data.order_no || orderNo);
       }
-      const amounts = items.length ? calcAmounts(items) : {net:num(document.getElementById('entryNetAmount')?.value), vat:num(document.getElementById('entryVatAmount')?.value), total:num(document.getElementById('entryTotal')?.value)};
-      ensureStatusOption('Order in Process'); ensureStatusOption('Final Order');
-      let status = norm(document.getElementById('entryStatus')?.value);
-      if(!status || status === 'Paid' || status === 'Unpaid' || status === 'Open' || status === 'Site Request') status = 'Order in Process';
-      const cleanNotes = stripOurTags(document.getElementById('entryNotes')?.value || '');
-      const supplierOrder = norm(document.getElementById('entrySupplierOrderNo')?.value);
-      const notes = cleanNotes + (supplierOrder ? '\n[['+SUP_TAG+':'+supplierOrder+']]' : '') + (items.length ? '\n[['+GL_TAG+':'+enc(items)+']]' : '');
-      const payload = {
-        supplier, order_no: orderNo, invoice_no: null, project,
-        description: norm(document.getElementById('entryDescription')?.value) || firstDescription(items),
-        net_amount: amounts.net, vat_amount: amounts.vat, total: amounts.total, amount: amounts.total,
-        status, notes, entry_type: 'order',
-        created_by: (typeof currentUser !== 'undefined' && currentUser?.email) ? currentUser.email : ''
-      };
-      let res, savedId = eid;
-      if(eid) res = await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
-      else res = await client.from('suppliers').insert([payload]).select('id').single();
-      if(res.error){ setStatus(res.error.message, 'error'); return; }
-      if(res.data?.id) savedId = res.data.id;
-      setEditingId(savedId);
-      cacheSet(orderNo, savedId, items);
-      await mirrorSave(orderNo, supplier, status, items);
-      try{ if(typeof logAudit === 'function') await logAudit(eid ? 'update_order_process' : 'create_order_process', supplier+' | '+project+' | '+orderNo); }catch(e){}
-      setStatus(status === 'Final Order' ? 'Final order saved' : 'Order in process saved', 'ok');
-      if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
-      if(typeof render === 'function') await render();
-    }catch(e){ setStatus(e?.message || 'Save error', 'error'); }
+    }
+
+    var net = items.reduce(function(s,it){ return s + num(it.totalExVat); }, 0);
+    var vat = net ? net * ((typeof getVatRate === 'function' ? Number(getVatRate() || 15) : 15) / 100) : num(document.getElementById('entryVatAmount') && document.getElementById('entryVatAmount').value);
+    var total = net ? net + vat : num(document.getElementById('entryTotal') && document.getElementById('entryTotal').value);
+    var status = finalize ? 'Final Order' : 'Order in Process';
+    var baseNotes = stripOurTags(document.getElementById('entryNotes') && document.getElementById('entryNotes').value);
+    var notes = withItemsTag(baseNotes, items);
+    if(finalize) notes += (notes ? '\n' : '') + '[[FINAL_ORDER:1]]';
+    var first = items.find(function(x){ return x.description; }) || items[0];
+    var description = norm(document.getElementById('entryDescription') && document.getElementById('entryDescription').value) || (first ? (first.description || first.productCode) : 'Order items');
+    var payload = {
+      supplier: supplier,
+      order_no: orderNo || null,
+      invoice_no: (mode === 'order' && !finalize) ? null : (invoiceNo || null),
+      project: project,
+      description: description,
+      net_amount: net,
+      vat_amount: vat,
+      total: total,
+      amount: total,
+      status: status,
+      notes: notes,
+      entry_type: 'order',
+      created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : ''
+    };
+
+    var res;
+    if(eid) res = await db.from('suppliers').update(payload).eq('id', eid).select('id').single();
+    else res = await db.from('suppliers').insert([payload]).select('id').single();
+    if(res.error){ if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message); return; }
+    var savedId = res.data && res.data.id ? res.data.id : eid;
+    setCurrentEditingId(savedId);
+    saveLocal(savedId, orderNo, items);
+    await mirror(orderNo, supplier, status, items);
+    if(typeof setEntryStatus === 'function') setEntryStatus(finalize ? 'Final Order saved' : 'Order saved in process', 'ok');
+    if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
+    if(typeof render === 'function') await render();
+  }
+
+  if(!window.__v339OldSaveEntry && typeof window.saveEntry === 'function') window.__v339OldSaveEntry = window.saveEntry;
+  window.saveOrderInProcess = function(){ return saveCore(false); };
+  window.finalizeOrder = function(){ return saveCore(true); };
+  window.saveEntry = function(){
+    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
+    if(mode === 'order') return saveCore(false);
+    if(typeof window.__v339OldSaveEntry === 'function') return window.__v339OldSaveEntry.apply(this, arguments);
+    return saveCore(false);
   };
 
-  window.saveOrderInProcess = async function(){ ensureStatusOption('Order in Process'); const st=document.getElementById('entryStatus'); if(st) st.value='Order in Process'; const mode=document.getElementById('entryMode'); if(mode) mode.value='order'; return window.saveEntry(); };
-  window.finalizeOrder = async function(){ ensureStatusOption('Final Order'); const st=document.getElementById('entryStatus'); if(st) st.value='Final Order'; const mode=document.getElementById('entryMode'); if(mode) mode.value='order'; return window.saveEntry(); };
-
   try{
-    if(typeof processStatusLabel === 'function'){
-      const oldLabel = processStatusLabel;
-      processStatusLabel = function(row){
-        const hasOrder = !!norm(row?.order_no), hasInvoice = !!norm(row?.invoice_no), hasDN = (typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
-        const st = norm(row?.status).toLowerCase();
-        if(hasOrder && !hasDN && !hasInvoice){ return st === 'final order' ? 'Final Order' : 'Order in Process'; }
-        return oldLabel(row);
-      };
-    }
+    processStatusLabel = function(row){
+      if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'credit_note') return 'Credit Note';
+      if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'deposit') return 'Deposit';
+      var hasOrder = !!norm(row && row.order_no);
+      var hasDN = (typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
+      var hasInvoice = !!norm(row && row.invoice_no);
+      var st = norm(row && row.status).toLowerCase();
+      if(st === 'final order') return 'Final Order';
+      if(hasOrder && !hasDN && !hasInvoice) return 'Order in Process';
+      if(hasOrder && hasDN && !hasInvoice) return 'Delivery Note';
+      if(hasInvoice) return 'Invoice';
+      return hasOrder ? 'Order in Process' : 'Order';
+    };
   }catch(e){}
 
-  setInterval(function(){
-    const modal = document.getElementById('entryModal'); if(!modal || !modal.classList.contains('show')) return;
-    patchAddAndRecalc(); ensureItemsUi(); ensureWorkflowButtons(); ensureStatusOption('Order in Process'); ensureStatusOption('Final Order');
-    if(isOrderMode()) ensureOrderNo();
-  }, 900);
 })();
 </script>
-<!-- V334 marker: Order in Process items are saved and restored by PO and row id -->
 
