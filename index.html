@@ -3733,9 +3733,30 @@ function creditNoteLabel(row){
   const dt = extractCreditDate(row);
   return "Credit Note" + (no ? " " + no : "") + " · " + money(credit) + (dt ? " · " + dt : "");
 }
+function extractSupplierOrderNo(row){
+  const notes = String(row?.notes || "");
+  const start = "[[V316_SUPPLIER_ORDER_NO:";
+  const end = "]]";
+  const i = notes.indexOf(start);
+  if(i < 0) return "";
+  const j = notes.indexOf(end, i + start.length);
+  if(j < 0) return "";
+  const raw = notes.slice(i + start.length, j);
+  try { return decodeURIComponent(raw || ""); } catch(e){ return raw || ""; }
+}
+function stripSupplierOrderFromNotesText(notes){
+  notes = String(notes || "");
+  const start = "[[V316_SUPPLIER_ORDER_NO:";
+  const end = "]]";
+  const i = notes.indexOf(start);
+  if(i < 0) return notes;
+  const j = notes.indexOf(end, i + start.length);
+  if(j < 0) return notes;
+  return (notes.slice(0,i) + notes.slice(j + end.length)).trim();
+}
 function visibleNotes(row){
-  let n = String(row?.notes || "");
-  ["DNAMT","CANCELAMT","CREDIT","CREDITNO","CREDITDATE","CREDITREASON","CREDITLINK","CREDITPARENT","PARENTINVOICE","CLOSE","GLITEMS"].forEach(tag => n = stripNoteTag(n, tag));
+  let n = stripSupplierOrderFromNotesText(String(row?.notes || ""));
+  ["DNAMT","CANCELAMT","CREDIT","CREDITNO","CREDITDATE","CREDITREASON","CREDITLINK","CREDITPARENT","PARENTINVOICE","CLOSE"].forEach(tag => n = stripNoteTag(n, tag));
   return n;
 }
 
@@ -3748,7 +3769,10 @@ function processStatusLabel(row){
   const hasDN = !!extractDeliveryNoteNo(row);
   const hasInvoice = !!String(row.invoice_no || "").trim();
 
-  if(hasOrder && !hasDN && !hasInvoice) return "Order";
+  if(hasOrder && !hasDN && !hasInvoice){
+    const amount = Number(row.net_amount || row.total || row.amount || 0) || 0;
+    return amount > 0 ? "Order" : "Process";
+  }
   if(hasOrder && hasDN && !hasInvoice) return "Delivery Note";
   if(hasOrder && hasDN && hasInvoice) return "Invoice";
   if(hasInvoice && !hasOrder) return "Done";
@@ -3760,7 +3784,7 @@ function processStatusClass(row){
   const label = processStatusLabel(row);
   if(label === "Credit Note") return "vat";
   if(label === "Deposit") return "deposit";
-  if(label === "Order") return "unpaid";
+  if(label === "Order" || label === "Process") return "unpaid";
   if(label === "Delivery Note") return "vat";
   if(label === "Invoice") return "paid";
   if(label === "Done") return "paid";
@@ -4405,18 +4429,30 @@ function computeLedger(rows){
       e.status = "Deposit";
       e.amount_due = 0;
     } else {
-      const applied = Math.min(availableBefore, amount);
-      e.deposit_applied = applied;
-      e.amount_due = Math.max(0, amount - applied);
-      e.unpaid_after_deposit = e.amount_due;
-      used[supplier] = Number(used[supplier] || 0) + applied;
+      const hasInvoiceForDepositApply = !!String(e.invoice_no || "").trim();
+      const hasOnlyOrderInProcess = !!String(e.order_no || "").trim() && !hasInvoiceForDepositApply && !extractDeliveryNoteNo(e);
 
-      if(e.amount_due <= 0){
-        e.status = "Covered";
-      } else if(e.deposit_applied > 0){
-        e.status = "Part Covered";
-      } else if(!e.status){
-        e.status = "Unpaid";
+      // Open / in-process orders must not be marked Covered just because total is 0.00
+      // and deposits must not be applied until the supplier invoice exists.
+      if(hasOnlyOrderInProcess){
+        e.deposit_applied = 0;
+        e.amount_due = Math.max(0, amount);
+        e.unpaid_after_deposit = e.amount_due;
+        e.status = amount > 0 ? "Unpaid" : "Process";
+      } else {
+        const applied = Math.min(availableBefore, amount);
+        e.deposit_applied = applied;
+        e.amount_due = Math.max(0, amount - applied);
+        e.unpaid_after_deposit = e.amount_due;
+        used[supplier] = Number(used[supplier] || 0) + applied;
+
+        if(amount > 0 && e.amount_due <= 0){
+          e.status = "Covered";
+        } else if(e.deposit_applied > 0){
+          e.status = "Part Covered";
+        } else if(!e.status || e.status === "Covered"){
+          e.status = "Unpaid";
+        }
       }
     }
 
@@ -4873,7 +4909,7 @@ async function render(){
           </select>
           <select class="dark" id="statusFilter">
             <option value="">All Status</option>
-            ${["Paid","Unpaid","Partial","Closed","Covered","Part Covered","Deposit"].map(st=>`<option value="${esc(st)}" ${uiState.status===st?'selected':''}>${esc(st)}</option>`).join("")}
+            ${["Process","Paid","Unpaid","Partial","Closed","Covered","Part Covered","Deposit"].map(st=>`<option value="${esc(st)}" ${uiState.status===st?'selected':''}>${esc(st)}</option>`).join("")}
           </select>
           <select class="dark" id="sortFilter">
             <option value="date_desc" ${uiState.sort==='date_desc'?'selected':''}>Newest First</option>
@@ -4936,6 +4972,7 @@ async function render(){
                 <th>Supplier</th>
                 <th>Process</th>
                 <th>Order No</th>
+                <th>Supplier Order No</th>
                 <th>Delivery Note</th>
                 <th>Delivered</th>
                 <th>Balance</th>
@@ -4943,6 +4980,7 @@ async function render(){
                 <th>Invoice No</th>
                 <th>Project</th>
                 <th>Description</th>
+                <th>GL Codes</th>
                 <th>Order Amount</th>
                 <th>VAT Amount</th><th>Total (Invoice)</th>
                 <th>Deposit Applied</th>
@@ -4962,6 +5000,7 @@ async function render(){
                   <td>${esc(e.supplier || "")}</td>
                   <td><span class="badge ${processStatusClass(e)}">${esc(processStatusLabel(e))}</span></td>
                   <td>${esc(e.order_no || "")}</td>
+                  <td>${esc(typeof extractSupplierOrderNo === "function" ? extractSupplierOrderNo(e) : "")}</td>
                   <td>${esc(extractDeliveryNoteNo(e) || "")}</td>
                   <td>${extractDeliveredAmount(e) ? money(extractDeliveredAmount(e)) : ""}</td>
                   <td>${money(orderRemainingBalance(e))}</td>
@@ -4969,6 +5008,7 @@ async function render(){
                   <td>${esc(e.invoice_no || "")}</td>
                   <td>${esc(e.project || "")}</td>
                   <td>${esc(e.description || "")}</td>
+                  <td>${typeof vardoGLSummary === "function" ? vardoGLSummary(e) : ""}</td>
                   <td>${money(e.total || e.amount || 0)}</td>
                   <td><span class="badge vat">${money(e.vat_amount || 0)}</span></td>
                   <td>${money(typeof invoiceDisplayAmount === "function" ? invoiceDisplayAmount(e) : (e.total || e.amount || 0))}</td>
@@ -5011,8 +5051,7 @@ async function render(){
               ${projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("")}
             </select>
           </label>
-          <label id="entryOrderWrap"><span id="entryOrderLabel">Our Order No</span><input class="dark" id="entryOrderNo" type="text" placeholder="PO-001" readonly></label>
-          <label id="entrySupplierOrderWrap"><span>Supplier Order No</span><input class="dark" id="entrySupplierOrderNo" type="text" placeholder="Supplier order / quotation no"></label>
+          <label id="entryOrderWrap"><span id="entryOrderLabel">Order No</span><input class="dark" id="entryOrderNo" type="text" placeholder="PO-001"></label>
           <label id="entryInvoiceWrap"><span id="entryInvoiceLabel">Invoice No</span><input class="dark" id="entryInvoiceNo" type="text" placeholder="INV-001"></label>
           <input type="hidden" id="entryMode" value="">
           <label id="entryTypeWrap"><span>Entry Type</span>
@@ -5022,24 +5061,16 @@ async function render(){
             </select>
           </label>
 
-          <input type="hidden" id="entryDescriptionSelect" value="">
-          <input type="hidden" id="entryDescription" value="">
-
-          <div id="glItemsSection" class="full gl-items-section">
-            <div class="gl-title-row">
-              <div><b>Order / Invoice Items</b><div class="helper">Add supplier-style item rows. Every line has its own GL Code and GL Description.</div></div>
-              <button type="button" class="primary" onclick="window.vardoGlAddItem && window.vardoGlAddItem()">+ Add Item</button>
+          <label class="full"><span>Description</span>
+            <div class="inline-add">
+              <select class="dark" id="entryDescriptionSelect" onchange="window.pickDescriptionFromList()">
+                <option value="">Select description</option>
+                ${descriptions.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join("")}
+              </select>
+              <button type="button" onclick="window.addDescriptionFromEntry()">+ Add</button>
             </div>
-            <div class="gl-table-wrap">
-              <table class="gl-items-table">
-                <thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net Price</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th><th></th></tr></thead>
-                <tbody id="glItemsBody"></tbody>
-              </table>
-            </div>
-            <div class="gl-totals"><span>Subtotal Excl VAT: <b id="glSubTotal">0.00</b></span><span>Discount Total: <b id="glDiscountTotal">0.00</b></span><span>VAT: <b id="glVatTotal">0.00</b></span><span>Grand Total: <b id="glGrandTotal">0.00</b></span></div>
-            <div class="gl-actions"><button type="button" class="ghost" onclick="window.vardoGlAccountingSummary && window.vardoGlAccountingSummary()">Generate Accounting</button><button type="button" class="ghost" onclick="window.vardoGlExportCSV && window.vardoGlExportCSV()">Export GL CSV</button><button type="button" class="ghost" onclick="window.vardoPrintCurrentOrder && window.vardoPrintCurrentOrder()">Print Order</button></div>
-            <div id="glAccountingSummary" class="gl-summary"></div>
-          </div>
+            <input class="dark" id="entryDescription" type="text" placeholder="Or type new description" style="margin-top:10px">
+          </label>
 
           <label><span>Net Before VAT</span><input class="dark" id="entryNetAmount" type="number" step="0.01" oninput="window.recalcFromNet()"></label>
           <label><span>VAT Amount</span><input class="dark" id="entryVatAmount" type="number" step="0.01" readonly></label>
@@ -5906,7 +5937,7 @@ window.openEntryModal = async function(id=null, forcedMode=""){
     setVal("entryDescriptionSelect", "");
   }
 
-  const editableIds = ["entrySupplier","entryOrderNo","entrySupplierOrderNo","entryInvoiceNo","entryProject","entryType","entryDescription","entryDescriptionSelect","entryNetAmount","entryVatAmount","entryTotal","entryStatus","entryNotes"];
+  const editableIds = ["entrySupplier","entryOrderNo","entryInvoiceNo","entryProject","entryType","entryDescription","entryDescriptionSelect","entryNetAmount","entryVatAmount","entryTotal","entryStatus","entryNotes"];
   editableIds.forEach(fieldId => {
     const el = document.getElementById(fieldId);
     if(el) el.disabled = currentRole === "viewer";
@@ -6267,8 +6298,8 @@ window.saveEntry = async function(){
   const status = entryType === "deposit" ? "Paid" : document.getElementById("entryStatus").value;
   const notes = document.getElementById("entryNotes").value.trim();
 
-  if(!supplier || !project){
-    setEntryStatus("Fill supplier and project. Prices/total can stay empty for Site Request.", "error");
+  if(!supplier || !project || (modeValue !== "order" && !total)){
+    setEntryStatus(modeValue === "order" ? "Fill supplier and project." : "Fill supplier, project and total.", "error");
     return;
   }
 
@@ -22387,1478 +22418,205 @@ div[role="option"],
 
 </script>
 
-<script>
-/* V307_SUPPLIER_GL_SAFE - supplier style item rows + GL codes. Safe patch: no Supabase schema change. */
+<script id="v304-gl-accounting-module">
 (function(){
-  const GL_CODES = [{"code":"2301","description":"PRELIMINARIES AND GENERAL","type":"Cost of Sales"},{"code":"2301>001","description":"Salaries","type":"Cost of Sales"},{"code":"2301>002","description":"Insurance & Security","type":"Cost of Sales"},{"code":"2301>003","description":"Site Establishment","type":"Cost of Sales"},{"code":"2301>004","description":"Consulting Fees","type":"Cost of Sales"},{"code":"2301>005","description":"Equipment Hire","type":"Cost of Sales"},{"code":"2301>006","description":"Temporary Site Services","type":"Cost of Sales"},{"code":"2301>007","description":"Safety Equipment & First Aid","type":"Cost of Sales"},{"code":"2301>008","description":"Consumables","type":"Cost of Sales"},{"code":"2301>009","description":"Cleaning & Rubble Removal","type":"Cost of Sales"},{"code":"2301>010","description":"Scaffolding","type":"Cost of Sales"},{"code":"2301>011","description":"Permits","type":"Cost of Sales"},{"code":"2302","description":"EARTHWORKS","type":"Cost of Sales"},{"code":"2302>001","description":"Earthworks - Sub- Contractor","type":"Cost of Sales"},{"code":"2302>002","description":"Earthworks - Materials","type":"Cost of Sales"},{"code":"2302>003","description":"Earthworks - Other","type":"Cost of Sales"},{"code":"2302>004","description":"Sub Soill Drainage - Sub Contractor","type":"Cost of Sales"},{"code":"2302>005","description":"Sub Soil Drainage - Materials","type":"Cost of Sales"},{"code":"2303","description":"PILING","type":"Cost of Sales"},{"code":"2303>001","description":"Piling - Sub- Contractor","type":"Cost of Sales"},{"code":"2303>002","description":"Piling - Other","type":"Cost of Sales"},{"code":"2304","description":"CONCRETE, FORMWORK & REINFORCEMENT","type":"Cost of Sales"},{"code":"2304>001","description":"Concrete - Supply","type":"Cost of Sales"},{"code":"2304>002","description":"Concrete- Plant","type":"Cost of Sales"},{"code":"2304>003","description":"Concrete - Labour","type":"Cost of Sales"},{"code":"2304>004","description":"Concrete - Sundries","type":"Cost of Sales"},{"code":"2304>005","description":"Formwork - Supply","type":"Cost of Sales"},{"code":"2304>006","description":"Formwork - Install","type":"Cost of Sales"},{"code":"2304>007","description":"Movement Joints, Supply & Install","type":"Cost of Sales"},{"code":"2304>008","description":"Reinforcing - Supply","type":"Cost of Sales"},{"code":"2304>009","description":"Reinforcing - Labour","type":"Cost of Sales"},{"code":"2304>010","description":"Concrete,Formwork & Reinforcement - Other","type":"Cost of Sales"},{"code":"2304>011","description":"Post Tensioning Reinforcing","type":"Cost of Sales"},{"code":"2304>012","description":"Structural Steel","type":"Cost of Sales"},{"code":"2304>013>01","description":"Concrete - Guardhouse","type":"Cost of Sales"},{"code":"2304>013>02","description":"Formwork - Guardhouse","type":"Cost of Sales"},{"code":"2304>013>03","description":"Reinforcing - Guardhouse","type":"Cost of Sales"},{"code":"2305","description":"PRECAST CONCRETE","type":"Cost of Sales"},{"code":"2305>001","description":"Precast Concrete - Supply","type":"Cost of Sales"},{"code":"2305>002","description":"Precast Concrete - Labour","type":"Cost of Sales"},{"code":"2305>003","description":"Propping - Material","type":"Cost of Sales"},{"code":"2305>004","description":"Precast Concrete - Other","type":"Cost of Sales"},{"code":"2306","description":"MASONARY","type":"Cost of Sales"},{"code":"2306>001","description":"Brick - Supply","type":"Cost of Sales"},{"code":"2306>002","description":"Brick - Labour","type":"Cost of Sales"},{"code":"2306>003","description":"Building Sand - Supply","type":"Cost of Sales"},{"code":"2306>004","description":"Cement - Supply","type":"Cost of Sales"},{"code":"2306>005","description":"Lintels - Supply & Install","type":"Cost of Sales"},{"code":"2306>006","description":"Galvanized Hoop Iron Cramps, Ties- Supply& Install","type":"Cost of Sales"},{"code":"2306>007","description":"Masonary - Other","type":"Cost of Sales"},{"code":"2306>008","description":"Masonary - Guardhouse","type":"Cost of Sales"},{"code":"2307","description":"WATERPROOFING","type":"Cost of Sales"},{"code":"2307>001","description":"Waterproofing - Sub- Contractor","type":"Cost of Sales"},{"code":"2307>002","description":"Waterproofing - Material","type":"Cost of Sales"},{"code":"2307>003","description":"Waterproofing - Other","type":"Cost of Sales"},{"code":"2307>004","description":"Waterproofing - Supply","type":"Cost of Sales"},{"code":"2308","description":"ROOF COVERING","type":"Cost of Sales"},{"code":"2308>001","description":"Roof Covering - Sub Contractor","type":"Cost of Sales"},{"code":"2309","description":"CARPENTARY & JOINERY","type":"Cost of Sales"},{"code":"2309>001","description":"Skirting - Supply & Install","type":"Cost of Sales"},{"code":"2309>002","description":"Window Sills - Supply & Install","type":"Cost of Sales"},{"code":"2309>003","description":"Door & Frames - Supply","type":"Cost of Sales"},{"code":"2309>004","description":"Door & Frames - Install","type":"Cost of Sales"},{"code":"2309>005","description":"Ducts","type":"Cost of Sales"},{"code":"2309>010","description":"Carpentry - Other","type":"Cost of Sales"},{"code":"2310","description":"CEILING","type":"Cost of Sales"},{"code":"2310>001","description":"Ceiling - Sub- Contractor","type":"Cost of Sales"},{"code":"2310>002","description":"Ceiling Materials","type":"Cost of Sales"},{"code":"2311","description":"FLOOR COVERING","type":"Cost of Sales"},{"code":"2311>001","description":"Floor Covering - Sub- Contractor","type":"Cost of Sales"},{"code":"2312","description":"IRON MONGERY","type":"Cost of Sales"},{"code":"2312>001","description":"Supply Door Handles Etc","type":"Cost of Sales"},{"code":"2312>002","description":"Sub - Contractor","type":"Cost of Sales"},{"code":"2312>003","description":"Ironmongery- Install","type":"Cost of Sales"},{"code":"2313","description":"METALWORK","type":"Cost of Sales"},{"code":"2313>001","description":"Balustrading - Supply & Install","type":"Cost of Sales"},{"code":"2313>002","description":"Aluminum Window & Doors- Supply & Install","type":"Cost of Sales"},{"code":"2313>003","description":"Shower Doors - Supply & Install","type":"Cost of Sales"},{"code":"2313>004","description":"Metalwork Sundries","type":"Cost of Sales"},{"code":"2314","description":"PLASTERING","type":"Cost of Sales"},{"code":"2314>001","description":"Plaster - Labour","type":"Cost of Sales"},{"code":"2314>002","description":"Screed - Labour","type":"Cost of Sales"},{"code":"2314>003","description":"River Sand - Supply","type":"Cost of Sales"},{"code":"2314>004","description":"Cement - Supply","type":"Cost of Sales"},{"code":"2314>005","description":"Plaster Sand - Supply","type":"Cost of Sales"},{"code":"2314>006","description":"Rhinolight - Supply","type":"Cost of Sales"},{"code":"2314>007","description":"Plaster Key - Supply","type":"Cost of Sales"},{"code":"2314>008","description":"Plastering - Other","type":"Cost of Sales"},{"code":"2315","description":"TILING","type":"Cost of Sales"},{"code":"2315>001","description":"Tiles - Supply","type":"Cost of Sales"},{"code":"2315>002","description":"Adhesive - Supply","type":"Cost of Sales"},{"code":"2315>003","description":"Grout - Supply","type":"Cost of Sales"},{"code":"2315>004","description":"Edge Trim - Supply","type":"Cost of Sales"},{"code":"2315>005","description":"Tiling - Labour - Install","type":"Cost of Sales"},{"code":"2315>006","description":"Tiling - Other","type":"Cost of Sales"},{"code":"2316","description":"PAINTWORK","type":"Cost of Sales"},{"code":"2316>001","description":"Paintwork -Sub Contractor - Supply & Install","type":"Cost of Sales"},{"code":"2316>002","description":"Paintwork - Other","type":"Cost of Sales"},{"code":"2316>003","description":"Paintwork - Labour","type":"Cost of Sales"},{"code":"2317","description":"PROVISIONAL SUMS","type":"Cost of Sales"},{"code":"2317>001","description":"ELECTRICAL","type":"Cost of Sales"},{"code":"2317>001>01","description":"Electrical - Sub Contractor","type":"Cost of Sales"},{"code":"2317>001>02","description":"Electrical Fitting","type":"Cost of Sales"},{"code":"2317>001>03","description":"Electrical - Other","type":"Cost of Sales"},{"code":"2317>002","description":"EARTHING & LIGHTING PROTECTION","type":"Cost of Sales"},{"code":"2317>002>01","description":"Earthing & Lighting Protection -Sub Contractor","type":"Cost of Sales"},{"code":"2317>002>02","description":"Earthing & Lighting Protection -Material","type":"Cost of Sales"},{"code":"2317>002>03","description":"Earthing & Lighting Protection -Other","type":"Cost of Sales"},{"code":"2317>003","description":"DSTV & INTERNET","type":"Cost of Sales"},{"code":"2317>003>01","description":"DSTV & Internet - Sub Contractor","type":"Cost of Sales"},{"code":"2317>003>02","description":"DSTV & Internet - Material","type":"Cost of Sales"},{"code":"2317>003>03","description":"DSTV & Internet -Other","type":"Cost of Sales"},{"code":"2317>004","description":"ELECTRONIC & SECURITY","type":"Cost of Sales"},{"code":"2317>004>01","description":"Electronic & Security - Sub Contractor","type":"Cost of Sales"},{"code":"2317>004>02","description":"Electronic & Security - Material","type":"Cost of Sales"},{"code":"2317>004>03","description":"Electronic & Security - Other","type":"Cost of Sales"},{"code":"2317>005","description":"FIRE INSTALLATION","type":"Cost of Sales"},{"code":"2317>005>01","description":"Fire Installation - Sub - Contractor","type":"Cost of Sales"},{"code":"2317>005>02","description":"Fire Installation -Material","type":"Cost of Sales"},{"code":"2317>005>03","description":"Fire Intallation - Other","type":"Cost of Sales"},{"code":"2317>006","description":"GAS RETICULATION","type":"Cost of Sales"},{"code":"2317>006>01","description":"Gas Reticulation -Sub Contractor","type":"Cost of Sales"},{"code":"2317>006>02","description":"Gas Reticulation - Material","type":"Cost of Sales"},{"code":"2317>006>03","description":"Gas Reticulation - Other","type":"Cost of Sales"},{"code":"2317>007","description":"GAS GEYSERS","type":"Cost of Sales"},{"code":"2317>007>01","description":"Gas Geysers - Material","type":"Cost of Sales"},{"code":"2317>007>02","description":"Gas Geysers - Other","type":"Cost of Sales"},{"code":"2317>008","description":"HVAC","type":"Cost of Sales"},{"code":"2317>008>01","description":"HVAC - Sub Contractor","type":"Cost of Sales"},{"code":"2317>008>02","description":"HVAC - Materials","type":"Cost of Sales"},{"code":"2317>008>03","description":"HVAC - Other","type":"Cost of Sales"},{"code":"2317>009","description":"LIFTS & HOISTS","type":"Cost of Sales"},{"code":"2317>009>01","description":"Lifts & Hoists - Sub Contractor","type":"Cost of Sales"},{"code":"2317>009>02","description":"Lifts & Hoists - Material","type":"Cost of Sales"},{"code":"2317>009>03","description":"Lifts & Hoists - Other","type":"Cost of Sales"},{"code":"2317>010","description":"LANDSCAPING","type":"Cost of Sales"},{"code":"2317>010>01","description":"Landscaping - Sub Contractor","type":"Cost of Sales"},{"code":"2317>010>02","description":"Landscaping - Material","type":"Cost of Sales"},{"code":"2317>010>03","description":"Landscaping - Other","type":"Cost of Sales"},{"code":"2317>011","description":"PLUMBING, DRAINING (INC SANITARY,BRASSWARE)","type":"Cost of Sales"},{"code":"2317>011>01","description":"Plumbing & Drainage - Sub Contractor","type":"Cost of Sales"},{"code":"2317>011>02","description":"Plumbing & Drainage - Material","type":"Cost of Sales"},{"code":"2317>011>03","description":"Plumbing & Drainage - Other","type":"Cost of Sales"},{"code":"2317>012","description":"SANITARY FITTING","type":"Cost of Sales"},{"code":"2317>012>01","description":"Supply Sanitary Fitting & Bathroom Accesories","type":"Cost of Sales"},{"code":"2317>012>02","description":"Sanitary Fitting - Other","type":"Cost of Sales"},{"code":"2317>013","description":"RAINWATER","type":"Cost of Sales"},{"code":"2317>013>01","description":"Rainwater - Sub Contractor","type":"Cost of Sales"},{"code":"2317>013>02","description":"Rainwater - Material","type":"Cost of Sales"},{"code":"2317>013>03","description":"Rainwater - Other","type":"Cost of Sales"},{"code":"2317>013>04","description":"Rainwater- Gutters","type":"Cost of Sales"},{"code":"2317>014","description":"SIGNAGE","type":"Cost of Sales"},{"code":"2317>014>01","description":"Signage - Sub Contractor","type":"Cost of Sales"},{"code":"2317>014>02","description":"Signage - Material","type":"Cost of Sales"},{"code":"2317>014>03","description":"Signage - Other","type":"Cost of Sales"},{"code":"2317>015","description":"KITCHENS,BIC , VANITIES","type":"Cost of Sales"},{"code":"2317>015>01","description":"Kitchen, BIC & Vanities - Sub Contractor","type":"Cost of Sales"},{"code":"2317>015>02","description":"Kitchen,BIB & Vanities -Material","type":"Cost of Sales"},{"code":"2317>015>03","description":"Kitchen, BIC & Vanities- Other","type":"Cost of Sales"},{"code":"2317>016","description":"STONEWORK","type":"Cost of Sales"},{"code":"2317>016>01","description":"Stonework- Sub Contractor","type":"Cost of Sales"},{"code":"2317>016>02","description":"Stoneworks - Material","type":"Cost of Sales"},{"code":"2317>016>03","description":"Stoneworks - Other","type":"Cost of Sales"},{"code":"2317>017","description":"MIRRORS","type":"Cost of Sales"},{"code":"2317>017>01","description":"Mirrors - Sub Contractors","type":"Cost of Sales"},{"code":"2317>017>02","description":"Mirrors - Material","type":"Cost of Sales"},{"code":"2317>017>03","description":"Mirrors - Other","type":"Cost of Sales"},{"code":"2317>018","description":"APPLIANCES","type":"Cost of Sales"},{"code":"2317>018>01","description":"Appliances - Sub Contractor","type":"Cost of Sales"},{"code":"2317>018>02","description":"Appliances - Material","type":"Cost of Sales"},{"code":"2317>018>03","description":"Appliances - Other","type":"Cost of Sales"},{"code":"2317>019","description":"SUNDRY METAL WORK","type":"Cost of Sales"},{"code":"2317>019>01","description":"Sundry Metal Work - Sub Contractor","type":"Cost of Sales"},{"code":"2317>019>02","description":"Sundry Metal Work - Material","type":"Cost of Sales"},{"code":"2317>019>03","description":"Sundry Metal Work - Other","type":"Cost of Sales"},{"code":"2317>020","description":"BLINDS & FITTINGS","type":"Cost of Sales"},{"code":"2317>020>01","description":"Blinds & Fittings- Sub Contractor","type":"Cost of Sales"},{"code":"2317>020>02","description":"Blinds & Fittings- Materials","type":"Cost of Sales"},{"code":"2318","description":"EXTERNAL WORKS","type":"Cost of Sales"},{"code":"2318>001","description":"ROAD WORKS","type":"Cost of Sales"},{"code":"2318>001>01","description":"Road Works - Sub Contractor","type":"Cost of Sales"},{"code":"2318>001>02","description":"Road Works - Material","type":"Cost of Sales"},{"code":"2318>001>03","description":"Road Works - Other","type":"Cost of Sales"},{"code":"2318>002","description":"RETAINING WALLS","type":"Cost of Sales"},{"code":"2318>002>01","description":"Retaining Walls Sub Contractor","type":"Cost of Sales"},{"code":"2318>002>02","description":"Retaining Walls Material","type":"Cost of Sales"},{"code":"2318>002>03","description":"Retaining Walls Other","type":"Cost of Sales"},{"code":"2319","description":"CARPORTS","type":"Cost of Sales"},{"code":"2319>001","description":"Carports - Sub Contarctor","type":"Cost of Sales"},{"code":"2320","description":"YARD WALLS","type":"Cost of Sales"},{"code":"2320>001","description":"Yard Walls- Sub Contractor","type":"Cost of Sales"},{"code":"2320>002","description":"Yard -Other","type":"Cost of Sales"},{"code":"2322","description":"BOUNDARY WALLS","type":"Cost of Sales"},{"code":"2322>001","description":"Boundary Walls- Sub Contractor","type":"Cost of Sales"},{"code":"2322>002","description":"Boundary Walls- Materials","type":"Cost of Sales"},{"code":"2322>003","description":"Boundary Walls- Other","type":"Cost of Sales"},{"code":"2323","description":"POOL AREA","type":"Cost of Sales"},{"code":"2323>001","description":"Pool Area - Sub Contractor","type":"Cost of Sales"},{"code":"2324","description":"WALL CLADDING","type":"Cost of Sales"},{"code":"2324>001","description":"Wall Cladding - Sub Contractor","type":"Cost of Sales"},{"code":"2324>002","description":"Wall Cladding - Other","type":"Cost of Sales"},{"code":"2400","description":"DEVELOPMENT COST & OVERHEADS","type":"Cost of Sales"},{"code":"2400>010-0003","description":"Development  overheads office MVE (Giovanni)","type":"Cost of Sales"},{"code":"2400>010-0008","description":"Development overheads Travel and accomodation (Giovanni)","type":"Cost of Sales"},{"code":"3375","description":"O'Two Boutique - Retail Area Project","type":"Cost of Sales"},{"code":"3380","description":"O'Two - Repairs and Maintenance","type":"Other Expense"},{"code":"3385","description":"O'Two Boutique - Executive Lounge Project","type":"Cost of Sales"},{"code":"3390","description":"O'Two Boutique - Rooftop Project","type":"Cost of Sales"},{"code":"3391","description":"O'Two Boutique - Penthouse Project","type":"Cost of Sales"},{"code":"3392","description":"O'Two Boutique - Room Project","type":"Cost of Sales"},{"code":"3393","description":"O'Two Boutique - Renovations to Basement","type":"Cost of Sales"},{"code":"3395","description":"O'Two Boutique - Boardroom Project (Basement)","type":"Cost of Sales"}];
+  const GL_CODES = [{"code": "2301", "description": "PRELIMINARIES AND GENERAL", "type": "Cost of Sales"}, {"code": "2301>001", "description": "Salaries", "type": "Cost of Sales"}, {"code": "2301>002", "description": "Insurance & Security", "type": "Cost of Sales"}, {"code": "2301>003", "description": "Site Establishment", "type": "Cost of Sales"}, {"code": "2301>004", "description": "Consulting Fees", "type": "Cost of Sales"}, {"code": "2301>005", "description": "Equipment Hire", "type": "Cost of Sales"}, {"code": "2301>006", "description": "Temporary Site Services", "type": "Cost of Sales"}, {"code": "2301>007", "description": "Safety Equipment & First Aid", "type": "Cost of Sales"}, {"code": "2301>008", "description": "Consumables", "type": "Cost of Sales"}, {"code": "2301>009", "description": "Cleaning & Rubble Removal", "type": "Cost of Sales"}, {"code": "2301>010", "description": "Scaffolding", "type": "Cost of Sales"}, {"code": "2301>011", "description": "Permits", "type": "Cost of Sales"}, {"code": "2302", "description": "EARTHWORKS", "type": "Cost of Sales"}, {"code": "2302>001", "description": "Earthworks - Sub- Contractor", "type": "Cost of Sales"}, {"code": "2302>002", "description": "Earthworks - Materials", "type": "Cost of Sales"}, {"code": "2302>003", "description": "Earthworks - Other", "type": "Cost of Sales"}, {"code": "2302>004", "description": "Sub Soill Drainage - Sub Contractor", "type": "Cost of Sales"}, {"code": "2302>005", "description": "Sub Soil Drainage - Materials", "type": "Cost of Sales"}, {"code": "2303", "description": "PILING", "type": "Cost of Sales"}, {"code": "2303>001", "description": "Piling - Sub- Contractor", "type": "Cost of Sales"}, {"code": "2303>002", "description": "Piling - Other", "type": "Cost of Sales"}, {"code": "2304", "description": "CONCRETE, FORMWORK & REINFORCEMENT", "type": "Cost of Sales"}, {"code": "2304>001", "description": "Concrete - Supply", "type": "Cost of Sales"}, {"code": "2304>002", "description": "Concrete- Plant", "type": "Cost of Sales"}, {"code": "2304>003", "description": "Concrete - Labour", "type": "Cost of Sales"}, {"code": "2304>004", "description": "Concrete - Sundries", "type": "Cost of Sales"}, {"code": "2304>005", "description": "Formwork - Supply", "type": "Cost of Sales"}, {"code": "2304>006", "description": "Formwork - Install", "type": "Cost of Sales"}, {"code": "2304>007", "description": "Movement Joints, Supply & Install", "type": "Cost of Sales"}, {"code": "2304>008", "description": "Reinforcing - Supply", "type": "Cost of Sales"}, {"code": "2304>009", "description": "Reinforcing - Labour", "type": "Cost of Sales"}, {"code": "2304>010", "description": "Concrete,Formwork & Reinforcement - Other", "type": "Cost of Sales"}, {"code": "2304>011", "description": "Post Tensioning Reinforcing", "type": "Cost of Sales"}, {"code": "2304>012", "description": "Structural Steel", "type": "Cost of Sales"}, {"code": "2304>013>01", "description": "Concrete - Guardhouse", "type": "Cost of Sales"}, {"code": "2304>013>02", "description": "Formwork - Guardhouse", "type": "Cost of Sales"}, {"code": "2304>013>03", "description": "Reinforcing - Guardhouse", "type": "Cost of Sales"}, {"code": "2305", "description": "PRECAST CONCRETE", "type": "Cost of Sales"}, {"code": "2305>001", "description": "Precast Concrete - Supply", "type": "Cost of Sales"}, {"code": "2305>002", "description": "Precast Concrete - Labour", "type": "Cost of Sales"}, {"code": "2305>003", "description": "Propping - Material", "type": "Cost of Sales"}, {"code": "2305>004", "description": "Precast Concrete - Other", "type": "Cost of Sales"}, {"code": "2306", "description": "MASONARY", "type": "Cost of Sales"}, {"code": "2306>001", "description": "Brick - Supply", "type": "Cost of Sales"}, {"code": "2306>002", "description": "Brick - Labour", "type": "Cost of Sales"}, {"code": "2306>003", "description": "Building Sand - Supply", "type": "Cost of Sales"}, {"code": "2306>004", "description": "Cement - Supply", "type": "Cost of Sales"}, {"code": "2306>005", "description": "Lintels - Supply & Install", "type": "Cost of Sales"}, {"code": "2306>006", "description": "Galvanized Hoop Iron Cramps, Ties- Supply& Install", "type": "Cost of Sales"}, {"code": "2306>007", "description": "Masonary - Other", "type": "Cost of Sales"}, {"code": "2306>008", "description": "Masonary - Guardhouse", "type": "Cost of Sales"}, {"code": "2307", "description": "WATERPROOFING", "type": "Cost of Sales"}, {"code": "2307>001", "description": "Waterproofing - Sub- Contractor", "type": "Cost of Sales"}, {"code": "2307>002", "description": "Waterproofing - Material", "type": "Cost of Sales"}, {"code": "2307>003", "description": "Waterproofing - Other", "type": "Cost of Sales"}, {"code": "2307>004", "description": "Waterproofing - Supply", "type": "Cost of Sales"}, {"code": "2308", "description": "ROOF COVERING", "type": "Cost of Sales"}, {"code": "2308>001", "description": "Roof Covering - Sub Contractor", "type": "Cost of Sales"}, {"code": "2309", "description": "CARPENTARY & JOINERY", "type": "Cost of Sales"}, {"code": "2309>001", "description": "Skirting - Supply & Install", "type": "Cost of Sales"}, {"code": "2309>002", "description": "Window Sills - Supply & Install", "type": "Cost of Sales"}, {"code": "2309>003", "description": "Door & Frames - Supply", "type": "Cost of Sales"}, {"code": "2309>004", "description": "Door & Frames - Install", "type": "Cost of Sales"}, {"code": "2309>005", "description": "Ducts", "type": "Cost of Sales"}, {"code": "2309>010", "description": "Carpentry - Other", "type": "Cost of Sales"}, {"code": "2310", "description": "CEILING", "type": "Cost of Sales"}, {"code": "2310>001", "description": "Ceiling - Sub- Contractor", "type": "Cost of Sales"}, {"code": "2310>002", "description": "Ceiling Materials", "type": "Cost of Sales"}, {"code": "2311", "description": "FLOOR COVERING", "type": "Cost of Sales"}, {"code": "2311>001", "description": "Floor Covering - Sub- Contractor", "type": "Cost of Sales"}, {"code": "2312", "description": "IRON MONGERY", "type": "Cost of Sales"}, {"code": "2312>001", "description": "Supply Door Handles Etc", "type": "Cost of Sales"}, {"code": "2312>002", "description": "Sub - Contractor", "type": "Cost of Sales"}, {"code": "2312>003", "description": "Ironmongery- Install", "type": "Cost of Sales"}, {"code": "2313", "description": "METALWORK", "type": "Cost of Sales"}, {"code": "2313>001", "description": "Balustrading - Supply & Install", "type": "Cost of Sales"}, {"code": "2313>002", "description": "Aluminum Window & Doors- Supply & Install", "type": "Cost of Sales"}, {"code": "2313>003", "description": "Shower Doors - Supply & Install", "type": "Cost of Sales"}, {"code": "2313>004", "description": "Metalwork Sundries", "type": "Cost of Sales"}, {"code": "2314", "description": "PLASTERING", "type": "Cost of Sales"}, {"code": "2314>001", "description": "Plaster - Labour", "type": "Cost of Sales"}, {"code": "2314>002", "description": "Screed - Labour", "type": "Cost of Sales"}, {"code": "2314>003", "description": "River Sand - Supply", "type": "Cost of Sales"}, {"code": "2314>004", "description": "Cement - Supply", "type": "Cost of Sales"}, {"code": "2314>005", "description": "Plaster Sand - Supply", "type": "Cost of Sales"}, {"code": "2314>006", "description": "Rhinolight - Supply", "type": "Cost of Sales"}, {"code": "2314>007", "description": "Plaster Key - Supply", "type": "Cost of Sales"}, {"code": "2314>008", "description": "Plastering - Other", "type": "Cost of Sales"}, {"code": "2315", "description": "TILING", "type": "Cost of Sales"}, {"code": "2315>001", "description": "Tiles - Supply", "type": "Cost of Sales"}, {"code": "2315>002", "description": "Adhesive - Supply", "type": "Cost of Sales"}, {"code": "2315>003", "description": "Grout - Supply", "type": "Cost of Sales"}, {"code": "2315>004", "description": "Edge Trim - Supply", "type": "Cost of Sales"}, {"code": "2315>005", "description": "Tiling - Labour - Install", "type": "Cost of Sales"}, {"code": "2315>006", "description": "Tiling - Other", "type": "Cost of Sales"}, {"code": "2316", "description": "PAINTWORK", "type": "Cost of Sales"}, {"code": "2316>001", "description": "Paintwork -Sub Contractor - Supply & Install", "type": "Cost of Sales"}, {"code": "2316>002", "description": "Paintwork - Other", "type": "Cost of Sales"}, {"code": "2316>003", "description": "Paintwork - Labour", "type": "Cost of Sales"}, {"code": "2317", "description": "PROVISIONAL SUMS", "type": "Cost of Sales"}, {"code": "2317>001", "description": "ELECTRICAL", "type": "Cost of Sales"}, {"code": "2317>001>01", "description": "Electrical - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>001>02", "description": "Electrical Fitting", "type": "Cost of Sales"}, {"code": "2317>001>03", "description": "Electrical - Other", "type": "Cost of Sales"}, {"code": "2317>002", "description": "EARTHING & LIGHTING PROTECTION", "type": "Cost of Sales"}, {"code": "2317>002>01", "description": "Earthing & Lighting Protection -Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>002>02", "description": "Earthing & Lighting Protection -Material", "type": "Cost of Sales"}, {"code": "2317>002>03", "description": "Earthing & Lighting Protection -Other", "type": "Cost of Sales"}, {"code": "2317>003", "description": "DSTV & INTERNET", "type": "Cost of Sales"}, {"code": "2317>003>01", "description": "DSTV & Internet - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>003>02", "description": "DSTV & Internet - Material", "type": "Cost of Sales"}, {"code": "2317>003>03", "description": "DSTV & Internet -Other", "type": "Cost of Sales"}, {"code": "2317>004", "description": "ELECTRONIC & SECURITY", "type": "Cost of Sales"}, {"code": "2317>004>01", "description": "Electronic & Security - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>004>02", "description": "Electronic & Security - Material", "type": "Cost of Sales"}, {"code": "2317>004>03", "description": "Electronic & Security - Other", "type": "Cost of Sales"}, {"code": "2317>005", "description": "FIRE INSTALLATION", "type": "Cost of Sales"}, {"code": "2317>005>01", "description": "Fire Installation - Sub - Contractor", "type": "Cost of Sales"}, {"code": "2317>005>02", "description": "Fire Installation -Material", "type": "Cost of Sales"}, {"code": "2317>005>03", "description": "Fire Intallation - Other", "type": "Cost of Sales"}, {"code": "2317>006", "description": "GAS RETICULATION", "type": "Cost of Sales"}, {"code": "2317>006>01", "description": "Gas Reticulation -Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>006>02", "description": "Gas Reticulation - Material", "type": "Cost of Sales"}, {"code": "2317>006>03", "description": "Gas Reticulation - Other", "type": "Cost of Sales"}, {"code": "2317>007", "description": "GAS GEYSERS", "type": "Cost of Sales"}, {"code": "2317>007>01", "description": "Gas Geysers - Material", "type": "Cost of Sales"}, {"code": "2317>007>02", "description": "Gas Geysers - Other", "type": "Cost of Sales"}, {"code": "2317>008", "description": "HVAC", "type": "Cost of Sales"}, {"code": "2317>008>01", "description": "HVAC - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>008>02", "description": "HVAC - Materials", "type": "Cost of Sales"}, {"code": "2317>008>03", "description": "HVAC - Other", "type": "Cost of Sales"}, {"code": "2317>009", "description": "LIFTS & HOISTS", "type": "Cost of Sales"}, {"code": "2317>009>01", "description": "Lifts & Hoists - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>009>02", "description": "Lifts & Hoists - Material", "type": "Cost of Sales"}, {"code": "2317>009>03", "description": "Lifts & Hoists - Other", "type": "Cost of Sales"}, {"code": "2317>010", "description": "LANDSCAPING", "type": "Cost of Sales"}, {"code": "2317>010>01", "description": "Landscaping - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>010>02", "description": "Landscaping - Material", "type": "Cost of Sales"}, {"code": "2317>010>03", "description": "Landscaping - Other", "type": "Cost of Sales"}, {"code": "2317>011", "description": "PLUMBING, DRAINING (INC SANITARY,BRASSWARE)", "type": "Cost of Sales"}, {"code": "2317>011>01", "description": "Plumbing & Drainage - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>011>02", "description": "Plumbing & Drainage - Material", "type": "Cost of Sales"}, {"code": "2317>011>03", "description": "Plumbing & Drainage - Other", "type": "Cost of Sales"}, {"code": "2317>012", "description": "SANITARY FITTING", "type": "Cost of Sales"}, {"code": "2317>012>01", "description": "Supply Sanitary Fitting & Bathroom Accesories", "type": "Cost of Sales"}, {"code": "2317>012>02", "description": "Sanitary Fitting - Other", "type": "Cost of Sales"}, {"code": "2317>013", "description": "RAINWATER", "type": "Cost of Sales"}, {"code": "2317>013>01", "description": "Rainwater - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>013>02", "description": "Rainwater - Material", "type": "Cost of Sales"}, {"code": "2317>013>03", "description": "Rainwater - Other", "type": "Cost of Sales"}, {"code": "2317>013>04", "description": "Rainwater- Gutters", "type": "Cost of Sales"}, {"code": "2317>014", "description": "SIGNAGE", "type": "Cost of Sales"}, {"code": "2317>014>01", "description": "Signage - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>014>02", "description": "Signage - Material", "type": "Cost of Sales"}, {"code": "2317>014>03", "description": "Signage - Other", "type": "Cost of Sales"}, {"code": "2317>015", "description": "KITCHENS,BIC , VANITIES", "type": "Cost of Sales"}, {"code": "2317>015>01", "description": "Kitchen, BIC & Vanities - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>015>02", "description": "Kitchen,BIB & Vanities -Material", "type": "Cost of Sales"}, {"code": "2317>015>03", "description": "Kitchen, BIC & Vanities- Other", "type": "Cost of Sales"}, {"code": "2317>016", "description": "STONEWORK", "type": "Cost of Sales"}, {"code": "2317>016>01", "description": "Stonework- Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>016>02", "description": "Stoneworks - Material", "type": "Cost of Sales"}, {"code": "2317>016>03", "description": "Stoneworks - Other", "type": "Cost of Sales"}, {"code": "2317>017", "description": "MIRRORS", "type": "Cost of Sales"}, {"code": "2317>017>01", "description": "Mirrors - Sub Contractors", "type": "Cost of Sales"}, {"code": "2317>017>02", "description": "Mirrors - Material", "type": "Cost of Sales"}, {"code": "2317>017>03", "description": "Mirrors - Other", "type": "Cost of Sales"}, {"code": "2317>018", "description": "APPLIANCES", "type": "Cost of Sales"}, {"code": "2317>018>01", "description": "Appliances - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>018>02", "description": "Appliances - Material", "type": "Cost of Sales"}, {"code": "2317>018>03", "description": "Appliances - Other", "type": "Cost of Sales"}, {"code": "2317>019", "description": "SUNDRY METAL WORK", "type": "Cost of Sales"}, {"code": "2317>019>01", "description": "Sundry Metal Work - Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>019>02", "description": "Sundry Metal Work - Material", "type": "Cost of Sales"}, {"code": "2317>019>03", "description": "Sundry Metal Work - Other", "type": "Cost of Sales"}, {"code": "2317>020", "description": "BLINDS & FITTINGS", "type": "Cost of Sales"}, {"code": "2317>020>01", "description": "Blinds & Fittings- Sub Contractor", "type": "Cost of Sales"}, {"code": "2317>020>02", "description": "Blinds & Fittings- Materials", "type": "Cost of Sales"}, {"code": "2318", "description": "EXTERNAL WORKS", "type": "Cost of Sales"}, {"code": "2318>001", "description": "ROAD WORKS", "type": "Cost of Sales"}, {"code": "2318>001>01", "description": "Road Works - Sub Contractor", "type": "Cost of Sales"}, {"code": "2318>001>02", "description": "Road Works - Material", "type": "Cost of Sales"}, {"code": "2318>001>03", "description": "Road Works - Other", "type": "Cost of Sales"}, {"code": "2318>002", "description": "RETAINING WALLS", "type": "Cost of Sales"}, {"code": "2318>002>01", "description": "Retaining Walls Sub Contractor", "type": "Cost of Sales"}, {"code": "2318>002>02", "description": "Retaining Walls Material", "type": "Cost of Sales"}, {"code": "2318>002>03", "description": "Retaining Walls Other", "type": "Cost of Sales"}, {"code": "2319", "description": "CARPORTS", "type": "Cost of Sales"}, {"code": "2319>001", "description": "Carports - Sub Contarctor", "type": "Cost of Sales"}, {"code": "2320", "description": "YARD WALLS", "type": "Cost of Sales"}, {"code": "2320>001", "description": "Yard Walls- Sub Contractor", "type": "Cost of Sales"}, {"code": "2320>002", "description": "Yard -Other", "type": "Cost of Sales"}, {"code": "2322", "description": "BOUNDARY WALLS", "type": "Cost of Sales"}, {"code": "2322>001", "description": "Boundary Walls- Sub Contractor", "type": "Cost of Sales"}, {"code": "2322>002", "description": "Boundary Walls- Materials", "type": "Cost of Sales"}, {"code": "2322>003", "description": "Boundary Walls- Other", "type": "Cost of Sales"}, {"code": "2323", "description": "POOL AREA", "type": "Cost of Sales"}, {"code": "2323>001", "description": "Pool Area - Sub Contractor", "type": "Cost of Sales"}, {"code": "2324", "description": "WALL CLADDING", "type": "Cost of Sales"}, {"code": "2324>001", "description": "Wall Cladding - Sub Contractor", "type": "Cost of Sales"}, {"code": "2324>002", "description": "Wall Cladding - Other", "type": "Cost of Sales"}, {"code": "2400", "description": "DEVELOPMENT COST & OVERHEADS", "type": "Cost of Sales"}, {"code": "2400>010-0003", "description": "Development  overheads office MVE (Giovanni)", "type": "Cost of Sales"}, {"code": "2400>010-0008", "description": "Development overheads Travel and accomodation (Giovanni)", "type": "Cost of Sales"}, {"code": "3375", "description": "O'Two Boutique - Retail Area Project", "type": "Cost of Sales"}, {"code": "3380", "description": "O'Two - Repairs and Maintenance", "type": "Other Expense"}, {"code": "3385", "description": "O'Two Boutique - Executive Lounge Project", "type": "Cost of Sales"}, {"code": "3390", "description": "O'Two Boutique - Rooftop Project", "type": "Cost of Sales"}, {"code": "3391", "description": "O'Two Boutique - Penthouse Project", "type": "Cost of Sales"}, {"code": "3392", "description": "O'Two Boutique - Room Project", "type": "Cost of Sales"}, {"code": "3393", "description": "O'Two Boutique - Renovations to Basement", "type": "Cost of Sales"}, {"code": "3395", "description": "O'Two Boutique - Boardroom Project (Basement)", "type": "Cost of Sales"}];
+  const GL_MARKER_START = "[[GL_ALLOCATIONS:";
+  const GL_MARKER_END = "]]";
   window.VARDO_GL_CODES = GL_CODES;
-  const TAG = "GLITEMS";
-  function escHtml(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]||c)); }
-  function n(v){ const x = Number(String(v ?? "").replace(/,/g,"")); return Number.isFinite(x) ? x : 0; }
-  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[])))); }catch(e){ return ""; } }
-  function dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s||""))))); }catch(e){ return []; } }
-  function stripTag(notes){ return String(notes||"").replace(/\s*\[\[GLITEMS:[\s\S]*?\]\]\s*/g,"\n").trim(); }
-  function getTag(notes){ const m=String(notes||"").match(/\[\[GLITEMS:([\s\S]*?)\]\]/); return m ? m[1] : ""; }
-  function withTag(notes, items){ const clean=stripTag(notes); return (clean ? clean+"\n" : "") + "[[GLITEMS:" + enc(items) + "]]"; }
-  function glDesc(code){ const f=GL_CODES.find(g=>String(g.code)===String(code)); return f ? f.description : ""; }
-  function glOptions(selected){ return '<option value="">Select GL Code</option>' + GL_CODES.map(g=>`<option value="${escHtml(g.code)}" ${String(selected)===String(g.code)?'selected':''}>${escHtml(g.code)} - ${escHtml(g.description)}</option>`).join(''); }
-  function isItemsMode(){ const mode=document.getElementById('entryMode')?.value || ''; const type=document.getElementById('entryType')?.value || ''; return mode !== 'deposit' && type !== 'deposit'; }
-  function template(item={}){
-    return `<tr class="gl-item-row">
-      <td><input class="dark gli-code" placeholder="Product Code" value="${escHtml(item.productCode||'')}"></td>
-      <td><input class="dark gli-desc" placeholder="Item description" value="${escHtml(item.description||'')}"></td>
-      <td><input class="dark gli-qty" type="number" step="0.01" min="0" value="${escHtml(item.qty||'')}" oninput="window.vardoGlRecalcItems()"></td>
-      <td><input class="dark gli-price" type="number" step="0.01" min="0" value="${escHtml(item.unitPrice||'')}" oninput="window.vardoGlRecalcItems()"></td>
-      <td><input class="dark gli-disc" type="number" step="0.01" min="0" max="100" value="${escHtml(item.discountPercent||'')}" oninput="window.vardoGlRecalcItems()"></td>
-      <td><input class="dark gli-net" type="number" step="0.01" readonly></td>
-      <td><input class="dark gli-total" type="number" step="0.01" readonly></td>
-      <td><select class="dark gli-gl" onchange="window.vardoGlUpdateDescriptions(); window.vardoGlRecalcItems();">${glOptions(item.glCode||'')}</select></td>
-      <td><input class="dark gli-gldesc" readonly value="${escHtml(item.glDescription || glDesc(item.glCode||''))}"></td>
-      <td><button type="button" class="ghost gli-remove" onclick="this.closest('tr').remove(); window.vardoGlRecalcItems();">×</button></td>
-    </tr>`;
+  function html(v){
+    try { if(typeof esc === 'function') return esc(v); } catch(e){}
+    return String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
   }
-  function ensureUI(){
-    const grid=document.querySelector('#entryModal .form-grid');
-    if(!grid || document.getElementById('glItemsSection')) return;
-    const anchor=document.getElementById('entryNetAmount')?.closest('label') || document.getElementById('entryStatusWrap');
-    const box=document.createElement('div');
-    box.id='glItemsSection';
-    box.className='full gl-items-section';
-    box.innerHTML=`
-      <div class="gl-title-row"><div><b>Order / Invoice Items</b><div class="helper">Supplier-style item rows. Each item must have a GL Code and GL Description.</div></div><button type="button" class="primary" onclick="window.vardoGlAddItem()">+ Add Item</button></div>
-      <div class="gl-table-wrap"><table class="gl-items-table"><thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net Price</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th><th></th></tr></thead><tbody id="glItemsBody"></tbody></table></div>
-      <div class="gl-totals"><span>Subtotal Excl VAT: <b id="glSubTotal">0.00</b></span><span>Discount Total: <b id="glDiscountTotal">0.00</b></span><span>VAT: <b id="glVatTotal">0.00</b></span><span>Grand Total: <b id="glGrandTotal">0.00</b></span></div>
-      <div class="gl-actions"><button type="button" class="ghost" onclick="window.vardoGlAccountingSummary()">Generate Accounting</button><button type="button" class="ghost" onclick="window.vardoGlExportCSV()">Export GL CSV</button></div>
-      <div id="glAccountingSummary" class="gl-summary"></div>`;
-    if(anchor) grid.insertBefore(box, anchor); else grid.appendChild(box);
-    ['entryNetAmount','entryVatAmount','entryTotal'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.readOnly=true; el.classList.add('gl-calculated-total'); } });
+  function moneySafe(v){
+    try { if(typeof money === 'function') return money(Number(v||0)); } catch(e){}
+    return "R " + Number(v||0).toLocaleString("en-ZA",{minimumFractionDigits:2, maximumFractionDigits:2});
   }
-  function setVisible(){ const sec=document.getElementById('glItemsSection'); if(sec) sec.style.display = isItemsMode() ? '' : 'none'; }
-  window.vardoGlAddItem=function(item){ ensureUI(); const body=document.getElementById('glItemsBody'); if(body){ body.insertAdjacentHTML('beforeend', template(item||{})); } window.vardoGlUpdateDescriptions(); window.vardoGlRecalcItems(); };
-  window.vardoGlUpdateDescriptions=function(){ document.querySelectorAll('#glItemsBody tr').forEach(tr=>{ const code=tr.querySelector('.gli-gl')?.value||''; const d=tr.querySelector('.gli-gldesc'); if(d) d.value=glDesc(code); }); };
-  window.vardoGlCollectItems=function(){
-    const rows=[...document.querySelectorAll('#glItemsBody tr')];
-    return rows.map(tr=>{
-      const qty=n(tr.querySelector('.gli-qty')?.value), unitPrice=n(tr.querySelector('.gli-price')?.value), discountPercent=n(tr.querySelector('.gli-disc')?.value);
-      const discountAmount=unitPrice*(discountPercent/100), netPrice=Math.max(0, unitPrice-discountAmount), totalExVat=qty*netPrice;
-      const glCode=tr.querySelector('.gli-gl')?.value||'';
-      return { productCode:tr.querySelector('.gli-code')?.value.trim()||'', description:tr.querySelector('.gli-desc')?.value.trim()||'', qty, unitPrice, discountPercent, discountAmount:discountAmount*qty, netPrice, totalExVat, glCode, glDescription:glDesc(glCode) };
-    }).filter(x=>x.productCode || x.description || x.qty || x.unitPrice || x.glCode);
+  function codeText(code){
+    const found = GL_CODES.find(x => String(x.code) === String(code));
+    return found ? (found.code + " - " + found.description) : String(code || "");
+  }
+  function stripGL(notes){
+    return String(notes || "").replace(/
+?\[\[GL_ALLOCATIONS:[\s\S]*?\]\]/g, "").trim();
+  }
+  function parseGL(notes){
+    const raw = String(notes || "");
+    const m = raw.match(/\[\[GL_ALLOCATIONS:([\s\S]*?)\]\]/);
+    if(!m) return [];
+    try {
+      const arr = JSON.parse(m[1]);
+      return Array.isArray(arr) ? arr.filter(x => x && x.code).map(x => ({
+        code: String(x.code || ""),
+        description: String(x.description || ""),
+        amount: Number(x.amount || 0)
+      })) : [];
+    } catch(e){ return []; }
+  }
+  function packGL(notes, allocations){
+    const clean = stripGL(notes);
+    const rows = (allocations || []).filter(x => x.code).map(x => ({
+      code: String(x.code || ""),
+      description: String(x.description || codeText(x.code).replace(/^.*? - /,"")),
+      amount: Number(x.amount || 0)
+    }));
+    if(!rows.length) return clean;
+    return (clean ? clean + "
+" : "") + GL_MARKER_START + JSON.stringify(rows) + GL_MARKER_END;
+  }
+  window.vardoGLAllocationsFromNotes = parseGL;
+  window.vardoGLNotesWithoutAllocations = stripGL;
+  window.vardoGLSummary = function(row){
+    const rows = parseGL(row && row.notes);
+    if(!rows.length) return "";
+    return rows.map(x => html(x.code)).join(", ");
   };
-  window.vardoGlRecalcItems=function(){
-    window.vardoGlUpdateDescriptions();
-    let sub=0, disc=0;
-    document.querySelectorAll('#glItemsBody tr').forEach(tr=>{ const qty=n(tr.querySelector('.gli-qty')?.value), price=n(tr.querySelector('.gli-price')?.value), dp=n(tr.querySelector('.gli-disc')?.value); const net=Math.max(0, price-(price*dp/100)); const total=qty*net; disc += qty*(price-net); sub += total; const ne=tr.querySelector('.gli-net'); const te=tr.querySelector('.gli-total'); if(ne) ne.value=net.toFixed(2); if(te) te.value=total.toFixed(2); });
-    const supplierName=String(document.getElementById('entrySupplier')?.value||'').trim();
-    const vatType=supplierName && typeof getSupplierVatType==='function' ? getSupplierVatType(supplierName) : 'registered';
-    const rate=typeof getVatRate==='function' ? Number(getVatRate()||15) : 15;
-    const vat = vatType === 'not_registered' ? 0 : sub*(rate/100);
-    const grand = sub + vat;
-    const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.textContent=(val||0).toFixed(2); };
-    set('glSubTotal',sub); set('glDiscountTotal',disc); set('glVatTotal',vat); set('glGrandTotal',grand);
-    const netEl=document.getElementById('entryNetAmount'), vatEl=document.getElementById('entryVatAmount'), totalEl=document.getElementById('entryTotal');
-    if(netEl) netEl.value=sub.toFixed(2); if(vatEl) vatEl.value=vat.toFixed(2); if(totalEl) totalEl.value=grand.toFixed(2);
-    window.vardoGlAccountingSummary(false);
+  function optionsHtml(selected){
+    return '<option value="">Select GL Code</option>' + GL_CODES.map(c => '<option value="'+html(c.code)+'" '+(String(selected||"")===String(c.code)?'selected':'')+'>'+html(c.code+' - '+c.description)+'</option>').join('');
+  }
+  function ensureGLStyles(){
+    if(document.getElementById('v304-gl-style')) return;
+    const st=document.createElement('style'); st.id='v304-gl-style';
+    st.textContent = `
+      .gl-accounting-box{border:1px solid rgba(230,199,156,.22);border-radius:18px;padding:14px;margin-top:12px;background:rgba(255,255,255,.025)}
+      .gl-accounting-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+      .gl-accounting-title{font-weight:800;color:#e6c79c;letter-spacing:.03em}
+      .gl-row{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(120px,.6fr) 44px;gap:10px;margin:8px 0;align-items:center}
+      .gl-row select,.gl-row input{min-width:0}
+      .gl-total{margin-top:8px;color:#e6c79c;font-weight:700;text-align:right}
+      .gl-small{font-size:12px;color:var(--muted);line-height:1.4}
+      @media(max-width:720px){.gl-row{grid-template-columns:1fr}}
+    `;
+    document.head.appendChild(st);
+  }
+  window.vardoGLAddRow = function(code='', amount=''){
+    ensureGLStyles();
+    const wrap=document.getElementById('glAllocationRows'); if(!wrap) return;
+    const div=document.createElement('div'); div.className='gl-row';
+    div.innerHTML = '<select class="dark gl-code-select">'+optionsHtml(code)+'</select><input class="dark gl-amount-input" type="number" step="0.01" placeholder="Amount" value="'+html(amount || '')+'"><button type="button" class="small-btn" onclick="this.closest('.gl-row').remove(); window.vardoGLUpdateTotal();">×</button>';
+    wrap.appendChild(div);
+    div.querySelector('.gl-amount-input')?.addEventListener('input', window.vardoGLUpdateTotal);
+    div.querySelector('.gl-code-select')?.addEventListener('change', window.vardoGLUpdateTotal);
+    window.vardoGLUpdateTotal();
+    try{ refreshCustomSelects(div); }catch(e){}
   };
-  window.vardoGlAccountingSummary=function(show=true){
-    const items=window.vardoGlCollectItems(); const map={};
-    items.forEach(i=>{ if(!i.glCode) return; if(!map[i.glCode]) map[i.glCode]={desc:i.glDescription,total:0,count:0}; map[i.glCode].total += i.totalExVat; map[i.glCode].count++; });
-    const box=document.getElementById('glAccountingSummary'); if(!box) return;
-    const rows=Object.entries(map);
-    if(!rows.length){ box.innerHTML=show?'<div class="helper">No GL codes selected yet.</div>':''; return; }
-    box.innerHTML='<table class="gl-summary-table"><thead><tr><th>GL Code</th><th>GL Description</th><th>Lines</th><th>Total Excl VAT</th></tr></thead><tbody>'+rows.map(([code,v])=>`<tr><td>${escHtml(code)}</td><td>${escHtml(v.desc)}</td><td>${v.count}</td><td>${v.total.toFixed(2)}</td></tr>`).join('')+'</tbody></table>';
+  window.vardoGLUpdateTotal = function(){
+    const total = Array.from(document.querySelectorAll('#glAllocationRows .gl-amount-input')).reduce((s,el)=>s+Number(el.value||0),0);
+    const out=document.getElementById('glAllocationTotal'); if(out) out.textContent = 'GL allocation total: ' + moneySafe(total);
   };
-  window.vardoGlExportCSV=function(){
-    const rows=window.vardoGlCollectItems(); if(!rows.length) return alert('No item rows to export.');
-    const head=['Product Code','Description','Qty','Unit Price','Discount %','Net Price','Total Excl VAT','GL Code','GL Description'];
-    const csv=[head].concat(rows.map(i=>[i.productCode,i.description,i.qty,i.unitPrice,i.discountPercent,i.netPrice.toFixed(2),i.totalExVat.toFixed(2),i.glCode,i.glDescription])).map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}), url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='vardophase_gl_accounting_export.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);
+  window.vardoGLCollect = function(){
+    return Array.from(document.querySelectorAll('#glAllocationRows .gl-row')).map(row=>{
+      const code=row.querySelector('.gl-code-select')?.value || '';
+      const found=GL_CODES.find(x=>String(x.code)===String(code));
+      return {code, description: found ? found.description : '', amount:Number(row.querySelector('.gl-amount-input')?.value || 0)};
+    }).filter(x=>x.code && x.amount);
   };
-  const origOpen=window.openEntryModal;
-  if(typeof origOpen==='function'){ window.openEntryModal=async function(id=null,forcedMode=''){ await origOpen.apply(this,arguments); ensureUI(); setVisible(); const notesEl=document.getElementById('entryNotes'); const raw=notesEl?.value||''; const items=dec(getTag(raw)); if(notesEl) notesEl.value=stripTag(raw); const body=document.getElementById('glItemsBody'); if(body) body.innerHTML=''; if(items && items.length) items.forEach(it=>window.vardoGlAddItem(it)); else if(isItemsMode()) window.vardoGlAddItem({}); window.vardoGlRecalcItems(); }; }
-  const origHandle=window.handleEntryTypeChange;
-  if(typeof origHandle==='function'){ window.handleEntryTypeChange=function(){ const r=origHandle.apply(this,arguments); ensureUI(); setVisible(); window.vardoGlRecalcItems(); return r; }; }
-  const origSupplier=window.handleSupplierVatTypeChange;
-  if(typeof origSupplier==='function'){ window.handleSupplierVatTypeChange=function(){ const r=origSupplier.apply(this,arguments); window.vardoGlRecalcItems(); return r; }; }
-  const origSave=window.saveEntry;
-  if(typeof origSave==='function'){ window.saveEntry=async function(){
-    ensureUI();
-    if(isItemsMode()){
-      const items=window.vardoGlCollectItems();
-      // V313: Site/warehouse can save a request with descriptions only. Office completes qty/prices/GL later.
-      window.vardoGlRecalcItems();
-      const notesEl=document.getElementById('entryNotes'); if(notesEl) notesEl.value=withTag(notesEl.value, items);
-      const mainDesc=document.getElementById('entryDescription'); if(mainDesc && !mainDesc.value.trim()) mainDesc.value = items.map(i=>i.description).filter(Boolean).slice(0,3).join(', ');
+  window.vardoGLEnsureSection = function(allocations){
+    ensureGLStyles();
+    const notes=document.getElementById('entryNotes'); if(!notes) return;
+    if(!document.getElementById('glAccountingBox')){
+      const box=document.createElement('div'); box.id='glAccountingBox'; box.className='gl-accounting-box full';
+      box.innerHTML = '<div class="gl-accounting-head"><div><div class="gl-accounting-title">GL Accounting Codes</div><div class="gl-small">Add one or more GL codes that make up this order/invoice. Accounting report will group by these codes.</div></div><button type="button" class="soft" onclick="window.vardoGLAddRow()">+ Add GL Code</button></div><div id="glAllocationRows"></div><div id="glAllocationTotal" class="gl-total"></div>';
+      const label=notes.closest('label');
+      if(label && label.parentNode) label.parentNode.insertBefore(box, label.nextSibling);
     }
-    return await origSave.apply(this,arguments);
-  }; }
-  const oldVisible=window.visibleNotes;
-  window.visibleNotes=function(row){ const base=oldVisible?oldVisible(row):String(row?.notes||''); return stripTag(base); };
-  window.vardoExtractGlItemsFromNotes=function(notes){ return dec(getTag(notes)); };
-})();
-</script>
-<style>
-/* V307 GL item rows */
-.gl-items-section{border:1px solid rgba(212,165,116,.35);border-radius:18px;padding:14px;margin:6px 0 12px;background:rgba(255,255,255,.025)}
-.gl-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
-.gl-table-wrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
-.gl-items-table,.gl-summary-table{width:100%;border-collapse:collapse;font-size:12px}
-.gl-items-table th,.gl-items-table td,.gl-summary-table th,.gl-summary-table td{padding:7px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:middle}
-.gl-items-table th,.gl-summary-table th{color:#050505;background:linear-gradient(135deg,#d6aa7a,#f3d0a8);font-weight:500;white-space:nowrap}
-.gl-items-table input,.gl-items-table select{min-width:95px;font-size:12px;padding:8px!important}
-.gl-items-table .gli-desc{min-width:190px}
-.gl-items-table .gli-gl{min-width:220px}
-.gl-items-table .gli-gldesc{min-width:180px}
-.gl-items-table .gli-remove{min-width:34px;padding:7px 10px!important}
-.gl-totals{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;justify-content:flex-end}
-.gl-totals span{border:1px solid rgba(212,165,116,.25);border-radius:999px;padding:7px 10px;background:rgba(0,0,0,.18)}
-.gl-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
-.gl-summary{margin-top:10px}
-.gl-calculated-total{background:rgba(212,165,116,.10)!important;border-color:rgba(212,165,116,.45)!important}
-</style>
-
-
-<script id="v313-site-request-save-final-patch">
-(function(){
-  if(window.__v313SiteRequestSavePatch) return; window.__v313SiteRequestSavePatch=true;
-  function norm(v){return String(v||'').trim();}
-  function ensureStatusOptions(){
-    const sel=document.getElementById('entryStatus'); if(!sel) return;
-    [['Site Request','Site Request'],['Open Order','Open Order'],['Final Order','Final Order']].forEach(([v,t])=>{
-      if(!Array.from(sel.options).some(o=>o.value===v)){ const op=document.createElement('option'); op.value=v; op.textContent=t; sel.insertBefore(op, sel.firstChild); }
-    });
-    if(!norm(sel.value) || sel.value==='Unpaid') sel.value='Site Request';
-  }
-  const oldOpen=window.openEntryModal;
-  if(typeof oldOpen==='function' && !oldOpen.__v313){
-    const fn=async function(){ const r=await oldOpen.apply(this,arguments); setTimeout(ensureStatusOptions,80); return r; };
-    fn.__v313=true; window.openEntryModal=fn;
-  }
-  const oldSave=window.saveEntry;
-  if(typeof oldSave==='function' && !oldSave.__v313){
-    const fn=async function(){
-      ensureStatusOptions();
-      const supplier=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value);
-      const project=norm(document.getElementById('entryProject')&&document.getElementById('entryProject').value);
-      if(!supplier || !project){
-        if(typeof setEntryStatus==='function') setEntryStatus('Fill supplier and project. Prices, qty and GL can be completed later by the office.','error');
-        return;
+    const wrap=document.getElementById('glAllocationRows'); if(wrap) wrap.innerHTML='';
+    (allocations && allocations.length ? allocations : []).forEach(a=>window.vardoGLAddRow(a.code, a.amount));
+    if(!allocations || !allocations.length){
+      const total = Number(document.getElementById('entryTotal')?.value || document.getElementById('entryNetAmount')?.value || 0);
+      window.vardoGLAddRow('', total ? total.toFixed(2) : '');
+    }
+    window.vardoGLUpdateTotal();
+  };
+  const wait = setInterval(function(){
+    if(typeof window.openEntryModal === 'function' && typeof window.saveEntry === 'function'){
+      clearInterval(wait);
+      if(!window.__v304_gl_wrapped_open){
+        window.__v304_gl_wrapped_open = true;
+        const oldOpen = window.openEntryModal;
+        window.openEntryModal = async function(){
+          await oldOpen.apply(this, arguments);
+          const notesEl=document.getElementById('entryNotes');
+          const raw=notesEl ? notesEl.value : '';
+          const allocations=parseGL(raw);
+          if(notesEl) notesEl.value = stripGL(raw);
+          window.vardoGLEnsureSection(allocations);
+        };
       }
-      try{ if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems(); }catch(e){}
-      return await oldSave.apply(this,arguments);
-    };
-    fn.__v313=true; window.saveEntry=fn;
+      if(!window.__v304_gl_wrapped_save){
+        window.__v304_gl_wrapped_save = true;
+        const oldSave = window.saveEntry;
+        window.saveEntry = async function(){
+          const notesEl=document.getElementById('entryNotes');
+          if(notesEl) notesEl.value = packGL(notesEl.value, window.vardoGLCollect());
+          return await oldSave.apply(this, arguments);
+        };
+      }
+    }
+  }, 250);
+  function filteredRows(rows){
+    const ui=window.uiState || {};
+    return (rows||[]).filter(r=>{
+      if(ui.supplier && String(r.supplier||'')!==String(ui.supplier)) return false;
+      if(ui.project && String(r.project||'')!==String(ui.project)) return false;
+      return true;
+    });
   }
+  window.printGLAccountingReport = async function(){
+    const rows = filteredRows(await (typeof getEntries==='function' ? getEntries() : []));
+    const grouped = {};
+    let allocatedTotal = 0, withoutCode = 0;
+    rows.forEach(r=>{
+      const gls=parseGL(r.notes);
+      const amount=Number(r.total || r.amount || r.net_amount || 0);
+      if(!gls.length){ withoutCode += amount; return; }
+      gls.forEach(g=>{
+        const key=g.code;
+        if(!grouped[key]) grouped[key]={code:key, description:g.description || codeText(key).replace(/^.*? - /,''), total:0, count:0, refs:[]};
+        grouped[key].total += Number(g.amount||0);
+        grouped[key].count += 1;
+        grouped[key].refs.push([r.created_at ? String(r.created_at).slice(0,10) : '', r.supplier||'', r.order_no||'', r.invoice_no||'', r.project||'', r.description||'', Number(g.amount||0)]);
+        allocatedTotal += Number(g.amount||0);
+      });
+    });
+    const list=Object.values(grouped).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+    const tableRows=list.map(g=>[g.code,g.description,g.count,moneySafe(g.total)]);
+    const detail=list.flatMap(g=>g.refs.map(x=>[g.code,g.description,x[0],x[1],x[2],x[3],x[4],x[5],moneySafe(x[6]) ]));
+    const printTable=(headers, body)=>'<div class="wide"><table><thead><tr>'+headers.map(h=>'<th>'+html(h)+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(c=>'<td>'+html(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+    const cards='<div class="grid"><div class="card"><div class="label">GL Codes</div><div class="value">'+list.length+'</div></div><div class="card"><div class="label">Allocated Total</div><div class="value">'+html(moneySafe(allocatedTotal))+'</div></div><div class="card"><div class="label">Rows Without GL</div><div class="value">'+html(moneySafe(withoutCode))+'</div></div></div>';
+    if(typeof openR === 'function'){
+      openR('GL Accounting Report','Orders / invoices grouped by GL code', cards+'<div class="section-title">Summary by GL Code</div>'+printTable(['GL Code','Description','Lines','Total'], tableRows)+'<div class="section-title">Detailed Breakdown</div>'+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'], detail));
+    } else {
+      const w=window.open('','_blank');
+      w.document.write('<html><head><title>GL Accounting Report</title></head><body><h1>GL Accounting Report</h1>'+cards+printTable(['GL Code','Description','Lines','Total'],tableRows)+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'],detail)+'</body></html>'); w.document.close();
+    }
+  };
+  window.exportGLAccountingCSV = async function(){
+    const rows=filteredRows(await (typeof getEntries==='function' ? getEntries() : []));
+    const out=[['GL Code','GL Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount']];
+    rows.forEach(r=>parseGL(r.notes).forEach(g=>out.push([g.code,g.description || codeText(g.code).replace(/^.*? - /,''),r.created_at?String(r.created_at).slice(0,10):'',r.supplier||'',r.order_no||'',r.invoice_no||'',r.project||'',r.description||'',Number(g.amount||0)])));
+    const csv=out.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('
+');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='Vardophase_GL_Accounting_Export.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+  setInterval(function(){
+    const candidates = Array.from(document.querySelectorAll('button')).filter(b=>/Open Orders Report/i.test(b.textContent||''));
+    candidates.forEach(b=>{
+      const parent=b.parentElement; if(!parent || parent.querySelector('.v304-gl-report-btn')) return;
+      const btn=document.createElement('button'); btn.className='soft v304-gl-report-btn'; btn.type='button'; btn.textContent='GL Accounting Report'; btn.onclick=window.printGLAccountingReport; parent.insertBefore(btn, b.nextSibling);
+      const csv=document.createElement('button'); csv.className='soft v304-gl-report-btn'; csv.type='button'; csv.textContent='Export GL CSV'; csv.onclick=window.exportGLAccountingCSV; parent.insertBefore(csv, btn.nextSibling);
+    });
+  }, 800);
 })();
 </script>
+
+<script src="v311-order-items-gl.js"></script>
+<script src="v316-supplier-po-clean.js"></script>
+<script src="v319-supplier-po-column.js"></script>
+
 <script>
 (function(){if("serviceWorker" in navigator && location.protocol !== "file:"){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(e){console.warn("SW registration failed",e);});});}})();
-</script>
-
-<script>
-/* V308_FORCE_GL_VISIBLE - guarantees GL item rows are visible in the New Entry modal */
-(function(){
-  function bootGl(){
-    const sec=document.getElementById('glItemsSection');
-    const body=document.getElementById('glItemsBody');
-    if(!sec || !body) return;
-    sec.style.display='';
-    ['entryNetAmount','entryVatAmount','entryTotal'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.readOnly=true; el.classList.add('gl-calculated-total'); }});
-    if(!body.children.length && typeof window.vardoGlAddItem==='function') window.vardoGlAddItem({});
-    if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems();
-  }
-  const oldOpen=window.openEntryModal;
-  if(typeof oldOpen==='function' && !oldOpen.__v308GlForced){
-    const wrapped=async function(){ const r=await oldOpen.apply(this, arguments); setTimeout(bootGl,0); setTimeout(bootGl,150); return r; };
-    wrapped.__v308GlForced=true;
-    window.openEntryModal=wrapped;
-  }
-  document.addEventListener('click', function(){ setTimeout(bootGl,100); }, true);
-  window.v308BootGlItems=bootGl;
-})();
-</script>
-
-<script id="v310-gl-linked-print-safe">
-/* V310 safe override: linked searchable GL fields + print order + hide duplicate header description */
-(function(){
-  function norm(v){return String(v||'').trim();}
-  function esc(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function money(n){ n=Number(n||0); return n.toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function codes(){ return Array.isArray(window.GL_CODES)?window.GL_CODES:(Array.isArray(window.VARDO_GL_CODES)?window.VARDO_GL_CODES:[]); }
-  function codeOnly(v){ return norm(v).split(' - ')[0].trim(); }
-  function byCode(code){ code=codeOnly(code); return codes().find(x=>String(x.code)===code); }
-  function codeFromDesc(v){ v=norm(v); if(!v) return ''; let p=v.split(' - ')[0].trim(); if(byCode(p)) return p; let low=v.toLowerCase(); let x=codes().find(g=>String(g.description||'').toLowerCase()===low) || codes().find(g=>String(g.description||'').toLowerCase().includes(low)); return x?String(x.code):''; }
-  function descFromCode(code){ let x=byCode(code); return x?String(x.description||''):''; }
-  function ensureLists(){
-    if(document.getElementById('vardoGlCodeList')) return;
-    var gl=codes();
-    document.body.insertAdjacentHTML('beforeend','<datalist id="vardoGlCodeList">'+gl.map(g=>'<option value="'+esc(g.code)+'">'+esc(g.code+' - '+g.description)+'</option>').join('')+'</datalist><datalist id="vardoGlDescriptionList">'+gl.map(g=>'<option value="'+esc(g.description)+'">'+esc(g.code+' - '+g.description)+'</option>').join('')+'</datalist>');
-  }
-  function rowHtml(item){ item=item||{}; var code=codeOnly(item.glCode||''); var gd=item.glDescription||descFromCode(code)||''; return '<tr>'+
-    '<td><input class="dark gli-code" type="text" value="'+esc(item.productCode||'')+'" placeholder="Product Code"></td>'+ 
-    '<td><input class="dark gli-desc" type="text" list="vardoGlDescriptionList" value="'+esc(item.description||'')+'" placeholder="Item description" oninput="window.vardoGlItemDescriptionChanged(this)" onchange="window.vardoGlItemDescriptionChanged(this)"></td>'+ 
-    '<td><input class="dark gli-qty" type="number" step="0.01" min="0" value="'+esc(item.qty||'')+'" oninput="window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-price" type="number" step="0.01" min="0" value="'+esc(item.unitPrice||'')+'" oninput="window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-disc" type="number" step="0.01" min="0" max="100" value="'+esc(item.discountPercent||'')+'" oninput="window.vardoGlRecalcItems()"></td>'+ 
-    '<td><input class="dark gli-net" readonly value="0.00"></td>'+ 
-    '<td><input class="dark gli-total" readonly value="0.00"></td>'+ 
-    '<td><input class="dark gli-gl" type="text" list="vardoGlCodeList" value="'+esc(code)+'" placeholder="GL Code" oninput="window.vardoGlCodeChanged(this)" onchange="window.vardoGlCodeChanged(this)"></td>'+ 
-    '<td><input class="dark gli-gldesc" type="text" list="vardoGlDescriptionList" value="'+esc(gd)+'" placeholder="GL Description" oninput="window.vardoGlGlDescriptionChanged(this)" onchange="window.vardoGlGlDescriptionChanged(this)"></td>'+ 
-    '<td><button type="button" class="ghost gli-remove" onclick="this.closest(\'tr\').remove(); window.vardoGlRecalcItems();">×</button></td></tr>'; }
-  function n(v){return Number(v||0)||0;}
-  function ensureGlUi(){ ensureLists(); var sec=document.getElementById('glItemsSection'), body=document.getElementById('glItemsBody'); if(sec) sec.style.display=''; if(body && !body.children.length) window.vardoGlAddItem({}); ['entryNetAmount','entryVatAmount','entryTotal'].forEach(function(id){var el=document.getElementById(id); if(el){el.readOnly=true; el.classList.add('gl-calculated-total');}}); }
-  window.vardoGlAddItem=function(item){ ensureLists(); var b=document.getElementById('glItemsBody'); if(b){ b.insertAdjacentHTML('beforeend', rowHtml(item)); window.vardoGlRecalcItems(); } };
-  window.vardoGlCodeChanged=function(input){ var tr=input.closest('tr'); if(!tr) return; var code=codeOnly(input.value); if(byCode(code)){ input.value=code; var d=descFromCode(code); var gd=tr.querySelector('.gli-gldesc'); if(gd) gd.value=d; var it=tr.querySelector('.gli-desc'); if(it && !norm(it.value)) it.value=d; } window.vardoGlRecalcItems(); };
-  window.vardoGlGlDescriptionChanged=function(input){ var tr=input.closest('tr'); if(!tr) return; var code=codeFromDesc(input.value); if(code){ input.value=descFromCode(code); var gc=tr.querySelector('.gli-gl'); if(gc) gc.value=code; var it=tr.querySelector('.gli-desc'); if(it && !norm(it.value)) it.value=input.value; } window.vardoGlRecalcItems(); };
-  window.vardoGlItemDescriptionChanged=function(input){ var tr=input.closest('tr'); if(!tr) return; var code=codeFromDesc(input.value); if(code){ var d=descFromCode(code); var gc=tr.querySelector('.gli-gl'); var gd=tr.querySelector('.gli-gldesc'); if(gc) gc.value=code; if(gd) gd.value=d; } window.vardoGlRecalcItems(); };
-  window.vardoGlUpdateDescriptions=function(){ document.querySelectorAll('#glItemsBody tr').forEach(function(tr){ var gc=tr.querySelector('.gli-gl'), gd=tr.querySelector('.gli-gldesc'); var code=codeOnly(gc&&gc.value); if(gc && byCode(code)) gc.value=code; if(gd && code && byCode(code)) gd.value=descFromCode(code); }); };
-  window.vardoGlCollectItems=function(){ return Array.from(document.querySelectorAll('#glItemsBody tr')).map(function(tr){ var qty=n(tr.querySelector('.gli-qty')&&tr.querySelector('.gli-qty').value), unitPrice=n(tr.querySelector('.gli-price')&&tr.querySelector('.gli-price').value), discountPercent=n(tr.querySelector('.gli-disc')&&tr.querySelector('.gli-disc').value); var netPrice=Math.max(0, unitPrice-(unitPrice*discountPercent/100)); var totalExVat=qty*netPrice; var glCode=codeOnly(tr.querySelector('.gli-gl')&&tr.querySelector('.gli-gl').value); return {productCode:norm(tr.querySelector('.gli-code')&&tr.querySelector('.gli-code').value), description:norm(tr.querySelector('.gli-desc')&&tr.querySelector('.gli-desc').value), qty:qty, unitPrice:unitPrice, discountPercent:discountPercent, discountAmount:(unitPrice-netPrice)*qty, netPrice:netPrice, totalExVat:totalExVat, glCode:glCode, glDescription:descFromCode(glCode)||norm(tr.querySelector('.gli-gldesc')&&tr.querySelector('.gli-gldesc').value)}; }).filter(function(x){return x.productCode||x.description||x.qty||x.unitPrice||x.glCode;}); };
-  window.vardoGlRecalcItems=function(){ window.vardoGlUpdateDescriptions(); var sub=0,disc=0; document.querySelectorAll('#glItemsBody tr').forEach(function(tr){ var qty=n(tr.querySelector('.gli-qty')&&tr.querySelector('.gli-qty').value), price=n(tr.querySelector('.gli-price')&&tr.querySelector('.gli-price').value), dp=n(tr.querySelector('.gli-disc')&&tr.querySelector('.gli-disc').value); var net=Math.max(0,price-(price*dp/100)), total=qty*net; sub+=total; disc+=qty*(price-net); var ne=tr.querySelector('.gli-net'), te=tr.querySelector('.gli-total'); if(ne) ne.value=net.toFixed(2); if(te) te.value=total.toFixed(2); }); var supplierName=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value); var vatType=supplierName && typeof getSupplierVatType==='function'?getSupplierVatType(supplierName):'registered'; var rate=typeof getVatRate==='function'?Number(getVatRate()||15):15; var vat=vatType==='not_registered'?0:sub*(rate/100), grand=sub+vat; [['glSubTotal',sub],['glDiscountTotal',disc],['glVatTotal',vat],['glGrandTotal',grand]].forEach(function(a){var e=document.getElementById(a[0]); if(e)e.textContent=a[1].toFixed(2);}); var netEl=document.getElementById('entryNetAmount'), vatEl=document.getElementById('entryVatAmount'), totalEl=document.getElementById('entryTotal'); if(netEl)netEl.value=sub.toFixed(2); if(vatEl)vatEl.value=vat.toFixed(2); if(totalEl)totalEl.value=grand.toFixed(2); if(window.vardoGlAccountingSummary) window.vardoGlAccountingSummary(false); };
-  window.vardoPrintCurrentOrder=function(){ ensureGlUi(); var items=window.vardoGlCollectItems(); if(!items.length){ alert('Add item rows before printing.'); return; } window.vardoGlRecalcItems(); var supplier=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value), project=norm(document.getElementById('entryProject')&&document.getElementById('entryProject').value), order=norm(document.getElementById('entryOrderNo')&&document.getElementById('entryOrderNo').value), notes=norm(document.getElementById('entryNotes')&&document.getElementById('entryNotes').value); var sub=norm(document.getElementById('entryNetAmount')&&document.getElementById('entryNetAmount').value), vat=norm(document.getElementById('entryVatAmount')&&document.getElementById('entryVatAmount').value), grand=norm(document.getElementById('entryTotal')&&document.getElementById('entryTotal').value); var rows=items.map(function(i){return '<tr><td>'+esc(i.productCode)+'</td><td>'+esc(i.description)+'</td><td>'+esc(i.qty)+'</td><td>'+money(i.unitPrice)+'</td><td>'+esc(i.discountPercent)+'</td><td>'+money(i.netPrice)+'</td><td>'+money(i.totalExVat)+'</td><td>'+esc(i.glCode)+'</td><td>'+esc(i.glDescription)+'</td></tr>';}).join(''); var w=window.open('','_blank'); if(!w){ alert('Please allow pop-ups to print.'); return; } w.document.write('<!doctype html><html><head><title>Purchase Order '+esc(order)+'</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px}h1{margin:0 0 12px}.top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #c69b6d;padding-bottom:14px;margin-bottom:18px}.brand{font-weight:900;font-size:22px}.meta div{margin:4px 0}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:7px;text-align:left}th{background:#ead0b1}.totals{margin-left:auto;width:320px;margin-top:18px}.totals td:first-child{font-weight:700}.sign{display:flex;gap:80px;margin-top:45px}.line{border-top:1px solid #333;padding-top:8px;width:220px}.no-print{margin-top:18px}@media print{.no-print{display:none}}</style></head><body><div class="top"><div><div class="brand">VARDOPHASE</div><div>Purchase Order / Supplier Entry</div></div><div class="meta"><div><b>Order No:</b> '+esc(order)+'</div><div><b>Supplier:</b> '+esc(supplier)+'</div><div><b>Project:</b> '+esc(project)+'</div><div><b>Date:</b> '+new Date().toLocaleDateString()+'</div></div></div><h1>Order Items</h1><table><thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net Price</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th></tr></thead><tbody>'+rows+'</tbody></table><table class="totals"><tr><td>Subtotal Excl VAT</td><td>'+esc(sub)+'</td></tr><tr><td>VAT</td><td>'+esc(vat)+'</td></tr><tr><td>Total</td><td>'+esc(grand)+'</td></tr></table><p><b>Notes:</b><br>'+esc(notes)+'</p><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print"><button onclick="window.print()">Print / Save PDF</button></p><script>setTimeout(function(){window.print()},400)<\/script></body></html>'); w.document.close(); };
-  var oldOpen=window.openEntryModal; if(typeof oldOpen==='function' && !oldOpen.__v310){ var wrap=async function(){ var r=await oldOpen.apply(this,arguments); setTimeout(ensureGlUi,0); setTimeout(ensureGlUi,150); return r; }; wrap.__v310=true; window.openEntryModal=wrap; }
-  document.addEventListener('DOMContentLoaded',function(){ setTimeout(ensureGlUi,500); });
-})();
-</script>
-<style id="v310-gl-css">
-#glItemsSection .gl-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}#glItemsSection .gl-items-table{min-width:1480px}.gli-code{min-width:150px!important}.gli-desc{min-width:270px!important}.gli-gl{min-width:180px!important}.gli-gldesc{min-width:320px!important}.gl-actions button{white-space:nowrap}
-</style>
-
-<script id="v311-order-number-supplier-order-load-save">
-(function(){
-  if(window.__v311OrderPatch) return; window.__v311OrderPatch=true;
-  const GL_TAG='GL_ITEMS', SUP_TAG='SUPPLIER_ORDER';
-  const tagRe=name=>new RegExp('\\n?\\[\\['+name+':([\\s\\S]*?)\\]\\]','i');
-  function enc(obj){try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[]))));}catch(e){return '';}}
-  function dec(str){try{return JSON.parse(decodeURIComponent(escape(atob(String(str||'')))));}catch(e){return [];}}
-  function readTag(notes,name){const m=String(notes||'').match(tagRe(name));return m?String(m[1]||'').trim():'';}
-  function stripTags(notes){return String(notes||'').replace(tagRe(GL_TAG),'').replace(tagRe(SUP_TAG),'').trim();}
-  function norm(v){return String(v||'').trim();}
-  async function getNextOrderNo(){
-    try{const db=window.supabase||window.vpSupabase||window.__vpDb;if(!db)return 'PO-001';const res=await db.from('suppliers').select('order_no').not('order_no','is',null);let max=0;(res.data||[]).forEach(r=>{const m=String(r.order_no||'').match(/^PO-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]||0));});return 'PO-'+String(max+1).padStart(3,'0');}catch(e){return 'PO-001';}
-  }
-  function ensureSupplierOrderField(){if(document.getElementById('entrySupplierOrderNo'))return;const wrap=document.getElementById('entryOrderWrap');if(wrap)wrap.insertAdjacentHTML('afterend','<label id="entrySupplierOrderWrap"><span>Supplier Order No</span><input class="dark" id="entrySupplierOrderNo" type="text" placeholder="Supplier order / quotation no"></label>');}
-  function setOrderLocked(){const el=document.getElementById('entryOrderNo');if(el){el.readOnly=true;el.classList.add('gl-calculated-total');}}
-  function setDescriptionFromItems(){try{const items=(typeof window.vardoGlCollectItems==='function')?window.vardoGlCollectItems():[];const first=items.find(x=>x.description)||items[0];const desc=first&&first.description?first.description:(items.length?'Order items':'');['entryDescription','entryDescriptionSelect'].forEach(id=>{const e=document.getElementById(id);if(e&&desc)e.value=desc;});}catch(e){}}
-  function loadItems(items){const body=document.getElementById('glItemsBody');if(!body)return;body.innerHTML='';if(Array.isArray(items)&&items.length&&typeof window.vardoGlAddItem==='function')items.forEach(it=>window.vardoGlAddItem(it));else if(typeof window.vardoGlAddItem==='function')window.vardoGlAddItem({});if(typeof window.vardoGlRecalcItems==='function')window.vardoGlRecalcItems();}
-  function addPrintButtonIfMissing(){const actions=document.querySelector('#glItemsSection .gl-actions');if(actions&&!actions.querySelector('[data-v311-print]'))actions.insertAdjacentHTML('beforeend','<button type="button" class="ghost" data-v311-print onclick="window.vardoPrintCurrentOrder && window.vardoPrintCurrentOrder()">Print Order</button>');}
-  function enhancePrint(){const old=window.vardoPrintCurrentOrder;if(typeof old!=='function'||old.__v311)return;const fn=function(){const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')&&document.getElementById('entrySupplierOrderNo').value);const notes=document.getElementById('entryNotes');const before=notes?notes.value:'';if(notes&&supplierOrder&&!before.includes('Supplier Order No:'))notes.value=(before?before+'\n':'')+'Supplier Order No: '+supplierOrder;const res=old.apply(this,arguments);if(notes)notes.value=before;return res;};fn.__v311=true;window.vardoPrintCurrentOrder=fn;}
-  async function afterOpen(args){ensureSupplierOrderField();setOrderLocked();addPrintButtonIfMissing();enhancePrint();const id=args&&args.length?args[0]:null;const forced=args&&args.length>1?args[1]:'';const mode=norm(document.getElementById('entryMode')&&document.getElementById('entryMode').value)||forced;const orderEl=document.getElementById('entryOrderNo'),supEl=document.getElementById('entrySupplierOrderNo'),notesEl=document.getElementById('entryNotes');const raw=notesEl?notesEl.value:'';if(supEl)supEl.value=readTag(raw,SUP_TAG);if(notesEl)notesEl.value=stripTags(raw);loadItems(dec(readTag(raw,GL_TAG)));if(!id&&(mode==='order'||forced==='order')&&orderEl&&!norm(orderEl.value))orderEl.value=await getNextOrderNo();if(orderEl)orderEl.readOnly=true;if(supEl)supEl.disabled=(window.currentRole==='viewer');}
-  const oldOpen=window.openEntryModal;if(typeof oldOpen==='function'&&!oldOpen.__v311){const fn=async function(){const args=arguments;const r=await oldOpen.apply(this,args);setTimeout(()=>afterOpen(args),80);setTimeout(()=>afterOpen(args),300);return r;};fn.__v311=true;window.openEntryModal=fn;}
-  const oldSave=window.saveEntry;if(typeof oldSave==='function'&&!oldSave.__v311){const fn=async function(){ensureSupplierOrderField();setOrderLocked();if(typeof window.vardoGlRecalcItems==='function')window.vardoGlRecalcItems();const orderEl=document.getElementById('entryOrderNo');const mode=norm(document.getElementById('entryMode')&&document.getElementById('entryMode').value);if(mode==='order'&&orderEl&&!norm(orderEl.value))orderEl.value=await getNextOrderNo();setDescriptionFromItems();const notesEl=document.getElementById('entryNotes');const clean=stripTags(notesEl?notesEl.value:'');const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')&&document.getElementById('entrySupplierOrderNo').value);const items=(typeof window.vardoGlCollectItems==='function')?window.vardoGlCollectItems():[];/* V313: GL Code is optional at Site Request stage. Office can complete it later. */if(notesEl)notesEl.value=clean+(supplierOrder?'\n[['+SUP_TAG+':'+supplierOrder+']]':'')+(items.length?'\n[['+GL_TAG+':'+enc(items)+']]':'');const res=await oldSave.apply(this,arguments);setTimeout(()=>{const m=document.getElementById('entryModal');if(m&&m.classList.contains('show')&&notesEl)notesEl.value=clean;},250);return res;};fn.__v311=true;window.saveEntry=fn;}
-  setTimeout(()=>{ensureSupplierOrderField();setOrderLocked();addPrintButtonIfMissing();enhancePrint();},600);
-})();
-</script>
-
-
-<script id="v312-dn-invoice-reports-editable-items">
-(function(){
-  if(window.__v312EditableDnInvoicePatch) return; window.__v312EditableDnInvoicePatch=true;
-  const GL_TAG='GL_ITEMS', SUP_TAG='SUPPLIER_ORDER';
-  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-  function norm(v){return String(v||'').trim();}
-  function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0;}
-  function money(v){try{ if(typeof window.money==='function') return window.money(v); }catch(e){} return 'R '+num(v).toFixed(2);}
-  function tagRe(name){return new RegExp('\\n?\\[\\['+name+':([\\s\\S]*?)\\]\\]','i');}
-  function readTag(notes,name){const m=String(notes||'').match(tagRe(name));return m?String(m[1]||'').trim():'';}
-  function stripOurTags(notes){return String(notes||'').replace(tagRe(GL_TAG),'').replace(tagRe(SUP_TAG),'').trim();}
-  function enc(obj){try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[]))));}catch(e){return '';}}
-  function dec(str){try{return JSON.parse(decodeURIComponent(escape(atob(String(str||'')))));}catch(e){return [];}}
-  async function getNextOrderNo(){
-    try{const db=window.supabase||window.vpSupabase||window.__vpDb;if(!db)return 'PO-001';const res=await db.from('suppliers').select('order_no').not('order_no','is',null);let max=0;(res.data||[]).forEach(r=>{const m=String(r.order_no||'').match(/^PO-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]||0));});return 'PO-'+String(max+1).padStart(3,'0');}catch(e){return 'PO-001';}
-  }
-  function setStatus(txt,cls){try{ if(typeof window.setEntryStatus==='function') return window.setEntryStatus(txt,cls||''); }catch(e){} const el=document.getElementById('entryStatusMsg'); if(el){el.textContent=txt||''; el.className='status '+(cls||'');}}
-  function cleanItems(items){return (items||[]).filter(it=> norm(it.productCode)||norm(it.description)||num(it.qty)||num(it.unitPrice)||num(it.discountPercent)||norm(it.glCode)||norm(it.glDescription)).map(it=>{
-    const qty=num(it.qty), unit=num(it.unitPrice), disc=num(it.discountPercent); const net=unit-(unit*disc/100); const total=qty*net;
-    return {productCode:norm(it.productCode),description:norm(it.description),qty:qty||'',unitPrice:unit||'',discountPercent:disc||'',netPrice:net||'',totalExVat:total||'',glCode:norm(it.glCode),glDescription:norm(it.glDescription)};
-  });}
-  function collectItems(){try{ if(typeof window.vardoGlCollectItems==='function') return cleanItems(window.vardoGlCollectItems()); }catch(e){} return [];}
-  function itemsSubtotal(items){return (items||[]).reduce((a,it)=>a+num(it.totalExVat),0);}
-  function supplierVatType(supplier){try{return supplier ? getSupplierVatType(supplier) : 'registered';}catch(e){return 'registered';}}
-  function calcAmounts(totalNet, existingTotal){
-    const net=num(totalNet); const totalField=num(existingTotal);
-    const vatType=supplierVatType(norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value));
-    if(vatType==='not_registered') return {net: net||totalField, vat:0, total: net||totalField};
-    if(net>0){const vat=(typeof calcVatFromNet==='function')?calcVatFromNet(net):(net*0.15);return {net,vat,total:net+vat};}
-    if(totalField>0){const n=(typeof calcNetFromGross==='function')?calcNetFromGross(totalField):(totalField/1.15);return {net:n,vat:totalField-n,total:totalField};}
-    return {net:0,vat:0,total:0};
-  }
-  function firstDescription(items){const it=(items||[]).find(x=>norm(x.description))||(items||[])[0];return it&&it.description?it.description:((items||[]).length?'Order items':'');}
-  function rowItems(row){return cleanItems(dec(readTag(row&&row.notes, GL_TAG)));}
-  window.vardoRowItems = rowItems;
-
-  // Relaxed save: every order can be saved and edited at any stage, including rows with no prices or incomplete GL.
-  window.saveEntry = async function(){
-    try{
-      if(window.currentRole==='viewer'){ setStatus('Viewer role cannot create or edit entries.','error'); return; }
-      if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems();
-      const db=window.supabase||window.vpSupabase||window.__vpDb; if(!db){ setStatus('Database connection is not ready.','error'); return; }
-      const mode=norm(document.getElementById('entryMode')&&document.getElementById('entryMode').value)||'invoice';
-      const supplier=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value);
-      const project=norm(document.getElementById('entryProject')&&document.getElementById('entryProject').value);
-      let orderNo=norm(document.getElementById('entryOrderNo')&&document.getElementById('entryOrderNo').value);
-      const invoiceNo=norm(document.getElementById('entryInvoiceNo')&&document.getElementById('entryInvoiceNo').value);
-      let entryType=norm(document.getElementById('entryType')&&document.getElementById('entryType').value)||'invoice';
-      if(mode==='deposit') entryType='deposit';
-      const status= entryType==='deposit' ? 'Paid' : (norm(document.getElementById('entryStatus')&&document.getElementById('entryStatus').value)|| (mode==='order'?'Unpaid':'Paid'));
-      const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')&&document.getElementById('entrySupplierOrderNo').value);
-      if(!supplier || !project){ setStatus('Fill supplier and project. Amount/prices can stay empty.','error'); return; }
-      if(mode==='order' && !orderNo){ orderNo=await getNextOrderNo(); const el=document.getElementById('entryOrderNo'); if(el) el.value=orderNo; }
-      if(invoiceNo){
-        const dup=await db.from('suppliers').select('id, invoice_no, supplier, entry_type').eq('invoice_no', invoiceNo).eq('supplier', supplier);
-        if(dup.error){ setStatus(dup.error.message,'error'); return; }
-        const exists=(dup.data||[]).some(r=>String(r.id)!==String(window.editingId||editingId||'') && (r.entry_type||'invoice')==='invoice');
-        if(exists){ setStatus('This supplier already has the same invoice number.','error'); return; }
-      }
-      let items=collectItems();
-      const subtotal=itemsSubtotal(items);
-      const existingTotal=num(document.getElementById('entryTotal')&&document.getElementById('entryTotal').value);
-      const a=calcAmounts(subtotal, existingTotal);
-      ['entryNetAmount','entryVatAmount','entryTotal'].forEach(id=>{const el=document.getElementById(id); if(!el) return; if(id==='entryNetAmount') el.value=a.net?a.net.toFixed(2):''; if(id==='entryVatAmount') el.value=a.vat?a.vat.toFixed(2):'0.00'; if(id==='entryTotal') el.value=a.total?a.total.toFixed(2):'';});
-      let description=norm(document.getElementById('entryDescription')&&document.getElementById('entryDescription').value)||firstDescription(items);
-      if(!description) description = mode==='order' ? 'Order items' : (entryType==='deposit'?'Deposit / Advance Payment':'Invoice items');
-      const notesEl=document.getElementById('entryNotes');
-      const clean=stripOurTags(notesEl?notesEl.value:'');
-      const notes=clean+(supplierOrder?'\n[['+SUP_TAG+':'+supplierOrder+']]':'')+(items.length?'\n[['+GL_TAG+':'+enc(items)+']]':'');
-      const effectiveType = mode==='delivery_note' ? 'delivery_note' : (mode==='order' ? 'order' : (entryType==='deposit'?'deposit':(invoiceNo?'invoice':'order')));
-      const payload={supplier,order_no:orderNo||null,invoice_no:(effectiveType==='order'||effectiveType==='deposit')?null:(invoiceNo||null),project,description,net_amount:a.net,vat_amount:a.vat,total:a.total,status,notes,entry_type:effectiveType,created_by:(window.currentUser&&currentUser.email)||'',amount:a.total};
-      if(window.editingId||editingId){ const res=await db.from('suppliers').update(payload).eq('id', window.editingId||editingId); if(res.error){ setStatus(res.error.message,'error'); return; } }
-      else { const res=await db.from('suppliers').insert([payload]); if(res.error){ setStatus(res.error.message,'error'); return; } }
-      try{ if(typeof logAudit==='function') await logAudit((window.editingId||editingId)?'update_entry':'create_entry', supplier+' | '+project+' | '+(orderNo||'-')+' | '+(invoiceNo||'-')); }catch(e){}
-      setStatus('Saved','ok'); if(typeof window.closeEntryModal==='function') window.closeEntryModal(); if(typeof render==='function') await render();
-    }catch(err){ setStatus((err&&err.message)||'Save error','error'); }
-  };
-
-  function buildRows(items){return (items||[]).map(i=>'<tr><td>'+esc(i.productCode)+'</td><td>'+esc(i.description)+'</td><td>'+esc(i.qty)+'</td><td>'+money(i.unitPrice)+'</td><td>'+esc(i.discountPercent)+'</td><td>'+money(i.netPrice)+'</td><td>'+money(i.totalExVat)+'</td><td>'+esc(i.glCode)+'</td><td>'+esc(i.glDescription)+'</td></tr>').join('');}
-  function printDoc(title,row,items,extra){
-    items=items&&items.length?items:rowItems(row); const supplierOrder=readTag(row.notes,SUP_TAG); const sub=itemsSubtotal(items)||num(row.net_amount); const vat=num(row.vat_amount); const total=num(row.total||row.amount);
-    const w=window.open('','_blank'); if(!w){alert('Please allow pop-ups to print.');return;}
-    w.document.write('<!doctype html><html><head><title>'+esc(title)+' '+esc(row.order_no||row.invoice_no||'')+'</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px}.top{display:flex;justify-content:space-between;gap:18px;border-bottom:2px solid #c69b6d;padding-bottom:14px;margin-bottom:18px}.brand{font-size:23px;font-weight:900}.meta div{margin:4px 0}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cfcfcf;padding:7px;text-align:left}th{background:#ead0b1}.totals{margin-left:auto;width:340px;margin-top:18px}.totals td:first-child{font-weight:700}.note{margin-top:18px}.sign{display:flex;gap:80px;margin-top:45px}.line{border-top:1px solid #333;padding-top:8px;width:220px}.no-print{margin-top:18px}@media print{.no-print{display:none}}</style></head><body><div class="top"><div><div class="brand">VARDOPHASE</div><div>Suppliers Cloud Pro</div></div><div class="meta"><div><b>Document:</b> '+esc(title)+'</div><div><b>Our Order No:</b> '+esc(row.order_no||'')+'</div><div><b>Supplier Order No:</b> '+esc(supplierOrder)+'</div><div><b>Invoice No:</b> '+esc(row.invoice_no||'')+'</div><div><b>DN No:</b> '+esc((typeof extractDeliveryNoteNo==='function'?extractDeliveryNoteNo(row):''))+'</div><div><b>Date:</b> '+new Date().toLocaleDateString()+'</div></div></div><div class="meta"><div><b>Supplier:</b> '+esc(row.supplier||'')+'</div><div><b>Project:</b> '+esc(row.project||'')+'</div><div><b>Status:</b> '+esc(row.status||'')+'</div></div>'+(extra||'')+'<h2>Items</h2><table><thead><tr><th>Product Code</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Discount %</th><th>Net Price</th><th>Total Excl VAT</th><th>GL Code</th><th>GL Description</th></tr></thead><tbody>'+buildRows(items)+'</tbody></table><table class="totals"><tr><td>Subtotal Excl VAT</td><td>'+money(sub)+'</td></tr><tr><td>VAT</td><td>'+money(vat)+'</td></tr><tr><td>Total</td><td>'+money(total)+'</td></tr></table><div class="note"><b>Notes:</b><br>'+esc(stripOurTags(row.notes||'')).replace(/\n/g,'<br>')+'</div><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print"><button onclick="window.print()">Print / Save PDF</button></p><script>setTimeout(function(){window.print()},450)<\/script></body></html>');
-    w.document.close();
-  }
-  async function selectedRow(){ if(!window.selectedIds&&typeof selectedIds==='undefined') return null; const ids=window.selectedIds||selectedIds; if(!ids||ids.length!==1){alert('Select exactly one row.');return null;} const db=window.supabase||window.vpSupabase||window.__vpDb; const res=await db.from('suppliers').select('*').eq('id',ids[0]).single(); if(res.error||!res.data){alert((res.error&&res.error.message)||'Could not load row.'); return null;} return res.data; }
-  window.vardoPrintSelectedOrder=async function(){const r=await selectedRow(); if(r) printDoc('Purchase Order',r,rowItems(r));};
-  window.vardoPrintSelectedDN=async function(){const r=await selectedRow(); if(!r)return; const dn=typeof extractDeliveryNoteNo==='function'?extractDeliveryNoteNo(r):''; printDoc('Delivery Note',r,rowItems(r),'<div class="meta"><b>Delivery Note:</b> '+esc(dn||'Not created yet')+' &nbsp; <b>Delivered Amount:</b> '+money(typeof extractDeliveredAmount==='function'?extractDeliveredAmount(r):0)+'</div>');};
-  window.vardoPrintSelectedInvoice=async function(){const r=await selectedRow(); if(r) printDoc('Invoice',r,rowItems(r));};
-
-  async function injectButtons(){
-    try{const area=document.querySelector('.actions,.toolbar,.top-actions,.panel .actions')||document.querySelector('.panel'); if(!area||document.getElementById('v312DocButtons'))return; const box=document.createElement('div'); box.id='v312DocButtons'; box.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:10px 0'; box.innerHTML='<button class="soft main-action" onclick="window.vardoPrintSelectedOrder()">Print Selected Order</button><button class="soft main-action" onclick="window.vardoPrintSelectedDN()">Print Selected DN</button><button class="soft main-action" onclick="window.vardoPrintSelectedInvoice()">Print Selected Invoice</button><button class="soft main-action" onclick="window.vardoPrintAccountingReport()">GL Accounting Report</button>'; area.appendChild(box);}catch(e){}
-  }
-  const oldRender=window.render||render; if(typeof oldRender==='function'&&!oldRender.__v312){ const fn=async function(){const r=await oldRender.apply(this,arguments); setTimeout(injectButtons,120); return r;}; fn.__v312=true; try{window.render=fn; render=fn;}catch(e){window.render=fn;} }
-  setTimeout(injectButtons,900);
-
-  window.vardoPrintAccountingReport=async function(){
-    const db=window.supabase||window.vpSupabase||window.__vpDb; if(!db)return alert('Database not ready.'); const res=await db.from('suppliers').select('*'); if(res.error)return alert(res.error.message); const rows=res.data||[]; const map={}; rows.forEach(r=>{rowItems(r).forEach(it=>{const code=it.glCode||'No GL'; if(!map[code])map[code]={desc:it.glDescription||'',total:0,count:0}; map[code].total+=num(it.totalExVat); map[code].count++;});}); const trs=Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([c,v])=>'<tr><td>'+esc(c)+'</td><td>'+esc(v.desc)+'</td><td>'+v.count+'</td><td>'+money(v.total)+'</td></tr>').join(''); const w=window.open('','_blank'); if(!w){alert('Please allow pop-ups.');return;} w.document.write('<html><head><title>GL Accounting Report</title><style>body{font-family:Arial;padding:24px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#ead0b1}@media print{button{display:none}}</style></head><body><h1>GL Accounting Report</h1><table><thead><tr><th>GL Code</th><th>GL Description</th><th>Lines</th><th>Total Excl VAT</th></tr></thead><tbody>'+trs+'</tbody></table><p><button onclick="window.print()">Print / Save PDF</button></p><script>setTimeout(function(){window.print()},450)<\/script></body></html>'); w.document.close();
-  };
-})();
-</script>
-
-
-<script id="v343-final-order-items-persistence-guard">
-/* V343 FINAL ORDER ITEMS PERSISTENCE GUARD
-   Purpose: existing Order rows must never lose item rows on reopen/save.
-   Rules:
-   1) Notes tags are the primary source of truth: VPO_ITEMS + GL_ITEMS + GLITEMS.
-   2) order_items mirror is only replaced when we have non-empty UI items.
-   3) Existing order save with an empty UI preserves previous items instead of writing empty notes.
-*/
-(function(){
-  if(window.__v343FinalOrderItemsPersistenceGuard) return;
-  window.__v343FinalOrderItemsPersistenceGuard = true;
-
-  var TAGS = ['VPO_ITEMS','GL_ITEMS','GLITEMS'];
-  var FINAL_TAG = 'FINAL_ORDER';
-
-  function db(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
-  function norm(v){ return String(v == null ? '' : v).trim(); }
-  function num(v){ var n = Number(String(v == null ? '' : v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
-  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
-  function dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s || ''))))); }catch(e){ return []; } }
-  function tagRe(tag){ return new RegExp('\\n?\\[\\[' + tag + ':([\\s\\S]*?)\\]\\]', 'i'); }
-  function readTag(notes, tag){ var m = String(notes || '').match(tagRe(tag)); return m ? norm(m[1]) : ''; }
-  function stripTags(notes){
-    var s = String(notes || '');
-    TAGS.concat([FINAL_TAG]).forEach(function(t){ s = s.replace(tagRe(t), ''); });
-    return s.trim();
-  }
-  function withItemsTags(notes, items, finalize){
-    var clean = stripTags(notes);
-    var arr = cleanItems(items);
-    var out = clean;
-    if(arr.length){
-      var payload = enc(arr);
-      out += (out ? '\n' : '') + '[[VPO_ITEMS:' + payload + ']]';
-      out += '\n[[GL_ITEMS:' + payload + ']]';
-      out += '\n[[GLITEMS:' + payload + ']]';
-    }
-    if(finalize) out += (out ? '\n' : '') + '[[FINAL_ORDER:1]]';
-    return out;
-  }
-  function cleanItems(items){
-    return (Array.isArray(items) ? items : []).map(function(it){
-      var qty = num(it.qty);
-      var unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
-      var discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
-      var netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
-      var totalExVat = qty * netPrice;
-      return {
-        productCode: norm(it.productCode || it.product_code || ''),
-        description: norm(it.description || ''),
-        qty: qty,
-        unitPrice: unitPrice,
-        discountPercent: discountPercent,
-        discountAmount: num(it.discountAmount || it.discount_amount || ((unitPrice - netPrice) * qty)),
-        netPrice: netPrice,
-        totalExVat: totalExVat,
-        glCode: norm(it.glCode || it.gl_code || ''),
-        glDescription: norm(it.glDescription || it.gl_description || '')
-      };
-    }).filter(function(it){ return it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription; });
-  }
-  function collectItems(){
-    try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-    try{
-      if(typeof window.vardoGlCollectItems === 'function'){
-        var a = cleanItems(window.vardoGlCollectItems());
-        if(a.length) return a;
-      }
-    }catch(e){}
-    var rows = Array.prototype.slice.call(document.querySelectorAll('#glItemsBody tr'));
-    return cleanItems(rows.map(function(tr){
-      return {
-        productCode: tr.querySelector('.gli-code') && tr.querySelector('.gli-code').value,
-        description: tr.querySelector('.gli-desc') && tr.querySelector('.gli-desc').value,
-        qty: tr.querySelector('.gli-qty') && tr.querySelector('.gli-qty').value,
-        unitPrice: tr.querySelector('.gli-price') && tr.querySelector('.gli-price').value,
-        discountPercent: tr.querySelector('.gli-disc') && tr.querySelector('.gli-disc').value,
-        glCode: tr.querySelector('.gli-gl') && tr.querySelector('.gli-gl').value,
-        glDescription: tr.querySelector('.gli-gldesc') && tr.querySelector('.gli-gldesc').value
-      };
-    }));
-  }
-  function loadItems(items){
-    var arr = cleanItems(items);
-    var run = function(){
-      var body = document.getElementById('glItemsBody');
-      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
-      body.innerHTML = '';
-      if(arr.length) arr.forEach(function(it){ window.vardoGlAddItem(it); });
-      else window.vardoGlAddItem({});
-      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-      return true;
-    };
-    if(!run()){
-      setTimeout(run, 150);
-      setTimeout(run, 600);
-      setTimeout(run, 1300);
-    }
-  }
-  function itemsFromNotes(notes){
-    for(var i=0;i<TAGS.length;i++){
-      var arr = cleanItems(dec(readTag(notes, TAGS[i])));
-      if(arr.length) return arr;
-    }
-    return [];
-  }
-  function saveLocal(rowId, orderNo, items){
-    var arr = cleanItems(items);
-    try{ if(rowId && arr.length) localStorage.setItem('vardo_po_items_row_' + rowId, JSON.stringify(arr)); }catch(e){}
-    try{ if(orderNo && arr.length) localStorage.setItem('vardo_po_items_no_' + orderNo, JSON.stringify(arr)); }catch(e){}
-  }
-  function readLocal(rowId, orderNo){
-    var arr = [];
-    try{ if(rowId) arr = JSON.parse(localStorage.getItem('vardo_po_items_row_' + rowId) || '[]'); }catch(e){ arr = []; }
-    if(!arr.length){ try{ if(orderNo) arr = JSON.parse(localStorage.getItem('vardo_po_items_no_' + orderNo) || '[]'); }catch(e){ arr = []; } }
-    return cleanItems(arr);
-  }
-  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
-  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
-
-  async function nextOrderNo(){
-    var client = db(), max = 0;
-    function scan(rows, field){ (rows || []).forEach(function(r){ var m = String(r[field] || '').match(/PO[- ]?(\d+)/i); if(m) max = Math.max(max, Number(m[1] || 0)); }); }
-    try{
-      if(client){
-        var s = await client.from('suppliers').select('order_no').not('order_no','is',null); if(!s.error) scan(s.data, 'order_no');
-        var o = await client.from('orders').select('po_number').not('po_number','is',null); if(!o.error) scan(o.data, 'po_number');
-      }
-    }catch(e){}
-    return 'PO-' + String(max + 1).padStart(3,'0');
-  }
-  async function ensureOrderNo(){
-    var el = document.getElementById('entryOrderNo');
-    if(!el) return '';
-    if(!norm(el.value)) el.value = await nextOrderNo();
-    return norm(el.value);
-  }
-  async function itemsFromOrderItems(orderNo){
-    var client = db(); if(!client || !orderNo) return [];
-    try{
-      var ord = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      var oid = ord && ord.data && ord.data.id; if(!oid) return [];
-      var res = await client.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
-      if(res.error) return [];
-      return cleanItems((res.data || []).map(function(r){ return { description:r.description, qty:r.qty, unitPrice:r.unit_price, discountPercent:r.discount }; }));
-    }catch(e){ return []; }
-  }
-  async function readExistingItems(rowId, orderNo){
-    var client = db();
-    var row = null;
-    try{
-      if(client && rowId){
-        var res = await client.from('suppliers').select('notes,order_no').eq('id', rowId).single();
-        if(!res.error && res.data) row = res.data;
-      }
-    }catch(e){}
-    var no = orderNo || (row && row.order_no) || '';
-    var items = row ? itemsFromNotes(row.notes) : [];
-    if(!items.length) items = await itemsFromOrderItems(no);
-    if(!items.length) items = readLocal(rowId, no);
-    return items;
-  }
-  async function mirror(orderNo, supplier, status, items){
-    var client = db(); if(!client || !orderNo) return;
-    var arr = cleanItems(items);
-    try{
-      var orderId = null;
-      var found = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      if(found && found.data && found.data.id) orderId = found.data.id;
-      if(orderId) await client.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
-      else{
-        var ins = await client.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
-        if(ins && ins.data && ins.data.id) orderId = ins.data.id;
-      }
-      // SAFETY: never delete existing DB item rows when the UI collection is empty.
-      if(orderId && arr.length){
-        await client.from('order_items').delete().eq('order_id', orderId);
-        var rows = arr.map(function(it){ return { order_id:orderId, description:it.description || it.productCode || 'Item', qty:num(it.qty), unit_price:num(it.unitPrice), discount:num(it.discountPercent) }; });
-        if(rows.length) await client.from('order_items').insert(rows);
-      }
-    }catch(e){ console.warn('V343 mirror skipped', e && e.message ? e.message : e); }
-  }
-  function setStatusValue(value){
-    var st = document.getElementById('entryStatus'); if(!st) return;
-    var exists = Array.prototype.slice.call(st.options || []).some(function(o){ return o.value === value; });
-    if(!exists) st.insertAdjacentHTML('beforeend','<option value="' + value + '">' + value + '</option>');
-    st.value = value;
-  }
-  function installButtons(){
-    var actions = document.querySelector('#entryModal .modal-actions');
-    if(!actions) return;
-    if(!actions.querySelector('[data-v343-save-process]')){
-      var html = '<button type="button" class="soft" data-v343-save-process onclick="window.saveOrderInProcess()">Save In Process</button><button type="button" class="primary" data-v343-finalize onclick="window.finalizeOrder()">Finalize Order</button>';
-      var spacer = actions.querySelector('.spacer');
-      if(spacer) spacer.insertAdjacentHTML('beforebegin', html); else actions.insertAdjacentHTML('afterbegin', html);
-    }
-  }
-
-  var oldOpen = window.openEntryModal;
-  if(typeof oldOpen === 'function'){
-    window.openEntryModal = async function(id, forcedMode){
-      window.__vardoOpeningExistingOrder = !!id;
-      var result = await oldOpen.apply(this, arguments);
-      installButtons();
-      if(id){
-        var run = async function(){
-          try{
-            var client = db(); if(!client) return;
-            var res = await client.from('suppliers').select('*').eq('id', id).single();
-            if(res.error || !res.data) return;
-            var row = res.data;
-            var orderNo = norm(row.order_no);
-            var items = itemsFromNotes(row.notes);
-            if(!items.length) items = await itemsFromOrderItems(orderNo);
-            if(!items.length) items = readLocal(id, orderNo);
-            loadItems(items);
-            saveLocal(id, orderNo, items);
-            var notesEl = document.getElementById('entryNotes'); if(notesEl) notesEl.value = stripTags(row.notes || '');
-            var orderEl = document.getElementById('entryOrderNo'); if(orderEl && orderNo) orderEl.value = orderNo;
-            if(row.order_no && !row.invoice_no) setStatusValue(row.status || 'Order in Process');
-          }catch(e){ console.warn('V343 open reload failed', e); }
-        };
-        setTimeout(run, 80); setTimeout(run, 500); setTimeout(run, 1200);
-      }else if(forcedMode === 'order' || norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) === 'order'){
-        setStatusValue('Order in Process');
-        setTimeout(function(){ ensureOrderNo(); loadItems([]); }, 100);
-      }
-      return result;
-    };
-  }
-
-  var oldSave = window.saveEntry;
-  async function saveOrderCore(finalize){
-    var client = db();
-    if(!client){ alert('Database connection missing.'); return; }
-    var eid = getEditingId();
-    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) || 'order';
-    var supplier = norm(document.getElementById('entrySupplier') && document.getElementById('entrySupplier').value);
-    var project = norm(document.getElementById('entryProject') && document.getElementById('entryProject').value);
-    if(!supplier || !project){ if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project.', 'error'); else alert('Fill supplier and project.'); return; }
-    var orderNo = norm(document.getElementById('entryOrderNo') && document.getElementById('entryOrderNo').value);
-    if(!orderNo) orderNo = await ensureOrderNo();
-    var invoiceNo = norm(document.getElementById('entryInvoiceNo') && document.getElementById('entryInvoiceNo').value);
-    var items = collectItems();
-    if(!items.length && eid) items = await readExistingItems(eid, orderNo);
-    // Guard: for an existing order, an empty UI must not overwrite saved item data.
-    if(eid && !items.length){
-      var before = await readExistingItems(eid, orderNo);
-      if(before.length) items = before;
-    }
-    var net = items.reduce(function(s,it){ return s + num(it.totalExVat); }, 0);
-    var vatRate = (typeof getVatRate === 'function') ? Number(getVatRate() || 15) : 15;
-    var vat = net ? net * (vatRate / 100) : num(document.getElementById('entryVatAmount') && document.getElementById('entryVatAmount').value);
-    var total = net ? net + vat : num(document.getElementById('entryTotal') && document.getElementById('entryTotal').value);
-    var status = finalize ? 'Final Order' : 'Order in Process';
-    var rawNotes = document.getElementById('entryNotes') && document.getElementById('entryNotes').value;
-    var notes = withItemsTags(rawNotes || '', items, finalize);
-    var first = items.find(function(x){ return x.description; }) || items[0];
-    var description = norm(document.getElementById('entryDescription') && document.getElementById('entryDescription').value) || (first ? (first.description || first.productCode) : 'Order items');
-    var payload = {
-      supplier: supplier,
-      order_no: orderNo || null,
-      invoice_no: (mode === 'order' && !finalize) ? null : (invoiceNo || null),
-      project: project,
-      description: description,
-      net_amount: net,
-      vat_amount: vat,
-      total: total,
-      amount: total,
-      status: status,
-      notes: notes,
-      entry_type: 'order',
-      created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : ''
-    };
-    var res;
-    if(eid) res = await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
-    else res = await client.from('suppliers').insert([payload]).select('id').single();
-    if(res.error){ if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message); return; }
-    var savedId = res.data && res.data.id ? res.data.id : eid;
-    setEditingId(savedId);
-    saveLocal(savedId, orderNo, items);
-    await mirror(orderNo, supplier, status, items);
-    if(typeof setEntryStatus === 'function') setEntryStatus(finalize ? 'Final Order saved' : 'Order saved in process', 'ok');
-    if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
-    if(typeof render === 'function') await render();
-  }
-
-  window.saveOrderInProcess = function(){ return saveOrderCore(false); };
-  window.finalizeOrder = function(){ return saveOrderCore(true); };
-  window.saveEntry = function(){
-    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
-    if(mode === 'order') return saveOrderCore(false);
-    if(typeof oldSave === 'function') return oldSave.apply(this, arguments);
-    return saveOrderCore(false);
-  };
-})();
-
 </script>
 </body>
 </html>
 <!-- V266 marker -->
-
-<script id="v314-site-request-persist-reopen-fix">
-(function(){
-  if(window.__v314SiteRequestPersistFix) return; window.__v314SiteRequestPersistFix=true;
-  const GL_TAG='GL_ITEMS', SUP_TAG='SUPPLIER_ORDER';
-  function norm(v){return String(v||'').trim();}
-  function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0;}
-  function tagRe(name){return new RegExp('\\n?\\[\\['+name+':([\\s\\S]*?)\\]\\]','i');}
-  function readTag(notes,name){const m=String(notes||'').match(tagRe(name));return m?String(m[1]||'').trim():'';}
-  function stripTags(notes){return String(notes||'').replace(tagRe(GL_TAG),'').replace(tagRe(SUP_TAG),'').trim();}
-  function enc(obj){try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[]))));}catch(e){return '';}}
-  function dec(str){try{return JSON.parse(decodeURIComponent(escape(atob(String(str||'')))));}catch(e){return [];}}
-  function setStatus(txt,cls){try{ if(typeof window.setEntryStatus==='function') return window.setEntryStatus(txt,cls||''); }catch(e){} const el=document.getElementById('entryStatusMsg'); if(el){el.textContent=txt||''; el.className='status '+(cls||'');}}
-  function cleanItems(items){return (items||[]).filter(it=> norm(it.productCode)||norm(it.description)||num(it.qty)||num(it.unitPrice)||num(it.discountPercent)||norm(it.glCode)||norm(it.glDescription)).map(it=>{
-    const qty=num(it.qty), unit=num(it.unitPrice), disc=num(it.discountPercent); const net=Math.max(0,unit-(unit*disc/100)); const total=qty*net;
-    return {productCode:norm(it.productCode),description:norm(it.description),qty:qty||'',unitPrice:unit||'',discountPercent:disc||'',netPrice:net||'',totalExVat:total||'',glCode:norm(it.glCode),glDescription:norm(it.glDescription)};
-  });}
-  function collectItems(){try{ if(typeof window.vardoGlCollectItems==='function') return cleanItems(window.vardoGlCollectItems()); }catch(e){} return [];}
-  function subtotal(items){return (items||[]).reduce((a,it)=>a+num(it.totalExVat),0);}
-  function calcAmounts(net){
-    const supplier=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value);
-    let vatType='registered'; try{vatType=supplier&&typeof getSupplierVatType==='function'?getSupplierVatType(supplier):'registered';}catch(e){}
-    if(vatType==='not_registered') return {net:net,vat:0,total:net};
-    const vat=net>0 ? (typeof calcVatFromNet==='function'?calcVatFromNet(net):net*0.15) : 0;
-    return {net:net,vat:vat,total:net+vat};
-  }
-  async function nextOrderNo(){try{const db=window.supabase||window.vpSupabase||window.__vpDb;if(!db)return 'PO-001';const res=await db.from('suppliers').select('order_no').not('order_no','is',null);let max=0;(res.data||[]).forEach(r=>{const m=String(r.order_no||'').match(/^PO-(\d+)$/i);if(m)max=Math.max(max,Number(m[1]||0));});return 'PO-'+String(max+1).padStart(3,'0');}catch(e){return 'PO-001';}}
-  function firstDescription(items){const it=(items||[]).find(x=>norm(x.description))||(items||[])[0]; return it&&it.description?it.description:((items||[]).length?'Site request items':'');}
-  function loadItemsFromNotes(notes){
-    const items=cleanItems(dec(readTag(notes,GL_TAG)));
-    const body=document.getElementById('glItemsBody');
-    if(body){ body.innerHTML=''; if(items.length && typeof window.vardoGlAddItem==='function') items.forEach(it=>window.vardoGlAddItem(it)); else if(typeof window.vardoGlAddItem==='function') window.vardoGlAddItem({}); }
-    const sup=document.getElementById('entrySupplierOrderNo'); if(sup) sup.value=readTag(notes,SUP_TAG)||sup.value||'';
-    const notesEl=document.getElementById('entryNotes'); if(notesEl) notesEl.value=stripTags(notes);
-    try{ if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems(); }catch(e){}
-  }
-  const prevOpen=window.openEntryModal;
-  if(typeof prevOpen==='function'){
-    window.openEntryModal=async function(id=null, forcedMode=''){
-      const result=await prevOpen.apply(this,arguments);
-      const reload=async()=>{
-        try{
-          if(!id) return;
-          const db=window.supabase||window.vpSupabase||window.__vpDb; if(!db) return;
-          const res=await db.from('suppliers').select('notes').eq('id',id).single();
-          if(res && res.data) loadItemsFromNotes(res.data.notes||'');
-        }catch(e){}
-      };
-      setTimeout(reload,250); setTimeout(reload,800); setTimeout(reload,1400);
-      return result;
-    };
-  }
-  window.saveEntry=async function(){
-    try{
-      if(window.currentRole==='viewer'){ setStatus('Viewer role cannot create or edit entries.','error'); return; }
-      const db=window.supabase||window.vpSupabase||window.__vpDb; if(!db){ setStatus('Database connection is not ready.','error'); return; }
-      try{ if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems(); }catch(e){}
-      const supplier=norm(document.getElementById('entrySupplier')&&document.getElementById('entrySupplier').value);
-      const project=norm(document.getElementById('entryProject')&&document.getElementById('entryProject').value);
-      if(!supplier || !project){ setStatus('Fill supplier and project. Prices can be completed later.','error'); return; }
-      let mode=norm(document.getElementById('entryMode')&&document.getElementById('entryMode').value)||'invoice';
-      let orderNo=norm(document.getElementById('entryOrderNo')&&document.getElementById('entryOrderNo').value);
-      const invoiceNo=norm(document.getElementById('entryInvoiceNo')&&document.getElementById('entryInvoiceNo').value);
-      let entryType=norm(document.getElementById('entryType')&&document.getElementById('entryType').value)||'invoice';
-      if(mode==='deposit') entryType='deposit';
-      if(!orderNo){ orderNo=await nextOrderNo(); const el=document.getElementById('entryOrderNo'); if(el) el.value=orderNo; }
-      const items=collectItems(); const net=subtotal(items); const a=calcAmounts(net);
-      const effectiveType = mode==='delivery_note' ? 'delivery_note' : (mode==='order' ? 'order' : (entryType==='deposit'?'deposit':(invoiceNo?'invoice':'order')));
-      let status= entryType==='deposit' ? 'Paid' : (norm(document.getElementById('entryStatus')&&document.getElementById('entryStatus').value)||'');
-      // Site/warehouse requests must remain open even with no prices. Office can complete prices + GL later and then close as final order.
-      if(effectiveType==='order' && net===0) status='Site Request';
-      if(!status) status = effectiveType==='order' ? 'Open' : 'Paid';
-      if(invoiceNo){
-        const dup=await db.from('suppliers').select('id, invoice_no, supplier, entry_type').eq('invoice_no', invoiceNo).eq('supplier', supplier);
-        if(dup.error){ setStatus(dup.error.message,'error'); return; }
-        const eid=(typeof editingId!=='undefined'?editingId:null);
-        const exists=(dup.data||[]).some(r=>String(r.id)!==String(eid||'') && (r.entry_type||'invoice')==='invoice');
-        if(exists){ setStatus('This supplier already has the same invoice number.','error'); return; }
-      }
-      const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')&&document.getElementById('entrySupplierOrderNo').value);
-      const notesEl=document.getElementById('entryNotes'); const clean=stripTags(notesEl?notesEl.value:'');
-      const notes=clean+(supplierOrder?'\n[['+SUP_TAG+':'+supplierOrder+']]':'')+(items.length?'\n[['+GL_TAG+':'+enc(items)+']]':'');
-      let description=norm(document.getElementById('entryDescription')&&document.getElementById('entryDescription').value)||firstDescription(items)||'Site request items';
-      const payload={supplier, order_no:orderNo||null, invoice_no:(effectiveType==='order'||effectiveType==='deposit')?null:(invoiceNo||null), project, description, net_amount:a.net, vat_amount:a.vat, total:a.total, status, notes, entry_type:effectiveType, created_by:(window.currentUser&&currentUser.email)||'', amount:a.total};
-      const eid=(typeof editingId!=='undefined'?editingId:null);
-      let res;
-      if(eid) res=await db.from('suppliers').update(payload).eq('id',eid); else res=await db.from('suppliers').insert([payload]);
-      if(res.error){ setStatus(res.error.message,'error'); return; }
-      try{ if(typeof logAudit==='function') await logAudit(eid?'update_entry':'create_entry', supplier+' | '+project+' | '+(orderNo||'-')); }catch(e){}
-      setStatus('Saved','ok'); if(typeof window.closeEntryModal==='function') window.closeEntryModal(); if(typeof render==='function') await render();
-    }catch(err){ setStatus((err&&err.message)||'Save error','error'); }
-  };
-})();
-</script>
-
-<script id="v315-gl-items-load-save-compat-fix">
-(function(){
-  if(window.__v315GlItemsLoadSaveCompatFix) return; window.__v315GlItemsLoadSaveCompatFix=true;
-  const TAGS=['GL_ITEMS','GLITEMS'];
-  const SUP_TAG='SUPPLIER_ORDER';
-  function norm(v){return String(v||'').trim();}
-  function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0;}
-  function enc(obj){try{return btoa(unescape(encodeURIComponent(JSON.stringify(obj||[]))));}catch(e){return '';}}
-  function dec(str){try{return JSON.parse(decodeURIComponent(escape(atob(String(str||'')))));}catch(e){return [];}}
-  function tagRe(name){return new RegExp('\\n?\\[\\['+name+':([\\s\\S]*?)\\]\\]','i');}
-  function readTag(notes,name){const m=String(notes||'').match(tagRe(name));return m?String(m[1]||'').trim():'';}
-  function stripAllTags(notes){let s=String(notes||''); TAGS.forEach(t=>{s=s.replace(tagRe(t),'');}); s=s.replace(tagRe(SUP_TAG),''); return s.trim();}
-  function readItems(notes){for(const t of TAGS){const raw=readTag(notes,t); if(raw){const arr=dec(raw); if(Array.isArray(arr) && arr.length) return arr;}} return [];}
-  function glDesc(code){try{ if(Array.isArray(window.GL_CODES)){const f=window.GL_CODES.find(g=>String(g.code)===String(code)); if(f) return f.description||'';} }catch(e){} return '';}
-  function cleanItems(items){return (Array.isArray(items)?items:[]).filter(it=> norm(it.productCode)||norm(it.description)||num(it.qty)||num(it.unitPrice)||num(it.discountPercent)||norm(it.glCode)||norm(it.glDescription)).map(it=>{
-    const qty=num(it.qty), unit=num(it.unitPrice), disc=num(it.discountPercent); const net=Math.max(0,unit-(unit*disc/100)); const total=qty*net; const code=norm(it.glCode);
-    return {productCode:norm(it.productCode),description:norm(it.description),qty:qty||'',unitPrice:unit||'',discountPercent:disc||'',netPrice:net||'',totalExVat:total||'',glCode:code,glDescription:norm(it.glDescription)||glDesc(code)};
-  });}
-  function collectItems(){try{ if(typeof window.vardoGlCollectItems==='function') return cleanItems(window.vardoGlCollectItems()); }catch(e){} return [];}
-  function loadItemsIntoTable(notes){
-    const items=cleanItems(readItems(notes));
-    const run=function(){
-      const body=document.getElementById('glItemsBody');
-      if(!body || typeof window.vardoGlAddItem!=='function') return false;
-      body.innerHTML='';
-      if(items.length) items.forEach(it=>window.vardoGlAddItem(it)); else window.vardoGlAddItem({});
-      const sup=document.getElementById('entrySupplierOrderNo'); if(sup) sup.value=readTag(notes,SUP_TAG)||sup.value||'';
-      const notesEl=document.getElementById('entryNotes'); if(notesEl) notesEl.value=stripAllTags(notes);
-      try{ if(typeof window.vardoGlRecalcItems==='function') window.vardoGlRecalcItems(); }catch(e){}
-      return true;
-    };
-    if(!run()){ setTimeout(run,250); setTimeout(run,700); setTimeout(run,1300); }
-  }
-  async function fetchNotesById(id){
-    try{ const db=window.supabase||window.vpSupabase||window.__vpDb; if(!db||!id) return ''; const res=await db.from('suppliers').select('notes').eq('id',id).single(); return res&&res.data?String(res.data.notes||''):''; }catch(e){return '';}
-  }
-  const prevOpen=window.openEntryModal;
-  if(typeof prevOpen==='function'){
-    window.openEntryModal=async function(id=null, forcedMode=''){
-      const result=await prevOpen.apply(this,arguments);
-      const reload=async()=>{ const notes=await fetchNotesById(id); if(notes) loadItemsIntoTable(notes); };
-      if(id){ setTimeout(reload,300); setTimeout(reload,900); setTimeout(reload,1700); }
-      return result;
-    };
-  }
-  const prevSave=window.saveEntry;
-  if(typeof prevSave==='function'){
-    window.saveEntry=async function(){
-      // Keep the visible Notes clean, but always preserve item rows in a hidden tag before the original save runs.
-      try{
-        const notesEl=document.getElementById('entryNotes');
-        const items=collectItems();
-        if(notesEl){
-          const clean=stripAllTags(notesEl.value||'');
-          const supplierOrder=norm(document.getElementById('entrySupplierOrderNo')&&document.getElementById('entrySupplierOrderNo').value);
-          notesEl.value = clean + (supplierOrder?'\n[['+SUP_TAG+':'+supplierOrder+']]':'') + (items.length?'\n[[GL_ITEMS:'+enc(items)+']]':'');
-        }
-      }catch(e){}
-      return await prevSave.apply(this,arguments);
-    };
-  }
-  window.vardoReloadCurrentEntryItems=function(id){ fetchNotesById(id).then(loadItemsIntoTable); };
-})();
-</script>
-<!-- V315 marker: GL item rows are loaded from both GL_ITEMS and legacy GLITEMS tags and preserved on reopen. -->
-
-<script id="v330-real-order-engine-final">
-/* V330 real order engine: PO auto number + persistent item save/load.
-   Keeps the existing app list on suppliers, and mirrors items into orders/order_items when available. */
-(function(){
-  if(window.__v330RealOrderEngineFinal) return;
-  window.__v330RealOrderEngineFinal = true;
-
-  const GL_TAG = 'GL_ITEMS';
-  const SUP_TAG = 'SUPPLIER_ORDER';
-
-  function db(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
-  function norm(v){ return String(v == null ? '' : v).trim(); }
-  function num(v){ const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
-  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
-  function dec(str){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(str || ''))))); }catch(e){ return []; } }
-  function tagRe(name){ return new RegExp('\\n?\\[\\[' + name + ':([\\s\\S]*?)\\]\\]', 'i'); }
-  function readTag(notes, name){ const m = String(notes || '').match(tagRe(name)); return m ? norm(m[1]) : ''; }
-  function stripTags(notes){ let s = String(notes || ''); [GL_TAG, 'GLITEMS', SUP_TAG].forEach(t => { s = s.replace(tagRe(t), ''); }); return s.trim(); }
-
-  function getEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
-  function setEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
-
-  function cleanItems(items){
-    return (Array.isArray(items) ? items : []).map(it => {
-      const qty = num(it.qty);
-      const unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
-      const discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
-      const netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
-      const totalExVat = qty * netPrice;
-      return {
-        productCode: norm(it.productCode || it.product_code || ''),
-        description: norm(it.description || ''),
-        qty: qty,
-        unitPrice: unitPrice,
-        discountPercent: discountPercent,
-        netPrice: netPrice,
-        totalExVat: totalExVat,
-        glCode: norm(it.glCode || it.gl_code || ''),
-        glDescription: norm(it.glDescription || it.gl_description || '')
-      };
-    }).filter(it => it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription);
-  }
-
-  function collectItems(){
-    try{
-      if(typeof window.vardoGlCollectItems === 'function') return cleanItems(window.vardoGlCollectItems());
-    }catch(e){}
-    const rows = Array.from(document.querySelectorAll('#glItemsBody tr'));
-    return cleanItems(rows.map(tr => ({
-      productCode: tr.querySelector('.gli-code')?.value,
-      description: tr.querySelector('.gli-desc')?.value,
-      qty: tr.querySelector('.gli-qty')?.value,
-      unitPrice: tr.querySelector('.gli-price')?.value,
-      discountPercent: tr.querySelector('.gli-disc')?.value,
-      glCode: tr.querySelector('.gli-gl')?.value,
-      glDescription: tr.querySelector('.gli-gldesc')?.value
-    })));
-  }
-
-  function subtotal(items){ return cleanItems(items).reduce((s,it) => s + num(it.totalExVat), 0); }
-  function amountsFromItems(items){
-    const net = subtotal(items);
-    const vat = net > 0 ? net * 0.15 : 0;
-    return { net, vat, total: net + vat };
-  }
-
-  function loadItemsIntoTable(items){
-    items = cleanItems(items);
-    const run = function(){
-      const body = document.getElementById('glItemsBody');
-      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
-      body.innerHTML = '';
-      if(items.length) items.forEach(it => window.vardoGlAddItem(it));
-      else window.vardoGlAddItem({});
-      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-      return true;
-    };
-    if(!run()){ setTimeout(run, 250); setTimeout(run, 700); setTimeout(run, 1300); }
-  }
-
-  async function nextOrderNo(){
-    const client = db();
-    let max = 0;
-    function scan(rows, field){
-      (rows || []).forEach(r => {
-        const s = String(r[field] || '');
-        const m = s.match(/(?:PO|INV)[- ]?(\d+)/i);
-        if(m) max = Math.max(max, Number(m[1] || 0));
-      });
-    }
-    try{
-      if(client){
-        const s = await client.from('suppliers').select('order_no').not('order_no','is',null);
-        if(!s.error) scan(s.data, 'order_no');
-        const o = await client.from('orders').select('po_number').not('po_number','is',null);
-        if(!o.error) scan(o.data, 'po_number');
-      }
-    }catch(e){}
-    return 'PO-' + String(max + 1).padStart(3, '0');
-  }
-  window.vardoNextOrderNo = nextOrderNo;
-
-  async function ensureOrderNumber(){
-    const mode = norm(document.getElementById('entryMode')?.value);
-    const el = document.getElementById('entryOrderNo');
-    if(!el) return '';
-    if((mode === 'order' || !norm(el.value)) && !norm(el.value)){
-      el.value = await nextOrderNo();
-      el.dispatchEvent(new Event('input', {bubbles:true}));
-      el.dispatchEvent(new Event('change', {bubbles:true}));
-    }
-    return norm(el.value);
-  }
-
-  async function mirrorToOrdersAndItems(orderNo, supplier, status, items){
-    const client = db();
-    if(!client || !orderNo) return;
-    try{
-      let orderId = null;
-      const found = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      if(found && found.data && found.data.id) orderId = found.data.id;
-      if(orderId){
-        await client.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
-      }else{
-        const inserted = await client.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
-        if(inserted && inserted.data && inserted.data.id) orderId = inserted.data.id;
-      }
-      if(!orderId) return;
-      await client.from('order_items').delete().eq('order_id', orderId);
-      const rows = cleanItems(items).map(it => ({
-        order_id: orderId,
-        description: it.description || it.productCode || 'Item',
-        qty: num(it.qty),
-        unit_price: num(it.unitPrice),
-        discount: num(it.discountPercent)
-      }));
-      if(rows.length) await client.from('order_items').insert(rows);
-    }catch(e){
-      console.warn('V330 mirror orders/order_items skipped:', e && e.message ? e.message : e);
-    }
-  }
-
-  async function loadItemsFromMirror(orderNo){
-    const client = db();
-    if(!client || !orderNo) return [];
-    try{
-      const ord = await client.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      const oid = ord && ord.data && ord.data.id;
-      if(!oid) return [];
-      const res = await client.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
-      if(res.error) return [];
-      return cleanItems((res.data || []).map(r => ({
-        description: r.description,
-        qty: r.qty,
-        unitPrice: r.unit_price,
-        discountPercent: r.discount
-      })));
-    }catch(e){ return []; }
-  }
-
-  const previousOpen = window.openEntryModal;
-  if(typeof previousOpen === 'function'){
-    window.openEntryModal = async function(id=null, forcedMode=''){
-      const result = await previousOpen.apply(this, arguments);
-      async function finishOpen(){
-        try{
-          if(!id && (forcedMode === 'order' || norm(document.getElementById('entryMode')?.value) === 'order')){
-            await ensureOrderNumber();
-            const st = document.getElementById('entryStatus'); if(st) st.value = 'Order in Process';
-            loadItemsIntoTable([]);
-            return;
-          }
-          if(id){
-            const client = db();
-            if(!client) return;
-            const res = await client.from('suppliers').select('*').eq('id', id).single();
-            if(res.error || !res.data) return;
-            const row = res.data;
-            const notes = String(row.notes || '');
-            let items = cleanItems(dec(readTag(notes, GL_TAG)));
-            if(!items.length) items = await loadItemsFromMirror(row.order_no || '');
-            loadItemsIntoTable(items);
-            const notesEl = document.getElementById('entryNotes'); if(notesEl) notesEl.value = stripTags(notes);
-            const supEl = document.getElementById('entrySupplierOrderNo'); if(supEl) supEl.value = readTag(notes, SUP_TAG);
-            const st = document.getElementById('entryStatus');
-            if(st && norm(document.getElementById('entryMode')?.value) === 'order' && !row.invoice_no) st.value = row.status || 'Order in Process';
-          }
-        }catch(e){ console.warn('V330 open load failed', e); }
-      }
-      setTimeout(finishOpen, 150); setTimeout(finishOpen, 650); setTimeout(finishOpen, 1300);
-      return result;
-    };
-  }
-
-  window.saveEntry = async function(){
-    try{
-      const client = db();
-      if(!client){ alert('Database connection is not ready. Refresh and try again.'); return; }
-      if(typeof currentRole !== 'undefined' && currentRole === 'viewer'){
-        if(typeof setEntryStatus === 'function') setEntryStatus('Viewer role cannot create or edit entries.', 'error');
-        else alert('Viewer role cannot create or edit entries.');
-        return;
-      }
-      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-
-      const mode = norm(document.getElementById('entryMode')?.value) || 'invoice';
-      const supplier = norm(document.getElementById('entrySupplier')?.value);
-      const project = norm(document.getElementById('entryProject')?.value);
-      if(!supplier || !project){
-        if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project. Prices can be completed later.', 'error');
-        else alert('Fill supplier and project.');
-        return;
-      }
-
-      let orderNo = norm(document.getElementById('entryOrderNo')?.value);
-      if(mode === 'order' && !orderNo) orderNo = await ensureOrderNumber();
-      if(!orderNo && mode !== 'deposit') orderNo = await ensureOrderNumber();
-
-      const invoiceNo = norm(document.getElementById('entryInvoiceNo')?.value);
-      const supplierOrder = norm(document.getElementById('entrySupplierOrderNo')?.value);
-      const items = collectItems();
-      const amounts = amountsFromItems(items);
-
-      let entryType = norm(document.getElementById('entryType')?.value) || 'invoice';
-      if(mode === 'deposit') entryType = 'deposit';
-      const effectiveType = mode === 'delivery_note' ? 'delivery_note' : (mode === 'order' ? 'order' : (entryType === 'deposit' ? 'deposit' : (invoiceNo ? 'invoice' : 'order')));
-
-      let manualNet = num(document.getElementById('entryNetAmount')?.value);
-      let manualVat = num(document.getElementById('entryVatAmount')?.value);
-      let manualTotal = num(document.getElementById('entryTotal')?.value);
-      const useItemTotals = items.length > 0;
-      const net = useItemTotals ? amounts.net : manualNet;
-      const vat = useItemTotals ? amounts.vat : manualVat;
-      const total = useItemTotals ? amounts.total : manualTotal;
-
-      let status = norm(document.getElementById('entryStatus')?.value);
-      if(effectiveType === 'order' && !invoiceNo) status = status && status !== 'Unpaid' && status !== 'Open' ? status : 'Order in Process';
-      if(effectiveType === 'invoice') status = status || 'Paid';
-      if(effectiveType === 'deposit') status = 'Paid';
-
-      const cleanNotes = stripTags(document.getElementById('entryNotes')?.value || '');
-      const notes = cleanNotes +
-        (supplierOrder ? '\n[[' + SUP_TAG + ':' + supplierOrder + ']]' : '') +
-        (items.length ? '\n[[' + GL_TAG + ':' + enc(items) + ']]' : '');
-
-      const firstItem = items.find(x => x.description) || items[0];
-      const description = norm(document.getElementById('entryDescription')?.value) || (firstItem ? (firstItem.description || firstItem.productCode) : 'Order items');
-
-      const payload = {
-        supplier: supplier,
-        order_no: orderNo || null,
-        invoice_no: (effectiveType === 'order' || effectiveType === 'deposit') ? null : (invoiceNo || null),
-        project: project,
-        description: description,
-        net_amount: net,
-        vat_amount: vat,
-        total: total,
-        status: status,
-        notes: notes,
-        entry_type: effectiveType,
-        created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : '',
-        amount: total
-      };
-
-      const eid = getEditingId();
-      let savedId = eid;
-      let res;
-      if(eid){
-        res = await client.from('suppliers').update(payload).eq('id', eid).select('id').single();
-      }else{
-        res = await client.from('suppliers').insert([payload]).select('id').single();
-      }
-      if(res.error){
-        if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message);
-        return;
-      }
-      if(res.data && res.data.id) savedId = res.data.id;
-      setEditingId(savedId);
-
-      if(effectiveType === 'order') await mirrorToOrdersAndItems(orderNo, supplier, status, items);
-
-      try{ if(typeof logAudit === 'function') await logAudit(eid ? 'update_entry' : 'create_entry', supplier + ' | ' + project + ' | ' + (orderNo || '-')); }catch(e){}
-      if(typeof setEntryStatus === 'function') setEntryStatus('Saved', 'ok');
-      if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
-      if(typeof render === 'function') await render();
-    }catch(err){
-      const msg = (err && err.message) ? err.message : 'Save error';
-      if(typeof setEntryStatus === 'function') setEntryStatus(msg, 'error'); else alert(msg);
-    }
-  };
-
-  try{
-    if(typeof processStatusLabel === 'function'){
-      processStatusLabel = function(row){
-        if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'credit_note') return 'Credit Note';
-        if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'deposit') return 'Deposit';
-        const hasOrder = !!norm(row && row.order_no);
-        const hasInvoice = !!norm(row && row.invoice_no);
-        const hasDN = (typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
-        if(hasOrder && !hasDN && !hasInvoice) return 'Order in Process';
-        if(hasOrder && hasDN && !hasInvoice) return 'Delivery Note';
-        if(hasOrder && hasInvoice) return 'Invoice';
-        if(hasInvoice && !hasOrder) return 'Done';
-        return 'Order in Process';
-      };
-    }
-  }catch(e){}
-
-  setInterval(function(){
-    const modal = document.getElementById('entryModal');
-    if(!modal || !modal.classList.contains('show')) return;
-    const mode = norm(document.getElementById('entryMode')?.value);
-    const orderEl = document.getElementById('entryOrderNo');
-    if(mode === 'order' && orderEl && !norm(orderEl.value)) ensureOrderNumber();
-  }, 900);
-})();
-</script>
-<!-- V330 marker: real PO auto-number and item persistence fixed -->
-
-<!-- V339 marker: existing order edit does not reset items -->
-<script id="v339-existing-order-items-lock-fix">
-(function(){
-  if(window.__v339ExistingOrderItemsFix) return;
-  window.__v339ExistingOrderItemsFix = true;
-
-  var ITEM_TAG = 'VPO_ITEMS';
-  var LEGACY_TAG = 'GL_ITEMS';
-  var FINAL_TAG = 'FINAL_ORDER';
-
-  function client(){ return window.vpSupabase || window.__vpDb || window.supabase || null; }
-  function norm(v){ return String(v == null ? '' : v).trim(); }
-  function num(v){ var n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
-  function enc(obj){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(obj || [])))); }catch(e){ return ''; } }
-  function dec(s){ try{ return JSON.parse(decodeURIComponent(escape(atob(String(s || ''))))); }catch(e){ return []; } }
-  function tagRe(tag){ return new RegExp('\\n?\\[\\[' + tag + ':([\\s\\S]*?)\\]\\]', 'i'); }
-  function readTag(notes, tag){ var m = String(notes || '').match(tagRe(tag)); return m ? norm(m[1]) : ''; }
-  function stripOurTags(notes){
-    var s = String(notes || '');
-    [ITEM_TAG, LEGACY_TAG, FINAL_TAG].forEach(function(t){ s = s.replace(tagRe(t), ''); });
-    return s.trim();
-  }
-  function withItemsTag(notes, items){
-    var clean = stripOurTags(notes);
-    var out = clean;
-    if(items && items.length){
-      out += (out ? '\n' : '') + '[[' + ITEM_TAG + ':' + enc(items) + ']]';
-      out += '\n[[' + LEGACY_TAG + ':' + enc(items) + ']]';
-    }
-    return out;
-  }
-  function currentEditingId(){ try{ return (typeof editingId !== 'undefined') ? editingId : null; }catch(e){ return null; } }
-  function setCurrentEditingId(v){ try{ if(typeof editingId !== 'undefined') editingId = v; }catch(e){} }
-
-  function cleanItems(items){
-    return (Array.isArray(items) ? items : []).map(function(it){
-      var qty = num(it.qty);
-      var unitPrice = num(it.unitPrice != null ? it.unitPrice : it.unit_price);
-      var discountPercent = num(it.discountPercent != null ? it.discountPercent : it.discount);
-      var netPrice = Math.max(0, unitPrice - (unitPrice * discountPercent / 100));
-      var totalExVat = qty * netPrice;
-      return {
-        productCode: norm(it.productCode || it.product_code || ''),
-        description: norm(it.description || ''),
-        qty: qty,
-        unitPrice: unitPrice,
-        discountPercent: discountPercent,
-        netPrice: netPrice,
-        totalExVat: totalExVat,
-        glCode: norm(it.glCode || it.gl_code || ''),
-        glDescription: norm(it.glDescription || it.gl_description || '')
-      };
-    }).filter(function(it){ return it.productCode || it.description || it.qty || it.unitPrice || it.discountPercent || it.glCode || it.glDescription; });
-  }
-
-  function collectItems(){
-    try{
-      if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems();
-      if(typeof window.vardoGlCollectItems === 'function'){
-        var a = cleanItems(window.vardoGlCollectItems());
-        if(a.length) return a;
-      }
-    }catch(e){}
-    var rows = Array.prototype.slice.call(document.querySelectorAll('#glItemsBody tr'));
-    return cleanItems(rows.map(function(tr){
-      return {
-        productCode: tr.querySelector('.gli-code') && tr.querySelector('.gli-code').value,
-        description: tr.querySelector('.gli-desc') && tr.querySelector('.gli-desc').value,
-        qty: tr.querySelector('.gli-qty') && tr.querySelector('.gli-qty').value,
-        unitPrice: tr.querySelector('.gli-price') && tr.querySelector('.gli-price').value,
-        discountPercent: tr.querySelector('.gli-disc') && tr.querySelector('.gli-disc').value,
-        glCode: tr.querySelector('.gli-gl') && tr.querySelector('.gli-gl').value,
-        glDescription: tr.querySelector('.gli-gldesc') && tr.querySelector('.gli-gldesc').value
-      };
-    }));
-  }
-
-  function loadItems(items){
-    items = cleanItems(items);
-    var run = function(){
-      var body = document.getElementById('glItemsBody');
-      if(!body || typeof window.vardoGlAddItem !== 'function') return false;
-      body.innerHTML = '';
-      if(items.length) items.forEach(function(it){ window.vardoGlAddItem(it); });
-      else window.vardoGlAddItem({});
-      try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-      return true;
-    };
-    if(!run()){
-      setTimeout(run, 150);
-      setTimeout(run, 500);
-      setTimeout(run, 1100);
-    }
-  }
-
-  function saveLocal(rowId, orderNo, items){
-    items = cleanItems(items);
-    try{ if(rowId) localStorage.setItem('vardo_po_items_row_' + rowId, JSON.stringify(items)); }catch(e){}
-    try{ if(orderNo) localStorage.setItem('vardo_po_items_no_' + orderNo, JSON.stringify(items)); }catch(e){}
-  }
-  function readLocal(rowId, orderNo){
-    var arr = [];
-    try{ if(rowId) arr = JSON.parse(localStorage.getItem('vardo_po_items_row_' + rowId) || '[]'); }catch(e){ arr = []; }
-    if(!arr.length){ try{ if(orderNo) arr = JSON.parse(localStorage.getItem('vardo_po_items_no_' + orderNo) || '[]'); }catch(e){ arr = []; } }
-    return cleanItems(arr);
-  }
-
-  function itemsFromNotes(notes){
-    var a = cleanItems(dec(readTag(notes, ITEM_TAG)));
-    if(!a.length) a = cleanItems(dec(readTag(notes, LEGACY_TAG)));
-    return a;
-  }
-
-  async function itemsFromOrderItems(orderNo){
-    var db = client();
-    if(!db || !orderNo) return [];
-    try{
-      var ord = await db.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      var oid = ord && ord.data && ord.data.id;
-      if(!oid) return [];
-      var res = await db.from('order_items').select('*').eq('order_id', oid).order('created_at', {ascending:true});
-      if(res.error) return [];
-      return cleanItems((res.data || []).map(function(r){
-        return { description: r.description, qty: r.qty, unitPrice: r.unit_price, discountPercent: r.discount };
-      }));
-    }catch(e){ return []; }
-  }
-
-  async function mirror(orderNo, supplier, status, items){
-    var db = client();
-    if(!db || !orderNo) return;
-    try{
-      var orderId = null;
-      var found = await db.from('orders').select('id').eq('po_number', orderNo).limit(1).maybeSingle();
-      if(found && found.data && found.data.id) orderId = found.data.id;
-      if(orderId){
-        await db.from('orders').update({ supplier: supplier || '', status: status || 'Order in Process' }).eq('id', orderId);
-      }else{
-        var ins = await db.from('orders').insert([{ po_number: orderNo, supplier: supplier || '', status: status || 'Order in Process' }]).select('id').single();
-        if(ins && ins.data && ins.data.id) orderId = ins.data.id;
-      }
-      if(orderId){
-        await db.from('order_items').delete().eq('order_id', orderId);
-        var rows = cleanItems(items).map(function(it){
-          return { order_id: orderId, description: it.description || it.productCode || 'Item', qty: num(it.qty), unit_price: num(it.unitPrice), discount: num(it.discountPercent) };
-        });
-        if(rows.length) await db.from('order_items').insert(rows);
-      }
-    }catch(e){ console.warn('V339 order mirror skipped', e && e.message ? e.message : e); }
-  }
-
-  function setStatusOptionsValue(value){
-    var st = document.getElementById('entryStatus');
-    if(!st) return;
-    var exists = Array.prototype.slice.call(st.options || []).some(function(o){ return o.value === value; });
-    if(!exists) st.insertAdjacentHTML('beforeend', '<option value="' + value + '">' + value + '</option>');
-    st.value = value;
-  }
-
-  async function nextOrderNo(){
-    var db = client();
-    var max = 0;
-    function scan(rows, field){ (rows || []).forEach(function(r){ var m = String(r[field] || '').match(/PO[- ]?(\d+)/i); if(m) max = Math.max(max, Number(m[1] || 0)); }); }
-    try{
-      if(db){
-        var s = await db.from('suppliers').select('order_no').not('order_no','is',null);
-        if(!s.error) scan(s.data, 'order_no');
-        var o = await db.from('orders').select('po_number').not('po_number','is',null);
-        if(!o.error) scan(o.data, 'po_number');
-      }
-    }catch(e){}
-    return 'PO-' + String(max + 1).padStart(3, '0');
-  }
-
-  async function ensureOrderNo(){
-    var el = document.getElementById('entryOrderNo');
-    if(!el) return '';
-    if(!norm(el.value)) el.value = await nextOrderNo();
-    return norm(el.value);
-  }
-
-  function installButtons(){
-    var actions = document.querySelector('#entryModal .modal-actions');
-    if(!actions || actions.dataset.v339Buttons === '1') return;
-    actions.dataset.v339Buttons = '1';
-    var saveBtn = actions.querySelector('button.primary[onclick*="saveEntry"]');
-    if(saveBtn) saveBtn.textContent = 'Save Entry';
-    var spacer = actions.querySelector('.spacer');
-    var html = '<button type="button" class="soft" onclick="window.saveOrderInProcess()">Save In Process</button><button type="button" class="primary" onclick="window.finalizeOrder()">Finalize Order</button>';
-    if(spacer) spacer.insertAdjacentHTML('beforebegin', html); else actions.insertAdjacentHTML('afterbegin', html);
-  }
-
-  function isFinal(){
-    var notes = document.getElementById('entryNotes') && document.getElementById('entryNotes').value;
-    return readTag(notes || '', FINAL_TAG) === '1';
-  }
-
-  async function loadExistingItemsForId(id){
-    var db = client();
-    if(!db || !id) return;
-    try{
-      var res = await db.from('suppliers').select('*').eq('id', id).single();
-      if(res.error || !res.data) return;
-      var row = res.data;
-      var orderNo = norm(row.order_no);
-      var items = itemsFromNotes(row.notes);
-      if(!items.length) items = await itemsFromOrderItems(orderNo);
-      if(!items.length) items = readLocal(id, orderNo);
-      loadItems(items);
-      saveLocal(id, orderNo, items);
-      var notesEl = document.getElementById('entryNotes');
-      if(notesEl) notesEl.value = stripOurTags(row.notes || '');
-      if(norm(row.order_no)){
-        var orderEl = document.getElementById('entryOrderNo');
-        if(orderEl) orderEl.value = row.order_no;
-      }
-      if(norm(row.status) === 'Order in Process' || (row.order_no && !row.invoice_no)) setStatusOptionsValue('Order in Process');
-    }catch(e){ console.warn('V339 load existing items failed', e); }
-  }
-
-  var oldOpen = window.openEntryModal;
-  if(typeof oldOpen === 'function'){
-    window.openEntryModal = async function(id, forcedMode){
-      window.__vardoOpeningExistingOrder = !!id;
-      var r = await oldOpen.apply(this, arguments);
-      installButtons();
-      var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
-      if(id){
-        setTimeout(function(){ loadExistingItemsForId(id); }, 120);
-        setTimeout(function(){ loadExistingItemsForId(id); }, 650);
-      }else if(forcedMode === 'order' || mode === 'order'){
-        setStatusOptionsValue('Order in Process');
-        setTimeout(function(){ ensureOrderNo(); loadItems([]); }, 120);
-      }
-      return r;
-    };
-  }
-
-  async function saveCore(finalize){
-    var db = client();
-    if(!db){ alert('Database connection missing.'); return; }
-    try{ if(typeof window.vardoGlRecalcItems === 'function') window.vardoGlRecalcItems(); }catch(e){}
-    var eid = currentEditingId();
-    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value) || 'order';
-    var supplier = norm(document.getElementById('entrySupplier') && document.getElementById('entrySupplier').value);
-    var project = norm(document.getElementById('entryProject') && document.getElementById('entryProject').value);
-    if(!supplier || !project){ if(typeof setEntryStatus === 'function') setEntryStatus('Fill supplier and project.', 'error'); else alert('Fill supplier and project.'); return; }
-    var orderNo = norm(document.getElementById('entryOrderNo') && document.getElementById('entryOrderNo').value);
-    if(mode === 'order' && !orderNo) orderNo = await ensureOrderNo();
-    var invoiceNo = norm(document.getElementById('entryInvoiceNo') && document.getElementById('entryInvoiceNo').value);
-
-    var items = collectItems();
-    if(!items.length && eid){
-      var prev = await db.from('suppliers').select('notes,order_no').eq('id', eid).single();
-      if(prev && prev.data){
-        items = itemsFromNotes(prev.data.notes);
-        if(!items.length) items = await itemsFromOrderItems(prev.data.order_no || orderNo);
-        if(!items.length) items = readLocal(eid, prev.data.order_no || orderNo);
-      }
-    }
-
-    var net = items.reduce(function(s,it){ return s + num(it.totalExVat); }, 0);
-    var vat = net ? net * ((typeof getVatRate === 'function' ? Number(getVatRate() || 15) : 15) / 100) : num(document.getElementById('entryVatAmount') && document.getElementById('entryVatAmount').value);
-    var total = net ? net + vat : num(document.getElementById('entryTotal') && document.getElementById('entryTotal').value);
-    var status = finalize ? 'Final Order' : 'Order in Process';
-    var baseNotes = stripOurTags(document.getElementById('entryNotes') && document.getElementById('entryNotes').value);
-    var notes = withItemsTag(baseNotes, items);
-    if(finalize) notes += (notes ? '\n' : '') + '[[FINAL_ORDER:1]]';
-    var first = items.find(function(x){ return x.description; }) || items[0];
-    var description = norm(document.getElementById('entryDescription') && document.getElementById('entryDescription').value) || (first ? (first.description || first.productCode) : 'Order items');
-    var payload = {
-      supplier: supplier,
-      order_no: orderNo || null,
-      invoice_no: (mode === 'order' && !finalize) ? null : (invoiceNo || null),
-      project: project,
-      description: description,
-      net_amount: net,
-      vat_amount: vat,
-      total: total,
-      amount: total,
-      status: status,
-      notes: notes,
-      entry_type: 'order',
-      created_by: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : ''
-    };
-
-    var res;
-    if(eid) res = await db.from('suppliers').update(payload).eq('id', eid).select('id').single();
-    else res = await db.from('suppliers').insert([payload]).select('id').single();
-    if(res.error){ if(typeof setEntryStatus === 'function') setEntryStatus(res.error.message, 'error'); else alert(res.error.message); return; }
-    var savedId = res.data && res.data.id ? res.data.id : eid;
-    setCurrentEditingId(savedId);
-    saveLocal(savedId, orderNo, items);
-    await mirror(orderNo, supplier, status, items);
-    if(typeof setEntryStatus === 'function') setEntryStatus(finalize ? 'Final Order saved' : 'Order saved in process', 'ok');
-    if(typeof window.closeEntryModal === 'function') window.closeEntryModal();
-    if(typeof render === 'function') await render();
-  }
-
-  if(!window.__v339OldSaveEntry && typeof window.saveEntry === 'function') window.__v339OldSaveEntry = window.saveEntry;
-  window.saveOrderInProcess = function(){ return saveCore(false); };
-  window.finalizeOrder = function(){ return saveCore(true); };
-  window.saveEntry = function(){
-    var mode = norm(document.getElementById('entryMode') && document.getElementById('entryMode').value);
-    if(mode === 'order') return saveCore(false);
-    if(typeof window.__v339OldSaveEntry === 'function') return window.__v339OldSaveEntry.apply(this, arguments);
-    return saveCore(false);
-  };
-
-  try{
-    processStatusLabel = function(row){
-      if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'credit_note') return 'Credit Note';
-      if(typeof displayEntryKind === 'function' && displayEntryKind(row) === 'deposit') return 'Deposit';
-      var hasOrder = !!norm(row && row.order_no);
-      var hasDN = (typeof extractDeliveryNoteNo === 'function') ? !!extractDeliveryNoteNo(row) : false;
-      var hasInvoice = !!norm(row && row.invoice_no);
-      var st = norm(row && row.status).toLowerCase();
-      if(st === 'final order') return 'Final Order';
-      if(hasOrder && !hasDN && !hasInvoice) return 'Order in Process';
-      if(hasOrder && hasDN && !hasInvoice) return 'Delivery Note';
-      if(hasInvoice) return 'Invoice';
-      return hasOrder ? 'Order in Process' : 'Order';
-    };
-  }catch(e){}
-
-})();
-</script>
-
