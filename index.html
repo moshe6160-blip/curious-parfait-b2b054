@@ -3446,6 +3446,87 @@ div[role="option"],
   text-shadow: none !important;
 }
 </style>
+
+
+<style id="v302-clean-dropdown-no-shadow-final">
+/* V302: clean dropdown typography - rose-gold menu, black text, regular weight, NO text shadow. */
+#app .custom-select-menu,
+#loginScreen .custom-select-menu,
+#contractorsProScreen .custom-select-menu,
+.custom-select-wrap.open .custom-select-menu {
+  background: linear-gradient(180deg, #f4d8ad 0%, #e2bd8d 48%, #cc9b66 100%) !important;
+  color: #050505 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+}
+#app .custom-select-menu .custom-select-item,
+#app .custom-select-menu .custom-select-item *,
+#loginScreen .custom-select-menu .custom-select-item,
+#loginScreen .custom-select-menu .custom-select-item *,
+#contractorsProScreen .custom-select-menu .custom-select-item,
+#contractorsProScreen .custom-select-menu .custom-select-item *,
+.custom-select-menu .custom-select-item,
+.custom-select-menu .custom-select-item *,
+div[role="option"],
+div[role="option"] *,
+.custom-select-menu [role="option"],
+.custom-select-menu [role="option"] * {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  font-family: inherit !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  font-synthesis-weight: none !important;
+}
+#app .custom-select-menu .custom-select-item.active,
+#app .custom-select-menu .custom-select-item:hover,
+#loginScreen .custom-select-menu .custom-select-item.active,
+#loginScreen .custom-select-menu .custom-select-item:hover,
+#contractorsProScreen .custom-select-menu .custom-select-item.active,
+#contractorsProScreen .custom-select-menu .custom-select-item:hover,
+.custom-select-menu .custom-select-item.active,
+.custom-select-menu .custom-select-item:hover {
+  background: rgba(255,255,255,.16) !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+#app select option,
+#loginScreen select option,
+#contractorsProScreen select option,
+select option {
+  background: #e2bd8d !important;
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+}
+</style>
+<script id="v302-clean-dropdown-inline-shadow-guard">
+(function(){
+  function cleanDropdownText(){
+    document.querySelectorAll('.custom-select-menu, .custom-select-menu *, .custom-select-item, [role="option"], [role="option"] *').forEach(function(el){
+      el.style.textShadow = 'none';
+      el.style.webkitTextStroke = '0px';
+      el.style.filter = 'none';
+      if (el.classList && (el.classList.contains('custom-select-item') || el.closest('.custom-select-menu') || el.getAttribute('role') === 'option')) {
+        el.style.fontWeight = '400';
+        el.style.color = '#050505';
+        el.style.webkitTextFillColor = '#050505';
+      }
+    });
+  }
+  document.addEventListener('click', function(){ setTimeout(cleanDropdownText, 0); }, true);
+  document.addEventListener('DOMContentLoaded', cleanDropdownText);
+  window.addEventListener('load', cleanDropdownText);
+})();
+</script>
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
