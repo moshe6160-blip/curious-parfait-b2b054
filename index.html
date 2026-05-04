@@ -3768,22 +3768,26 @@ function processStatusLabel(row){
   const hasOrder = !!String(row.order_no || "").trim();
   const hasDN = !!extractDeliveryNoteNo(row);
   const hasInvoice = !!String(row.invoice_no || "").trim();
+  const statusText = String(row.status || "").toLowerCase();
+  const approvedOrder = statusText.includes("approved") || statusText.includes("sent") || statusText.includes("מאושר");
 
+  // Approval workflow:
+  // before approval = Pre-Order; after approval = Order. Amount must not decide approval.
   if(hasOrder && !hasDN && !hasInvoice){
-    const amount = Number(row.net_amount || row.total || row.amount || 0) || 0;
-    return amount > 0 ? "Order" : "Process";
+    return approvedOrder ? "Order" : "Pre-Order";
   }
   if(hasOrder && hasDN && !hasInvoice) return "Delivery Note";
   if(hasOrder && hasDN && hasInvoice) return "Invoice";
   if(hasInvoice && !hasOrder) return "Done";
   if(hasOrder && hasInvoice) return "Invoice";
-  return "Order";
+  return approvedOrder ? "Order" : "Pre-Order";
 }
 
 function processStatusClass(row){
   const label = processStatusLabel(row);
   if(label === "Credit Note") return "vat";
   if(label === "Deposit") return "deposit";
+  if(label === "Pre-Order") return "unpaid preorder";
   if(label === "Order" || label === "Process") return "unpaid";
   if(label === "Delivery Note") return "vat";
   if(label === "Invoice") return "paid";
@@ -4373,7 +4377,7 @@ async function getEntries(){
   if(uiState.tab === "orders"){
     rows = rows.filter(r => {
       const label = typeof processStatusLabel === "function" ? processStatusLabel(r) : displayEntryKind(r);
-      return label === "Order" || label === "Delivery Note";
+      return label === "Order" || label === "Pre-Order" || label === "Delivery Note";
     });
   }
 
@@ -4913,7 +4917,7 @@ async function render(){
           </select>
           <select class="dark" id="statusFilter">
             <option value="">All Status</option>
-            ${["Process","Paid","Unpaid","Partial","Closed","Covered","Part Covered","Deposit"].map(st=>`<option value="${esc(st)}" ${uiState.status===st?'selected':''}>${esc(st)}</option>`).join("")}
+            ${["Pending Approval","Approved","Sent","Process","Paid","Unpaid","Partial","Closed","Covered","Part Covered","Deposit"].map(st=>`<option value="${esc(st)}" ${uiState.status===st?'selected':''}>${esc(st)}</option>`).join("")}
           </select>
           <select class="dark" id="sortFilter">
             <option value="date_desc" ${uiState.sort==='date_desc'?'selected':''}>Newest First</option>
@@ -6387,7 +6391,7 @@ window.saveEntry = async function(){
     net_amount: netAmount,
     vat_amount: vatAmount,
     total: total,
-    status,
+    status: (effectiveMode === "order" && !(String(status || "").toLowerCase().includes("approved") || String(status || "").toLowerCase().includes("sent"))) ? "Pending Approval" : status,
     notes,
     entry_type: effectiveMode === "delivery_note" ? "delivery_note" : (effectiveMode === "order" ? "order" : (entryType === "deposit" ? "deposit" : (invoiceNo ? "invoice" : "order"))),
     created_by: currentUser?.email || "",
@@ -22673,6 +22677,11 @@ div[role="option"],
 
 
 <script type="module" src="v364-row-type-source-final.js"></script>
+
+<script src="v370-smart-email-system.js"></script>
+<script src="v372-order-approval-gate.js"></script>
+<script src="v375-preorder-approval-workflow.js"></script>
+<script src="v379-web-push-approvals.js"></script>
 
 <script>
 (function(){if("serviceWorker" in navigator && location.protocol !== "file:"){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(e){console.warn("SW registration failed",e);});});}})();
