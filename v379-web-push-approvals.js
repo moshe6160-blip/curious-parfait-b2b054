@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='V381_NO_BLOBS_PUSH';
+  const VERSION='V384_CLEAN_NO_TEST_PUSH';
   const COOLDOWN_MS=30*60*1000;
   const PENDING='Pending Approval';
   const APPROVED='Approved';
@@ -59,8 +59,6 @@
     localStorage.setItem('v379_push_enabled','1');
     try{ localStorage.setItem('v381_push_subscription', JSON.stringify(sub)); }catch(_e){}
     toast('התראות הופעלו בהצלחה ✅ מצב No-Blobs פעיל.');
-    // Send a small test push immediately so the user can verify the channel.
-    try{ await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,url:'/?approvals=1'})}); }catch(_e){}
     updateBadge();
     return true;
   }
@@ -92,11 +90,10 @@
   function injectButton(){
     if(document.getElementById('v379PushButton')) return;
     const wrap=document.createElement('div'); wrap.id='v379PushButton';
-    wrap.innerHTML='<button type="button" class="v379-main"><span class="v379-bell">🔔</span><span class="v379-title">Approvals</span><span class="v379-count">0</span></button><button type="button" class="v379-enable">Enable</button><button type="button" class="v379-test">Test</button>';
+    wrap.innerHTML='<button type="button" class="v379-main"><span class="v379-bell">🔔</span><span class="v379-title">Approvals</span><span class="v379-count">0</span></button><button type="button" class="v379-enable">Enable</button>';
     document.body.appendChild(wrap);
     wrap.querySelector('.v379-main').onclick=openApprovals;
     wrap.querySelector('.v379-enable').onclick=async()=>{try{await subscribePush();}catch(e){console.error(e);toast('Push error: '+esc(e && e.message ? e.message : e));}};
-    wrap.querySelector('.v379-test').onclick=async()=>{try{let sub=null;try{sub=JSON.parse(localStorage.getItem('v381_push_subscription')||'null');}catch(_e){} if(!sub){toast('לחץ קודם Enable כדי לרשום את המכשיר.');return;} const res=await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,url:'/?approvals=1'})}); const txt=await res.text(); toast(res.ok?'נשלחה התראת בדיקה ✅':'Test failed: '+esc(txt));}catch(e){toast('Test error: '+esc(e.message||e));}};
   }
   function injectStyle(){
     if(document.getElementById('v379PushStyle')) return;
@@ -104,7 +101,7 @@
 #v379PushButton{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:14px;z-index:1000001;display:flex;gap:8px;align-items:center;font-family:Arial,Helvetica,sans-serif}
 #v379PushButton button{border:1px solid rgba(215,176,108,.55);background:rgba(17,18,22,.92);color:#fff;border-radius:999px;box-shadow:0 12px 35px rgba(0,0,0,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-weight:900;cursor:pointer}
 #v379PushButton .v379-main{height:44px;padding:0 12px;display:flex;align-items:center;gap:8px}.v379-count{min-width:22px;height:22px;border-radius:999px;background:#333;display:inline-flex;align-items:center;justify-content:center;color:#f2d09a}.has-pending .v379-count{background:#8a560e;color:#fff;box-shadow:0 0 0 3px rgba(242,208,154,.16)}
-#v379PushButton .v379-enable,#v379PushButton .v379-test{height:44px;padding:0 12px;color:#111;background:linear-gradient(135deg,#f6dbad,#c18a4a);display:none}#v379PushButton:not(.enabled) .v379-enable{display:inline-block}#v379PushButton.enabled .v379-test{display:inline-block}
+#v379PushButton .v379-enable{height:44px;padding:0 12px;color:#111;background:linear-gradient(135deg,#f6dbad,#c18a4a);display:none}#v379PushButton:not(.enabled) .v379-enable{display:inline-block}
 @media(max-width:680px){#v379PushButton{left:50%;right:auto;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px)}#v379PushButton .v379-title{display:inline}#v379PushButton .v379-main{height:40px}#v379PushButton .v379-enable{height:40px}}
 `;
     document.head.appendChild(css);
