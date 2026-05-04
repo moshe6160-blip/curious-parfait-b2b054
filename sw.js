@@ -1,6 +1,14 @@
+const VARDOPHASE_SW_VERSION = 'V385-STABLE';
 self.addEventListener('install', event => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', event => {});
+self.addEventListener('activate', event => event.waitUntil((async()=>{
+  if (self.clients && self.clients.claim) await self.clients.claim();
+})()));
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+self.addEventListener('fetch', event => {
+  // V385: no offline caching. Always let browser/network handle requests to avoid stale blank screens.
+});
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Vardophase', body: event.data ? event.data.text() : '' }; }

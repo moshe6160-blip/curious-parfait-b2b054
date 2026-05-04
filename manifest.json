@@ -1,7 +1,7 @@
 {
   "name": "Vardophase Suppliers Cloud Pro",
   "short_name": "Vardophase",
-  "start_url": "/?source=pwa",
+  "start_url": "/?source=pwa&v=385",
   "scope": "/",
   "display": "standalone",
   "background_color": "#070707",
@@ -18,5 +18,5 @@
       "type": "image/png"
     }
   ],
-  "description": "Vardophase supplier orders, approvals and RFQ workflow"
+  "description": "Vardophase supplier orders, approvals and RFQ workflow - V385 stable"
 }

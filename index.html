@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="app-version" content="V385-STABLE" />
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#d4af7f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22651,41 +22655,77 @@ div[role="option"],
 })();
 </script>
 
-<script src="v311-order-items-gl.js"></script>
-<script src="v316-supplier-po-clean.js"></script>
-<script src="v319-supplier-po-column.js"></script>
-<script src="v321-manage-gl-codes.js"></script>
-<script src="v324-order-share-print.js"></script>
-<script src="v326-share-pdf-branded.js"></script>
-<script src="v325-manage-suppliers-details.js"></script>
-<script src="v332-unified-report-system.js"></script>
-<script src="v334-deposit-discount-fix.js"></script>
-<script src="v340-supplier-card-aging-search.js"></script>
-<script src="v342-supplier-report-card-render.js"></script>
-<script src="v343-report-search-polish.js"></script>
-<script src="v344_supplier_report_search_final.js"></script>
-<script src="v345_report_search_final_fix.js"></script>
-<script src="v346_deposit_logic_report_fix.js"></script>
-<script src="v346_ui_label_only_fix.js"></script>
+<script src="v311-order-items-gl.js?v=385"></script>
+<script src="v316-supplier-po-clean.js?v=385"></script>
+<script src="v319-supplier-po-column.js?v=385"></script>
+<script src="v321-manage-gl-codes.js?v=385"></script>
+<script src="v324-order-share-print.js?v=385"></script>
+<script src="v326-share-pdf-branded.js?v=385"></script>
+<script src="v325-manage-suppliers-details.js?v=385"></script>
+<script src="v332-unified-report-system.js?v=385"></script>
+<script src="v334-deposit-discount-fix.js?v=385"></script>
+<script src="v340-supplier-card-aging-search.js?v=385"></script>
+<script src="v342-supplier-report-card-render.js?v=385"></script>
+<script src="v343-report-search-polish.js?v=385"></script>
+<script src="v344_supplier_report_search_final.js?v=385"></script>
+<script src="v345_report_search_final_fix.js?v=385"></script>
+<script src="v346_deposit_logic_report_fix.js?v=385"></script>
+<script src="v346_ui_label_only_fix.js?v=385"></script>
 
-<script src="v348-invoice-print-fix.js"></script>
-<script src="v349-print-manager-full.js"></script>
-
-
+<script src="v348-invoice-print-fix.js?v=385"></script>
+<script src="v349-print-manager-full.js?v=385"></script>
 
 
 
 
-<script type="module" src="v364-row-type-source-final.js"></script>
 
-<script src="v370-smart-email-system.js"></script>
-<script src="v372-order-approval-gate.js"></script>
-<script src="v375-preorder-approval-workflow.js"></script>
-<script src="v379-web-push-approvals.js"></script>
-<script src="v383-safe-approval-notify-user.js"></script>
+
+<script type="module" src="v364-row-type-source-final.js?v=385"></script>
+
+<script src="v370-smart-email-system.js?v=385"></script>
+<script src="v372-order-approval-gate.js?v=385"></script>
+<script src="v375-preorder-approval-workflow.js?v=385"></script>
+<script src="v379-web-push-approvals.js?v=385"></script>
+<script src="v383-safe-approval-notify-user.js?v=385"></script>
 
 <script>
-(function(){if("serviceWorker" in navigator && location.protocol !== "file:"){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(e){console.warn("SW registration failed",e);});});}})();
+(function(){
+  window.VARDOPHASE_VERSION = 'V385-STABLE';
+  function showStableError(msg){
+    try{
+      var box=document.createElement('div');
+      box.id='v385StableError';
+      box.style.cssText='position:fixed;left:14px;right:14px;bottom:18px;z-index:999999;background:#111;color:#f7d8a6;border:1px solid #d4af7f;border-radius:18px;padding:14px 16px;font:600 14px -apple-system,BlinkMacSystemFont,Segoe UI,Arial;box-shadow:0 20px 50px rgba(0,0,0,.45);direction:ltr;text-align:center';
+      box.innerHTML='V385 stable loader: '+String(msg||'Loading issue')+'<br><button onclick="location.reload()" style="margin-top:10px;padding:10px 18px;border-radius:14px;border:0;background:#d4af7f;color:#111;font-weight:800">Reload</button>';
+      document.body && document.body.appendChild(box);
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    console.warn('V385 caught error', e && (e.message || e.error));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    console.warn('V385 caught promise rejection', e && e.reason);
+  });
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      try{
+        var hasContent = document.body && document.body.innerText && document.body.innerText.trim().length > 20;
+        if(!hasContent && !sessionStorage.getItem('v385ReloadedOnce')){
+          sessionStorage.setItem('v385ReloadedOnce','1');
+          location.reload();
+        } else if(!hasContent){
+          showStableError('Blank screen detected');
+        }
+      }catch(e){}
+    }, 2500);
+    if('serviceWorker' in navigator && location.protocol !== 'file:'){
+      navigator.serviceWorker.register('/sw.js?v=385').then(function(reg){
+        try{ reg.update && reg.update(); }catch(e){}
+        if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
+      }).catch(function(e){ console.warn('SW registration failed',e); });
+    }
+  });
+})();
 </script>
 </body>
 </html>
