@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='V386_TRUE_PUSH_BLOBS';
+  const VERSION='V390_TRUE_PUSH_BLOBS_CLEAN';
   const COOLDOWN_MS=30*60*1000;
   const PENDING='Pending Approval';
   const APPROVED='Approved';

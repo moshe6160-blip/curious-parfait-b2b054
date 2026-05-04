@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V386-TRUE-PUSH';
+const VARDOPHASE_SW_VERSION = 'V390-PRO-STABLE';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();
@@ -12,7 +12,7 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Vardophase', body: event.data ? event.data.text() : '' }; }
-  const title = data.title || 'Vardophase Approvals';
+  const title = data.title || 'Vardophase';
   const options = {
     body: data.body || 'יש הזמנות שממתינות לאישור.',
     icon: data.icon || '/icon-192.png',

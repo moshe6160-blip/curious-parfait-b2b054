@@ -22685,8 +22685,9 @@ div[role="option"],
 <script src="v370-smart-email-system.js?v=385"></script>
 <script src="v372-order-approval-gate.js?v=385"></script>
 <script src="v375-preorder-approval-workflow.js?v=385"></script>
-<script src="v379-web-push-approvals.js?v=385"></script>
-<script src="v383-safe-approval-notify-user.js?v=385"></script>
+<script src="v379-web-push-approvals.js?v=390"></script>
+<script src="v383-safe-approval-notify-user.js?v=390"></script>
+<script src="v390-smart-refresh.js?v=390"></script>
 
 <script>
 (function(){
@@ -22719,7 +22720,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=385').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=390').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
