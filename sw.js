@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V390-PRO-STABLE';
+const VARDOPHASE_SW_VERSION = 'V391-REAL-SYNC';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();
