@@ -3506,6 +3506,29 @@ div[role="option"],
   filter: none !important;
 }
 </style>
+
+
+<style id="v397-ui-clean-safe-css">
+/* V397 SAFE UI CLEAN ONLY — no logic touched */
+/* Hide floating Live notification button/panel only. Push + realtime logic remain active. */
+#v395NotifBox,
+#v395NotifButton,
+#v395NotifPanel {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Hide only the old forced/floating Credit Note button injected by V266.
+   Normal Credit Note button inside the action dashboard remains visible. */
+#v266CreditNoteMainBtn,
+.v266-credit-note-force {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+</style>
+
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
