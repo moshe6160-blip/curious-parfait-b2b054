@@ -1,6 +1,25 @@
 const webpush = require('web-push');
 const { listSubscriptions, deleteSubscription } = require('./_push-store');
 
+const { getStore } = require('@netlify/blobs');
+const DEDUPE_STORE = 'vardophase-push-approvals-dedupe';
+function eventStore(){
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || '';
+  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_API_TOKEN || '';
+  if(siteID && token){
+    try { return getStore({ name: DEDUPE_STORE, siteID, token }); } catch(_e) {}
+    try { return getStore(DEDUPE_STORE, { siteID, token }); } catch(_e) {}
+  }
+  return getStore(DEDUPE_STORE);
+}
+async function approvalsAlreadySent(key){
+  const s = eventStore();
+  const existing = await s.get(key, { type: 'json' }).catch(() => null);
+  if(existing) return true;
+  await s.setJSON(key, { sentAt: new Date().toISOString() });
+  return false;
+}
+
 async function sendOne(subscription, payload, key){
   try{
     await webpush.sendNotification(subscription, payload);
@@ -24,6 +43,12 @@ exports.handler = async (event) => {
     const count = Number(body.count || 0);
     if (!count) return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, sent: 0, reason: 'no pending approvals' }) };
 
+    const ids = Array.isArray(body.orders) ? body.orders.map(o => o && (o.id || o.order_no)).filter(Boolean).sort().join(',') : '';
+    const dedupeKey = 'approvals-' + Buffer.from(String(count) + '|' + ids).toString('base64url').slice(0, 180);
+    if (await approvalsAlreadySent(dedupeKey)) {
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, sent: 0, reason: 'duplicate skipped', key: dedupeKey }) };
+    }
+
     const first = Array.isArray(body.orders) && body.orders[0] ? body.orders[0] : null;
     const supplier = first && first.supplier ? String(first.supplier) : '';
     const orderNo = first && first.order_no ? String(first.order_no) : '';
@@ -36,7 +61,7 @@ exports.handler = async (event) => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       tag: 'vardophase-approvals',
-      renotify: true
+      renotify: false
     });
 
     let targets = [];

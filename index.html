@@ -22689,10 +22689,11 @@ div[role="option"],
 <script src="v383-safe-approval-notify-user.js?v=390"></script>
 <script src="v392-ui-sync-fix.js?v=392"></script>
 <script src="v394-realtime-full.js?v=394"></script>
+<script src="v396-anti-duplicate-push.js?v=396"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V394-REALTIME-FULL';
+  window.VARDOPHASE_VERSION = 'V396-ANTI-DUPLICATE-PUSH';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22721,7 +22722,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=394').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=396').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
