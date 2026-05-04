@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='V380_PUSH_ENABLE_FIX';
+  const VERSION='V381_NO_BLOBS_PUSH';
   const COOLDOWN_MS=30*60*1000;
   const PENDING='Pending Approval';
   const APPROVED='Approved';
@@ -57,22 +57,25 @@
     const res=await fetch('/.netlify/functions/push-save-subscription',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,device:navigator.userAgent||'',createdAt:new Date().toISOString()})});
     if(!res.ok) throw new Error(await res.text());
     localStorage.setItem('v379_push_enabled','1');
-    toast('התראות הופעלו בהצלחה ✅ עכשיו אפשר לקבל Notification.');
+    try{ localStorage.setItem('v381_push_subscription', JSON.stringify(sub)); }catch(_e){}
+    toast('התראות הופעלו בהצלחה ✅ מצב No-Blobs פעיל.');
     // Send a small test push immediately so the user can verify the channel.
-    try{ await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'/?approvals=1'})}); }catch(_e){}
+    try{ await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,url:'/?approvals=1'})}); }catch(_e){}
     updateBadge();
     return true;
   }
   async function triggerPush(force){
     const rows=await pendingRows(); updateButton(rows.length);
     if(!rows.length) return;
+    let sub=null; try{sub=JSON.parse(localStorage.getItem('v381_push_subscription')||'null');}catch(_e){}
+    if(!sub || !sub.endpoint){ console.warn(VERSION,'No local push subscription. Press Enable first.'); return; }
     if(!force){
       const last=Number(localStorage.getItem('v379_last_push')||0);
       if(Date.now()-last<COOLDOWN_MS) return;
     }
     localStorage.setItem('v379_last_push',String(Date.now()));
     try{
-      await fetch('/.netlify/functions/push-notify-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:rows.length,orders:rows.slice(0,5).map(r=>({id:r.id,order_no:r.order_no,supplier:r.supplier,project:r.project,total:r.total||r.amount||0})),url:'/?approvals=1'})});
+      await fetch('/.netlify/functions/push-notify-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,count:rows.length,orders:rows.slice(0,5).map(r=>({id:r.id,order_no:r.order_no,supplier:r.supplier,project:r.project,total:r.total||r.amount||0})),url:'/?approvals=1'})});
     }catch(e){console.warn(VERSION,'notify failed',e);}
   }
   function openApprovals(){
@@ -93,7 +96,7 @@
     document.body.appendChild(wrap);
     wrap.querySelector('.v379-main').onclick=openApprovals;
     wrap.querySelector('.v379-enable').onclick=async()=>{try{await subscribePush();}catch(e){console.error(e);toast('Push error: '+esc(e && e.message ? e.message : e));}};
-    wrap.querySelector('.v379-test').onclick=async()=>{try{const res=await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'/?approvals=1'})}); const txt=await res.text(); toast(res.ok?'נשלחה התראת בדיקה ✅':'Test failed: '+esc(txt));}catch(e){toast('Test error: '+esc(e.message||e));}};
+    wrap.querySelector('.v379-test').onclick=async()=>{try{let sub=null;try{sub=JSON.parse(localStorage.getItem('v381_push_subscription')||'null');}catch(_e){} if(!sub){toast('לחץ קודם Enable כדי לרשום את המכשיר.');return;} const res=await fetch('/.netlify/functions/push-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,url:'/?approvals=1'})}); const txt=await res.text(); toast(res.ok?'נשלחה התראת בדיקה ✅':'Test failed: '+esc(txt));}catch(e){toast('Test error: '+esc(e.message||e));}};
   }
   function injectStyle(){
     if(document.getElementById('v379PushStyle')) return;
