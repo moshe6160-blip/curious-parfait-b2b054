@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V385-STABLE';
+const VARDOPHASE_SW_VERSION = 'V386-TRUE-PUSH';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();
