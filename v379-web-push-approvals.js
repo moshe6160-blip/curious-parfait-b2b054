@@ -124,7 +124,7 @@
     injectStyle(); injectButton(); markEnabled(); patchSaveAndApprove(); updateBadge();
     if(location.search.includes('approvals=1')) setTimeout(openApprovals,1000);
     if(localStorage.getItem('v379_push_enabled')==='1') setTimeout(()=>triggerPush(false),2200);
-    setTimeout(()=>{patchSaveAndApprove(); updateBadge();},1500); document.addEventListener('click',()=>setTimeout(()=>{patchSaveAndApprove(); updateBadge();},350),true);
+    setInterval(()=>{patchSaveAndApprove(); updateBadge();},10000);
   }
   window.v379EnablePushNotifications=subscribePush;
   window.v379TriggerApprovalPush=triggerPush;

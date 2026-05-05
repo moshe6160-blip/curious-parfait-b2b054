@@ -46,7 +46,7 @@
       wrapped.__v321Wrapped = true;
       window.openListsModal = wrapped;
     }
-    setTimeout(applyManageGLList,700); document.addEventListener('click',()=>setTimeout(applyManageGLList,200),true);
+    setInterval(applyManageGLList, 700);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
   const css = document.createElement('style');

@@ -128,5 +128,5 @@
   function enhanceButtons(){ document.querySelectorAll('button').forEach(b=>{ const t=(b.textContent||'').trim(); const oc=String(b.getAttribute('onclick')||''); if(/^Email(\s*\/\s*Choose)?$/i.test(t) && /emailEntryOrder/.test(oc)) b.textContent='Email / Send / Share'; }); }
   window.emailEntryOrder=showChooser; window.v367UniversalEmailChooser=showChooser; window.v368EmailChooser=showChooser; window.v369EmailChooser=showChooser; window.v370EmailChooser=showChooser; window.resetEmailChoice=function(){clearChoices(); showChooser();}; window.v370SharePdf=sharePdf; window.v370DownloadPdf=downloadPdf;
   document.addEventListener('click', function(e){ const b=e.target && e.target.closest && e.target.closest('button'); if(!b) return; const txt=(b.textContent||'').trim(); const oc=String(b.getAttribute('onclick')||''); if((/^Email(\s*\/\s*(Choose|Send|Share))?$/i.test(txt) || /emailEntryOrder/.test(oc)) && /emailEntryOrder/.test(oc)){ e.preventDefault(); e.stopPropagation(); showChooser(); } }, true);
-  document.addEventListener('DOMContentLoaded', enhanceButtons); window.addEventListener('load',()=>setTimeout(enhanceButtons,800)); document.addEventListener('click',()=>setTimeout(enhanceButtons,250),true);
+  document.addEventListener('DOMContentLoaded', enhanceButtons); setInterval(enhanceButtons, 1200);
 })();

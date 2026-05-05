@@ -141,7 +141,7 @@
     }
   }
   async function seedSignature(){ try { const snap = await remoteSnapshot(); lastSignature = snap.signature || ''; } catch(e){ console.warn(VERSION, e && (e.message || e)); } }
-  function start(){ stop(); setTimeout(seedSignature, 1200); /* V411: realtime handles live changes; no 15s polling. */ }
+  function start(){ stop(); setTimeout(seedSignature, 1200); timer = setInterval(function(){ checkForChanges('auto'); }, INTERVAL_MS); }
   function stop(){ if(timer){ clearInterval(timer); timer = null; } }
   window.manualRefresh = async function(){
     manualLock = true;
@@ -166,6 +166,6 @@
   window.v392StartSmartSync = start;
   window.v392StopSmartSync = stop;
   window.addEventListener('load', function(){ setTimeout(function(){ injectButton(); start(); }, 1200); });
-  document.addEventListener('visibilitychange', function(){ /* V411: no automatic sync on login/typing. Use realtime/manual Sync. */ });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) checkForChanges('auto'); });
   console.log(VERSION, 'loaded');
 })();

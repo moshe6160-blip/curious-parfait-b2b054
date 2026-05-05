@@ -206,5 +206,5 @@
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
   window.addEventListener('load',()=>setTimeout(boot,800));
-  setTimeout(()=>{ window.runSupplierReport = window.runSupplierReport; }, 2000);
+  setInterval(()=>{ window.runSupplierReport = window.runSupplierReport; }, 2000);
 })();

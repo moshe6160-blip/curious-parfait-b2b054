@@ -172,6 +172,6 @@
   document.addEventListener('DOMContentLoaded', boot);
   window.addEventListener('load', boot);
   document.addEventListener('click', function(){ setTimeout(boot, 250); }, true);
-  // V411: removed 700ms polling. Boot runs on load/click only.
+  setInterval(boot, 700);
   console.log(VERSION, 'loaded');
 })();

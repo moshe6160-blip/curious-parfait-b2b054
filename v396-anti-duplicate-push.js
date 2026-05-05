@@ -176,7 +176,7 @@
   function init(){
     injectUI();
     attachRealtime();
-    /* V411: no repeating UI injection. */
+    setInterval(function(){ injectUI(); }, 12000);
   }
 
   window.v395MarkNotificationsRead = markAllRead;

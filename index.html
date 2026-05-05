@@ -7697,9 +7697,7 @@ div[role="option"],
         <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
         <tbody>${txHtml}</tbody>
       </table>
-      <script>
-
-window.onload=()=>window.print()<\/script>
+      <script>window.onload=()=>window.print()<\/script>
     
 
 </body></html>`);
@@ -15771,7 +15769,7 @@ window.injectDeliveryNoteButton = function(){
   }
 };
 
-setTimeout(window.injectDeliveryNoteButton, 250); setTimeout(window.injectDeliveryNoteButton, 1500);
+setInterval(window.injectDeliveryNoteButton, 600);
 document.addEventListener("click", function(){
   setTimeout(window.injectDeliveryNoteButton, 100);
 });
@@ -15892,7 +15890,9 @@ window.prepareDeliveryNoteMode = function(){
   }
 };
 
-document.addEventListener('input', function(){ if(window.isDeliveryNoteMode()) setTimeout(window.bindDeliveryOrderAutoFill, 120); }, true);
+setInterval(function(){
+  if(window.isDeliveryNoteMode()) window.bindDeliveryOrderAutoFill();
+}, 800);
 
 
 /* === V87.26 Safe Delivery Note Save Validation === */
@@ -16227,7 +16227,9 @@ window.openEntryModal = async function(id=null, forcedMode=""){
   }
 };
 
-document.addEventListener('input', function(){ setTimeout(window.bindInvoiceOrderAutoFill, 120); }, true);
+setInterval(function(){
+  window.bindInvoiceOrderAutoFill();
+}, 900);
 
 
 /* === V87.31 Locks after Invoice + automatic DN numbering === */
@@ -20919,7 +20921,7 @@ window.addTransparencyButtons = function(){
     toolbar.appendChild(b);
   }
 };
-setTimeout(window.addTransparencyButtons, 1000);
+setInterval(window.addTransparencyButtons, 1000);
 
 /* === V269 PRO ACCOUNTING CREDIT NOTE - SEPARATE ROW / LOGIN SAFE === */
 (function(){
@@ -21926,7 +21928,10 @@ div[role="option"],
     setTimeout(blockDNApproverActions, 60);
   }, true);
 
-  // V411: removed 2s global polling; click/load handlers are enough.
+  setInterval(function(){
+    applyDNApproverUI();
+    blockDNApproverActions();
+  }, 2000);
 })();
 /* === END V168 DN APPROVER ROLE PATCH === */
 
@@ -21957,7 +21962,7 @@ window.vpGetAllSupplierRows = async function(){
  function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
  function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} }
  var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}'; document.head.appendChild(st);
- document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setTimeout(inject,100); setTimeout(inject,1500);
+ document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
 })();
 </script>
 <script>
@@ -22198,7 +22203,7 @@ window.vpGetAllSupplierRows = async function(){
   window.addEventListener('load', function(){ setTimeout(run,900); setTimeout(run,2200); setTimeout(run,4000); });
   document.addEventListener('click', function(){ setTimeout(run,800); }, true);
   document.addEventListener('change', function(){ setTimeout(run,800); }, true);
-  // V411: removed 1.5s polling; run only on load/click/change.
+  setInterval(run,1500);
 })();
 
 /* === V279 CREDIT NOTE PDF - MODULE SAFE / LOGIN SAFE === */
@@ -22370,7 +22375,7 @@ div[role="option"],
   document.head.appendChild(pdfCss);
   window.addEventListener('load', function(){ setTimeout(addCreditNotePdfButton,900); setTimeout(addCreditNotePdfButton,2200); });
   document.addEventListener('click', function(){ setTimeout(addCreditNotePdfButton,500); }, true);
-  // V411: no polling for credit note PDF button; use load/click hooks only.
+  setInterval(addCreditNotePdfButton,1500);
 })();
 
 
@@ -22639,98 +22644,58 @@ div[role="option"],
 ');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='Vardophase_GL_Accounting_Export.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
-  setTimeout(function v304InjectOnce(){
+  setInterval(function(){
     const candidates = Array.from(document.querySelectorAll('button')).filter(b=>/Open Orders Report/i.test(b.textContent||''));
     candidates.forEach(b=>{
       const parent=b.parentElement; if(!parent || parent.querySelector('.v304-gl-report-btn')) return;
       const btn=document.createElement('button'); btn.className='soft v304-gl-report-btn'; btn.type='button'; btn.textContent='GL Accounting Report'; btn.onclick=window.printGLAccountingReport; parent.insertBefore(btn, b.nextSibling);
       const csv=document.createElement('button'); csv.className='soft v304-gl-report-btn'; csv.type='button'; csv.textContent='Export GL CSV'; csv.onclick=window.exportGLAccountingCSV; parent.insertBefore(csv, btn.nextSibling);
     });
-  }, 1200);
+  }, 800);
 })();
 </script>
 
-<script id="v413-post-login-script-loader">
-/* V413: Load heavy feature scripts only after login/app is visible.
-   This stops typing lag on Email/Password and prevents background workspace observers before login. */
-(function(){
-  if(window.__V413_POST_LOGIN_LOADER__) return;
-  window.__V413_POST_LOGIN_LOADER__ = true;
-  var scripts = [
-    ['v311-order-items-gl.js?v=385'],
-    ['v316-supplier-po-clean.js?v=385'],
-    ['v319-supplier-po-column.js?v=385'],
-    ['v321-manage-gl-codes.js?v=385'],
-    ['v324-order-share-print.js?v=385'],
-    ['v326-share-pdf-branded.js?v=385'],
-    ['v325-manage-suppliers-details.js?v=385'],
-    ['v332-unified-report-system.js?v=385'],
-    ['v334-deposit-discount-fix.js?v=385'],
-    ['v340-supplier-card-aging-search.js?v=385'],
-    ['v342-supplier-report-card-render.js?v=385'],
-    ['v343-report-search-polish.js?v=385'],
-    ['v344_supplier_report_search_final.js?v=385'],
-    ['v345_report_search_final_fix.js?v=385'],
-    ['v346_deposit_logic_report_fix.js?v=385'],
-    ['v346_ui_label_only_fix.js?v=385'],
-    ['v348-invoice-print-fix.js?v=385'],
-    ['v349-print-manager-full.js?v=385'],
-    ['v364-row-type-source-final.js?v=385','module'],
-    ['v370-smart-email-system.js?v=385'],
-    ['v372-order-approval-gate.js?v=385'],
-    ['v375-preorder-approval-workflow.js?v=399'],
-    ['v379-web-push-approvals.js?v=390'],
-    ['v383-safe-approval-notify-user.js?v=390'],
-    ['v392-ui-sync-fix.js?v=392'],
-    ['v394-realtime-full.js?v=394'],
-    ['v396-anti-duplicate-push.js?v=396'],
-    ['v398-logo-process-flow.js?v=399'],
-    ['v401-mac-dock.js?v=401'],
-    ['v404-mac-workspace-pro.js?v=404'],
-    ['v406-gemini-window-polish.js?v=406'],
-    ['v408-mac-full-workspace-polish.js?v=409']
-  ];
-  var loaded = false;
-  function appVisible(){
-    try{
-      var app = document.getElementById('appScreen');
-      return !!(app && !app.classList.contains('hidden') && getComputedStyle(app).display !== 'none');
-    }catch(e){ return false; }
-  }
-  function loadOne(item){
-    return new Promise(function(resolve){
-      var src = item[0], type = item[1];
-      if(document.querySelector('script[data-v413-src="'+src+'"]')) return resolve();
-      var s = document.createElement('script');
-      s.src = src; s.defer = true; s.dataset.v413Src = src;
-      if(type) s.type = type;
-      s.onload = function(){ resolve(); };
-      s.onerror = function(){ console.warn('V413 script failed:', src); resolve(); };
-      document.body.appendChild(s);
-    });
-  }
-  async function loadAfterLogin(){
-    if(loaded || !appVisible()) return;
-    loaded = true;
-    for(var i=0;i<scripts.length;i++) await loadOne(scripts[i]);
-    try{ window.dispatchEvent(new Event('v413-features-loaded')); }catch(e){}
-  }
-  window.v413LoadFeaturesAfterLogin = loadAfterLogin;
-  document.addEventListener('click', function(){ setTimeout(loadAfterLogin, 250); }, true);
-  document.addEventListener('DOMContentLoaded', function(){
-    var app = document.getElementById('appScreen');
-    if(app && window.MutationObserver){
-      new MutationObserver(loadAfterLogin).observe(app,{attributes:true,attributeFilter:['class','style']});
-    }
-    setTimeout(loadAfterLogin, 800);
-  });
-  window.addEventListener('load', function(){ setTimeout(loadAfterLogin, 800); });
-})();
-</script>
+<script src="v311-order-items-gl.js?v=385"></script>
+<script src="v316-supplier-po-clean.js?v=385"></script>
+<script src="v319-supplier-po-column.js?v=385"></script>
+<script src="v321-manage-gl-codes.js?v=385"></script>
+<script src="v324-order-share-print.js?v=385"></script>
+<script src="v326-share-pdf-branded.js?v=385"></script>
+<script src="v325-manage-suppliers-details.js?v=385"></script>
+<script src="v332-unified-report-system.js?v=385"></script>
+<script src="v334-deposit-discount-fix.js?v=385"></script>
+<script src="v340-supplier-card-aging-search.js?v=385"></script>
+<script src="v342-supplier-report-card-render.js?v=385"></script>
+<script src="v343-report-search-polish.js?v=385"></script>
+<script src="v344_supplier_report_search_final.js?v=385"></script>
+<script src="v345_report_search_final_fix.js?v=385"></script>
+<script src="v346_deposit_logic_report_fix.js?v=385"></script>
+<script src="v346_ui_label_only_fix.js?v=385"></script>
+
+<script src="v348-invoice-print-fix.js?v=385"></script>
+<script src="v349-print-manager-full.js?v=385"></script>
+
+
+
+
+
+
+<script type="module" src="v364-row-type-source-final.js?v=385"></script>
+
+<script src="v370-smart-email-system.js?v=385"></script>
+<script src="v372-order-approval-gate.js?v=385"></script>
+<script src="v375-preorder-approval-workflow.js?v=399"></script>
+<script src="v379-web-push-approvals.js?v=390"></script>
+<script src="v383-safe-approval-notify-user.js?v=390"></script>
+<script src="v392-ui-sync-fix.js?v=392"></script>
+<script src="v394-realtime-full.js?v=394"></script>
+<script src="v396-anti-duplicate-push.js?v=396"></script>
+<script src="v398-logo-process-flow.js?v=399"></script>
+<script src="v401-mac-dock.js?v=401"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V413-POST-LOGIN-PERFORMANCE-FINAL';
+  window.VARDOPHASE_VERSION = 'V399-PROCESS-FLOW-FIX';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22750,13 +22715,19 @@ div[role="option"],
     setTimeout(function(){
       try{
         var hasContent = document.body && document.body.innerText && document.body.innerText.trim().length > 20;
-        if(!hasContent){
-          showStableError('Blank screen detected. Reload manually if needed.');
+        if(!hasContent && !sessionStorage.getItem('v385ReloadedOnce')){
+          sessionStorage.setItem('v385ReloadedOnce','1');
+          location.reload();
+        } else if(!hasContent){
+          showStableError('Blank screen detected');
         }
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=411').catch(function(e){ console.warn('SW registration failed',e); });
+      navigator.serviceWorker.register('/sw.js?v=396').then(function(reg){
+        try{ reg.update && reg.update(); }catch(e){}
+        if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
+      }).catch(function(e){ console.warn('SW registration failed',e); });
     }
   });
 })();

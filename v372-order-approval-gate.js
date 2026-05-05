@@ -30,7 +30,7 @@
     const {error:upErr}=await db.from('suppliers').update({status:APPROVED}).in('id',orders.map(r=>r.id));
     if(upErr) return alert(upErr.message);
     toast('Approved '+orders.length+' order(s). You can now send to supplier.');
-    setTimeout(()=>{ try{ if(typeof window.render==='function') window.render(); }catch(_e){} },650);
+    setTimeout(()=>location.reload(),650);
   }
   window.approveSelectedOrdersV372=function(){ approveIds(getCheckedIds()); };
   async function approveCurrentForm(){
@@ -134,6 +134,6 @@
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(tick,500); setTimeout(()=>showPendingPopup(false),1700);});
   window.addEventListener('load',()=>{setTimeout(tick,700); setTimeout(()=>showPendingPopup(false),2200);});
   document.addEventListener('click',()=>setTimeout(tick,250),true);
-  setTimeout(tick,1200); document.addEventListener('click',()=>setTimeout(tick,350),true);
+  setInterval(tick,1200);
   console.log(VERSION,'loaded');
 })();

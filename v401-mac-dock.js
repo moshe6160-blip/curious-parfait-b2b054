@@ -32,7 +32,7 @@
     if(typeof window.syncFromCloud === 'function') return window.syncFromCloud();
     if(typeof window.v391RealSyncFromCloud === 'function') return window.v391RealSyncFromCloud();
     if(typeof window.manualRefresh === 'function') return window.manualRefresh();
-    console.warn('V411: reload fallback blocked; use manual Sync or refresh browser if needed.');
+    location.reload();
   }
   function search(){
     const input = document.querySelector('input[placeholder*="Search"],input[id*="search" i],input[type="search"]');
@@ -69,7 +69,7 @@ body{padding-bottom:calc(86px + env(safe-area-inset-bottom,0px))!important}
       ['home','🏠','Home',openHome,''],['orders','📦','Order',openOrders,'gold'],['dn','🚚','Delivery Note',openDN,'gold'],['invoice','🧾','Invoice',openInvoice,'gold'],['credit','💳','Credit Note',openCredit,''],['approvals','🔔','Approvals',openApprovals,''],['live','🟢','Live Notifications',openLive,''],['sync','🔄','Sync',sync,''],['search','🔍','Search',search,''],['reports','📊','Reports',reports,''],['settings','⚙️','Manage Lists',settings,'']
     ];
     items.forEach(([id,icon,title,fn,cls])=>{ const b=document.createElement('button'); b.type='button'; b.className='v401-dock-item '+cls; b.id='v401Dock_'+id; b.title=title; b.innerHTML=icon+'<span class="v401-dock-badge"></span>'; b.onclick=fn; dock.appendChild(b); });
-    document.body.appendChild(dock); updateBadges(); document.addEventListener('click',()=>setTimeout(updateBadges,250),true);
+    document.body.appendChild(dock); updateBadges(); setInterval(updateBadges,2500);
   }
   function setBadge(id,val){ const el=document.querySelector('#v401Dock_'+id+' .v401-dock-badge'); if(!el) return; if(val && String(val)!=='0'){ el.textContent=String(val); el.style.display='inline-flex'; } else el.style.display='none'; }
   function updateBadges(){ setBadge('live', unreadLive()); setBadge('approvals', approvalCount()); }
