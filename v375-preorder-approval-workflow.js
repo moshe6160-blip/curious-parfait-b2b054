@@ -12,7 +12,8 @@
   function hasInvoice(row){ return !!String(row && row.invoice_no || '').trim(); }
   function isOrder(row){ return !!String(row && row.order_no || '').trim() && !hasInvoice(row) && kind(row)!=='delivery_note' && kind(row)!=='credit_note' && kind(row)!=='deposit'; }
   function st(row){return String((row && row.status) || '').toLowerCase();}
-  function isApproved(row){const s=st(row); return s.includes('approved') || s.includes('sent') || s.includes('מאושר');}
+  function isApproved(row){const s=st(row); return s.includes('approved') || s.includes('sent') || s.includes('מאושר') || s === 'app order' || s === 'approved order';}
+  function isSent(row){const s=st(row); return s.includes('sent') || s.includes('נשלח') || s.includes('sent to supplier') || s === 'order sent';}
   function isPending(row){ if(!isOrder(row)) return false; return !isApproved(row); }
   function toast(msg){
     let t=document.getElementById('v375Toast'); if(t) t.remove();
@@ -32,7 +33,7 @@
     const sup=db(); if(!sup) return alert('Database connection not ready.');
     const {error}=await sup.from('suppliers').update({status:APPROVED}).in('id',ids);
     if(error) return alert(error.message || 'Approval failed');
-    toast('Approved. Status changed from Pre-Order to Order.');
+    toast('Approved. Status changed from Pre-Order to App order.');
     const sel=document.getElementById('entryStatus'); if(sel) sel.value=APPROVED;
     try{ if(typeof window.render==='function') await window.render(); }catch(e){}
     if(!keepOpen){ setTimeout(()=>window.showPendingApprovalOrdersV375(true),500); }
@@ -62,7 +63,7 @@
     overlay.style.cssText='position:fixed;inset:0;z-index:999998;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:16px';
     const card=document.createElement('div');
     card.style.cssText='width:min(760px,96vw);max-height:88vh;overflow:auto;border-radius:22px;background:#14161d;color:white;border:1px solid rgba(215,176,108,.82);box-shadow:0 25px 90px rgba(0,0,0,.65);padding:20px;font-family:Arial,Helvetica,sans-serif';
-    card.innerHTML='<div class="v375-pop-head"><div><h2>Pre-Orders Waiting Approval</h2><div class="v375-sub">רשימת כל ההזמנות שעדיין לא אושרו. לחץ Open כדי להיכנס להזמנה, או Approve לאישור מיידי.</div></div><button id="v375ClosePop" class="v375-x">×</button></div><div id="v375Rows" class="v375-rows"></div><div class="v375-foot">לפני אישור: Pre-Order. אחרי אישור: Order. רק Order מאושר נפתח לשליחה לספק.</div>';
+    card.innerHTML='<div class="v375-pop-head"><div><h2>Pre-Orders Waiting Approval</h2><div class="v375-sub">רשימת כל ההזמנות שעדיין לא אושרו. לחץ Open כדי להיכנס להזמנה, או Approve לאישור מיידי.</div></div><button id="v375ClosePop" class="v375-x">×</button></div><div id="v375Rows" class="v375-rows"></div><div class="v375-foot">לפני אישור: Pre-Order. אחרי אישור: App order. לאחר שליחה לספק: Order.</div>';
     const box=card.querySelector('#v375Rows');
     rows.forEach(r=>{
       const row=document.createElement('div'); row.className='v375-pop-row';
@@ -85,7 +86,7 @@
     if(oldLabel && oldLabel.__v375) return;
     window.processStatusLabel=function(row){
       try{
-        if(isOrder(row)) return isApproved(row) ? 'Order' : 'Pre-Order';
+        if(isOrder(row)) return isSent(row) ? 'Order' : (isApproved(row) ? 'App order' : 'Pre-Order');
       }catch(e){}
       return oldLabel ? oldLabel(row) : 'Order';
     };
@@ -93,7 +94,7 @@
     const oldClass=window.processStatusClass;
     window.processStatusClass=function(row){
       try{
-        if(isOrder(row)) return isApproved(row) ? 'unpaid v375-order-badge' : 'unpaid v375-preorder-badge';
+        if(isOrder(row)) return isSent(row) ? 'unpaid v375-order-badge' : (isApproved(row) ? 'unpaid v399-app-order-badge' : 'unpaid v375-preorder-badge');
       }catch(e){}
       return oldClass ? oldClass(row) : 'unpaid';
     };
@@ -156,20 +157,23 @@
       const r=map.get(String(idByTr.get(tr)||'')); if(!r) return;
       if(!isOrder(r)) return;
       const badge=tr.querySelector('td:nth-child(5) .badge, .badge'); if(!badge) return;
-      if(isApproved(r)){ badge.textContent='Order'; badge.classList.remove('v375-preorder-badge'); badge.classList.add('v375-order-badge'); }
-      else { badge.textContent='Pre-Order'; badge.classList.remove('v375-order-badge'); badge.classList.add('v375-preorder-badge'); }
+      if(isSent(r)){ badge.textContent='Order'; badge.classList.remove('v375-preorder-badge','v399-app-order-badge'); badge.classList.add('v375-order-badge'); }
+      else if(isApproved(r)){ badge.textContent='App order'; badge.classList.remove('v375-preorder-badge','v375-order-badge'); badge.classList.add('v399-app-order-badge'); }
+      else { badge.textContent='Pre-Order'; badge.classList.remove('v375-order-badge','v399-app-order-badge'); badge.classList.add('v375-preorder-badge'); }
     });
   }
   function relabelDom(){
     document.querySelectorAll('td .badge').forEach(b=>{
       const t=(b.textContent||'').trim();
       if(t==='Process' || t==='Pending Approval'){ b.textContent='Pre-Order'; b.classList.add('v375-preorder-badge'); }
-      if(t==='Approved'){ b.textContent='Order'; b.classList.add('v375-order-badge'); }
+      if(t==='Approved' || t==='App Order'){ b.textContent='App order'; b.classList.remove('v375-order-badge'); b.classList.add('v399-app-order-badge'); }
+      if(t==='Sent'){ b.textContent='Order'; b.classList.add('v375-order-badge'); }
     });
   }
   const css=document.createElement('style'); css.id='v375-approval-style'; css.textContent=`
     .v375-preorder-badge{background:#5a3909!important;color:#ffd994!important;border:1px solid #d7b06c!important}
     .v375-order-badge{background:#123d26!important;color:#9de0b8!important;border:1px solid rgba(157,224,184,.75)!important}
+    .v399-app-order-badge{background:#1e3558!important;color:#b9d8ff!important;border:1px solid rgba(185,216,255,.75)!important}
     .v375-pop-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.v375-pop-head h2{margin:0 0 6px;font-size:23px;color:#f2d09a}.v375-sub{font-size:13px;opacity:.82;line-height:1.45}.v375-x{border:0;background:rgba(255,255,255,.06);color:#fff;font-size:30px;cursor:pointer;border-radius:16px;width:54px;height:54px}.v375-rows{display:grid;gap:10px;margin-top:16px}.v375-pop-row{padding:13px;border-radius:16px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.14);display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;cursor:pointer}.v375-info b{font-size:18px}.v375-info div{font-size:13px;opacity:.84;margin-top:5px}.v375-info span{display:inline-block;font-size:12px;color:#f2d09a;margin-top:5px}.v375-row-actions{display:flex;gap:8px;align-items:center}.v375-row-actions button{padding:10px 13px;border-radius:12px;font-weight:900;cursor:pointer}.v375-open{border:1px solid rgba(255,255,255,.18);background:#20232b;color:#fff}.v375-approve{border:1px solid #d7b06c;background:linear-gradient(135deg,#f2d09a,#b98745);color:#111}.v375-foot{margin-top:14px;font-size:12px;opacity:.76;line-height:1.45}
     @media(max-width:680px){.v375-pop-row{grid-template-columns:1fr}.v375-row-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.v375-pop-head h2{font-size:20px}.v375-x{width:50px;height:50px}}
   `; document.head.appendChild(css);
