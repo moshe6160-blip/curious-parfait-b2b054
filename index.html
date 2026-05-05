@@ -7697,7 +7697,9 @@ div[role="option"],
         <thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
         <tbody>${txHtml}</tbody>
       </table>
-      <script>window.onload=()=>window.print()<\/script>
+      <script>
+
+window.onload=()=>window.print()<\/script>
     
 
 </body></html>`);
@@ -22648,50 +22650,87 @@ div[role="option"],
 })();
 </script>
 
-<script src="v311-order-items-gl.js?v=385"></script>
-<script src="v316-supplier-po-clean.js?v=385"></script>
-<script src="v319-supplier-po-column.js?v=385"></script>
-<script src="v321-manage-gl-codes.js?v=385"></script>
-<script src="v324-order-share-print.js?v=385"></script>
-<script src="v326-share-pdf-branded.js?v=385"></script>
-<script src="v325-manage-suppliers-details.js?v=385"></script>
-<script src="v332-unified-report-system.js?v=385"></script>
-<script src="v334-deposit-discount-fix.js?v=385"></script>
-<script src="v340-supplier-card-aging-search.js?v=385"></script>
-<script src="v342-supplier-report-card-render.js?v=385"></script>
-<script src="v343-report-search-polish.js?v=385"></script>
-<script src="v344_supplier_report_search_final.js?v=385"></script>
-<script src="v345_report_search_final_fix.js?v=385"></script>
-<script src="v346_deposit_logic_report_fix.js?v=385"></script>
-<script src="v346_ui_label_only_fix.js?v=385"></script>
-
-<script src="v348-invoice-print-fix.js?v=385"></script>
-<script src="v349-print-manager-full.js?v=385"></script>
-
-
-
-
-
-
-<script type="module" src="v364-row-type-source-final.js?v=385"></script>
-
-<script src="v370-smart-email-system.js?v=385"></script>
-<script src="v372-order-approval-gate.js?v=385"></script>
-<script src="v375-preorder-approval-workflow.js?v=399"></script>
-<script src="v379-web-push-approvals.js?v=390"></script>
-<script src="v383-safe-approval-notify-user.js?v=390"></script>
-<script src="v392-ui-sync-fix.js?v=392"></script>
-<script src="v394-realtime-full.js?v=394"></script>
-<script src="v396-anti-duplicate-push.js?v=396"></script>
-<script src="v398-logo-process-flow.js?v=399"></script>
-<script src="v401-mac-dock.js?v=401"></script>
-<script src="v404-mac-workspace-pro.js?v=404"></script>
-<script src="v406-gemini-window-polish.js?v=406"></script>
-<script src="v408-mac-full-workspace-polish.js?v=409"></script>
+<script id="v413-post-login-script-loader">
+/* V413: Load heavy feature scripts only after login/app is visible.
+   This stops typing lag on Email/Password and prevents background workspace observers before login. */
+(function(){
+  if(window.__V413_POST_LOGIN_LOADER__) return;
+  window.__V413_POST_LOGIN_LOADER__ = true;
+  var scripts = [
+    ['v311-order-items-gl.js?v=385'],
+    ['v316-supplier-po-clean.js?v=385'],
+    ['v319-supplier-po-column.js?v=385'],
+    ['v321-manage-gl-codes.js?v=385'],
+    ['v324-order-share-print.js?v=385'],
+    ['v326-share-pdf-branded.js?v=385'],
+    ['v325-manage-suppliers-details.js?v=385'],
+    ['v332-unified-report-system.js?v=385'],
+    ['v334-deposit-discount-fix.js?v=385'],
+    ['v340-supplier-card-aging-search.js?v=385'],
+    ['v342-supplier-report-card-render.js?v=385'],
+    ['v343-report-search-polish.js?v=385'],
+    ['v344_supplier_report_search_final.js?v=385'],
+    ['v345_report_search_final_fix.js?v=385'],
+    ['v346_deposit_logic_report_fix.js?v=385'],
+    ['v346_ui_label_only_fix.js?v=385'],
+    ['v348-invoice-print-fix.js?v=385'],
+    ['v349-print-manager-full.js?v=385'],
+    ['v364-row-type-source-final.js?v=385','module'],
+    ['v370-smart-email-system.js?v=385'],
+    ['v372-order-approval-gate.js?v=385'],
+    ['v375-preorder-approval-workflow.js?v=399'],
+    ['v379-web-push-approvals.js?v=390'],
+    ['v383-safe-approval-notify-user.js?v=390'],
+    ['v392-ui-sync-fix.js?v=392'],
+    ['v394-realtime-full.js?v=394'],
+    ['v396-anti-duplicate-push.js?v=396'],
+    ['v398-logo-process-flow.js?v=399'],
+    ['v401-mac-dock.js?v=401'],
+    ['v404-mac-workspace-pro.js?v=404'],
+    ['v406-gemini-window-polish.js?v=406'],
+    ['v408-mac-full-workspace-polish.js?v=409']
+  ];
+  var loaded = false;
+  function appVisible(){
+    try{
+      var app = document.getElementById('appScreen');
+      return !!(app && !app.classList.contains('hidden') && getComputedStyle(app).display !== 'none');
+    }catch(e){ return false; }
+  }
+  function loadOne(item){
+    return new Promise(function(resolve){
+      var src = item[0], type = item[1];
+      if(document.querySelector('script[data-v413-src="'+src+'"]')) return resolve();
+      var s = document.createElement('script');
+      s.src = src; s.defer = true; s.dataset.v413Src = src;
+      if(type) s.type = type;
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){ console.warn('V413 script failed:', src); resolve(); };
+      document.body.appendChild(s);
+    });
+  }
+  async function loadAfterLogin(){
+    if(loaded || !appVisible()) return;
+    loaded = true;
+    for(var i=0;i<scripts.length;i++) await loadOne(scripts[i]);
+    try{ window.dispatchEvent(new Event('v413-features-loaded')); }catch(e){}
+  }
+  window.v413LoadFeaturesAfterLogin = loadAfterLogin;
+  document.addEventListener('click', function(){ setTimeout(loadAfterLogin, 250); }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    var app = document.getElementById('appScreen');
+    if(app && window.MutationObserver){
+      new MutationObserver(loadAfterLogin).observe(app,{attributes:true,attributeFilter:['class','style']});
+    }
+    setTimeout(loadAfterLogin, 800);
+  });
+  window.addEventListener('load', function(){ setTimeout(loadAfterLogin, 800); });
+})();
+</script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V411-PERFORMANCE-CLEAN-FINAL';
+  window.VARDOPHASE_VERSION = 'V413-POST-LOGIN-PERFORMANCE-FINAL';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
