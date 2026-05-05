@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V385-STABLE';
+const VARDOPHASE_SW_VERSION = 'V396-ANTI-DUPLICATE-PUSH';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();
@@ -12,14 +12,14 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Vardophase', body: event.data ? event.data.text() : '' }; }
-  const title = data.title || 'Vardophase Approvals';
+  const title = data.title || 'Vardophase';
   const options = {
     body: data.body || 'יש הזמנות שממתינות לאישור.',
     icon: data.icon || '/icon-192.png',
     badge: data.badge || '/icon-192.png',
     data: { url: data.url || '/?approvals=1' },
     tag: data.tag || 'vardophase-approvals',
-    renotify: true
+    renotify: false
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

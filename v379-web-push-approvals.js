@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='V384_CLEAN_NO_TEST_PUSH';
+  const VERSION='V390_TRUE_PUSH_BLOBS_CLEAN';
   const COOLDOWN_MS=30*60*1000;
   const PENDING='Pending Approval';
   const APPROVED='Approved';
@@ -58,22 +58,23 @@
     if(!res.ok) throw new Error(await res.text());
     localStorage.setItem('v379_push_enabled','1');
     try{ localStorage.setItem('v381_push_subscription', JSON.stringify(sub)); }catch(_e){}
-    toast('התראות הופעלו בהצלחה ✅ מצב No-Blobs פעיל.');
+    toast('התראות הופעלו בהצלחה ✅ Push אמיתי פעיל.');
     updateBadge();
     return true;
   }
   async function triggerPush(force){
     const rows=await pendingRows(); updateButton(rows.length);
     if(!rows.length) return;
-    let sub=null; try{sub=JSON.parse(localStorage.getItem('v381_push_subscription')||'null');}catch(_e){}
-    if(!sub || !sub.endpoint){ console.warn(VERSION,'No local push subscription. Press Enable first.'); return; }
+    // V386 TRUE PUSH: subscriptions are saved centrally on Netlify Blobs.
+    // Any computer/phone that creates a Pre-Order can trigger push to all registered devices.
     if(!force){
       const last=Number(localStorage.getItem('v379_last_push')||0);
       if(Date.now()-last<COOLDOWN_MS) return;
     }
     localStorage.setItem('v379_last_push',String(Date.now()));
     try{
-      await fetch('/.netlify/functions/push-notify-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub,count:rows.length,orders:rows.slice(0,5).map(r=>({id:r.id,order_no:r.order_no,supplier:r.supplier,project:r.project,total:r.total||r.amount||0})),url:'/?approvals=1'})});
+      const res = await fetch('/.netlify/functions/push-notify-approvals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count:rows.length,orders:rows.slice(0,5).map(r=>({id:r.id,order_no:r.order_no,supplier:r.supplier,project:r.project,total:r.total||r.amount||0})),url:'/?approvals=1'})});
+      if(!res.ok) console.warn(VERSION,'notify failed',await res.text());
     }catch(e){console.warn(VERSION,'notify failed',e);}
   }
   function openApprovals(){

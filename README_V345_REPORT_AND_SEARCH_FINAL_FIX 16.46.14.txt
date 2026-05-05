@@ -1,1 +1,0 @@
-V345: Final Supplier Report + Global Search fix. Adds real Supplier Card, Aging, Outstanding and robust global search across supplier, PO, supplier order no, GL code/description, manual description, project, invoice, DN and deposit. Login/order saving not changed.
