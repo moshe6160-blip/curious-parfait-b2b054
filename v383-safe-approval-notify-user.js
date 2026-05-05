@@ -82,6 +82,6 @@
   window.v383NotifyApprovedRows=notifyApprovedRows;
   window.addEventListener('load',()=>setTimeout(init,900));
   document.addEventListener('DOMContentLoaded',()=>setTimeout(init,700));
-  setInterval(init,4000);
+  setTimeout(init,4000);
   console.log(VERSION,'loaded - status workflow untouched');
 })();

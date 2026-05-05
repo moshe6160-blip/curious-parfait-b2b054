@@ -55,7 +55,7 @@ body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
     ];
     apps.forEach((it,idx)=>{ if(idx===8) dock.appendChild(sep()); dock.appendChild(dockButton(...it)); });
     document.body.appendChild(dock);
-    updateBadges(); setInterval(updateBadges,2200);
+    updateBadges(); document.addEventListener('click',()=>setTimeout(updateBadges,250),true);
     return dock;
   }
   function sep(){ const d=document.createElement('div'); d.className='v403-dock-sep'; return d; }
@@ -95,7 +95,7 @@ body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
   function openCredit(){ if(typeof window.openCreditNoteModal==='function') return window.openCreditNoteModal(); clickText(['credit','note']); }
   function openApprovals(){ if(typeof window.showPendingApprovalOrdersV375==='function') return window.showPendingApprovalOrdersV375(true); if(typeof window.showPendingApprovalOrdersV372==='function') return window.showPendingApprovalOrdersV372(true); clickText(['approvals']); }
   function openLive(){ if(typeof window.v401ToggleLiveNotifications==='function') return window.v401ToggleLiveNotifications(); const b=qs('#v395NotifButton'); if(b) b.click(); else createWindow('v403LiveWindow','Live Notifications', '<div class="v403-muted">No new notifications.</div>', {icon:'🟢'}); }
-  function sync(){ if(typeof window.syncFromCloud==='function') return window.syncFromCloud(); if(typeof window.v391RealSyncFromCloud==='function') return window.v391RealSyncFromCloud(); if(typeof window.manualRefresh==='function') return window.manualRefresh(); location.reload(); }
+  function sync(){ if(typeof window.syncFromCloud==='function') return window.syncFromCloud(); if(typeof window.v391RealSyncFromCloud==='function') return window.v391RealSyncFromCloud(); if(typeof window.manualRefresh==='function') return window.manualRefresh(); console.warn('V411: reload fallback blocked; use manual Sync or refresh browser if needed.'); }
   function search(){ const input=qs('input[placeholder*="Search"],input[id*="search" i],input[type="search"]'); if(input){ input.scrollIntoView({block:'center',behavior:'smooth'}); input.focus(); } else createWindow('v403SearchWindow','Search','<div class="v403-row"><input style="flex:1;padding:12px;border-radius:12px;background:#111;color:#fff;border:1px solid rgba(246,219,173,.25)" placeholder="Search..." autofocus></div>',{icon:'🔍'}); }
   function settings(){ if(clickText(['manage','lists'])) return; if(clickText(['settings'])) return; createWindow('v403SettingsWindow','Settings','<div class="v403-muted">Use existing Manage Lists / Settings from the system.</div>',{icon:'⚙️'}); }
 

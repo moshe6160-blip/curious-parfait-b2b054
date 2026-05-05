@@ -181,6 +181,6 @@
   document.addEventListener('DOMContentLoaded',()=>{boot(); setTimeout(()=>showPopup(false),1900);});
   window.addEventListener('load',()=>{boot(); setTimeout(()=>{document.getElementById('v372ApprovalPopup')?.remove(); showPopup(false);},2400);});
   document.addEventListener('click',()=>setTimeout(boot,220),true);
-  setInterval(boot,1100);
+  setTimeout(boot,1100); document.addEventListener('click',()=>setTimeout(boot,350),true);
   console.log(VERSION,'loaded');
 })();

@@ -209,5 +209,5 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
   window.addEventListener('load',()=>setTimeout(boot,600));
   // keep last override without touching login/order logic
-  setInterval(()=>{ window.runSupplierReport = v346RunSupplierReport; if(!document.getElementById('v346GlobalSearch')) installSearch(); },1500);
+  setTimeout(()=>{ window.runSupplierReport = v346RunSupplierReport; if(!document.getElementById('v346GlobalSearch')) installSearch(); },1500); document.addEventListener('click',()=>setTimeout(()=>{ window.runSupplierReport = v346RunSupplierReport; if(!document.getElementById('v346GlobalSearch')) installSearch(); },300),true);
 })();

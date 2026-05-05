@@ -15769,7 +15769,7 @@ window.injectDeliveryNoteButton = function(){
   }
 };
 
-setInterval(window.injectDeliveryNoteButton, 600);
+setTimeout(window.injectDeliveryNoteButton, 250); setTimeout(window.injectDeliveryNoteButton, 1500);
 document.addEventListener("click", function(){
   setTimeout(window.injectDeliveryNoteButton, 100);
 });
@@ -15890,9 +15890,7 @@ window.prepareDeliveryNoteMode = function(){
   }
 };
 
-setInterval(function(){
-  if(window.isDeliveryNoteMode()) window.bindDeliveryOrderAutoFill();
-}, 800);
+document.addEventListener('input', function(){ if(window.isDeliveryNoteMode()) setTimeout(window.bindDeliveryOrderAutoFill, 120); }, true);
 
 
 /* === V87.26 Safe Delivery Note Save Validation === */
@@ -16227,9 +16225,7 @@ window.openEntryModal = async function(id=null, forcedMode=""){
   }
 };
 
-setInterval(function(){
-  window.bindInvoiceOrderAutoFill();
-}, 900);
+document.addEventListener('input', function(){ setTimeout(window.bindInvoiceOrderAutoFill, 120); }, true);
 
 
 /* === V87.31 Locks after Invoice + automatic DN numbering === */
@@ -20921,7 +20917,7 @@ window.addTransparencyButtons = function(){
     toolbar.appendChild(b);
   }
 };
-setInterval(window.addTransparencyButtons, 1000);
+setTimeout(window.addTransparencyButtons, 1000);
 
 /* === V269 PRO ACCOUNTING CREDIT NOTE - SEPARATE ROW / LOGIN SAFE === */
 (function(){
@@ -21928,10 +21924,7 @@ div[role="option"],
     setTimeout(blockDNApproverActions, 60);
   }, true);
 
-  setInterval(function(){
-    applyDNApproverUI();
-    blockDNApproverActions();
-  }, 2000);
+  // V411: removed 2s global polling; click/load handlers are enough.
 })();
 /* === END V168 DN APPROVER ROLE PATCH === */
 
@@ -21962,7 +21955,7 @@ window.vpGetAllSupplierRows = async function(){
  function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
  function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} }
  var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}'; document.head.appendChild(st);
- document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
+ document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setTimeout(inject,100); setTimeout(inject,1500);
 })();
 </script>
 <script>
@@ -22203,7 +22196,7 @@ window.vpGetAllSupplierRows = async function(){
   window.addEventListener('load', function(){ setTimeout(run,900); setTimeout(run,2200); setTimeout(run,4000); });
   document.addEventListener('click', function(){ setTimeout(run,800); }, true);
   document.addEventListener('change', function(){ setTimeout(run,800); }, true);
-  setInterval(run,1500);
+  // V411: removed 1.5s polling; run only on load/click/change.
 })();
 
 /* === V279 CREDIT NOTE PDF - MODULE SAFE / LOGIN SAFE === */
@@ -22375,7 +22368,7 @@ div[role="option"],
   document.head.appendChild(pdfCss);
   window.addEventListener('load', function(){ setTimeout(addCreditNotePdfButton,900); setTimeout(addCreditNotePdfButton,2200); });
   document.addEventListener('click', function(){ setTimeout(addCreditNotePdfButton,500); }, true);
-  setInterval(addCreditNotePdfButton,1500);
+  // V411: no polling for credit note PDF button; use load/click hooks only.
 })();
 
 
@@ -22644,14 +22637,14 @@ div[role="option"],
 ');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='Vardophase_GL_Accounting_Export.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
-  setInterval(function(){
+  setTimeout(function v304InjectOnce(){
     const candidates = Array.from(document.querySelectorAll('button')).filter(b=>/Open Orders Report/i.test(b.textContent||''));
     candidates.forEach(b=>{
       const parent=b.parentElement; if(!parent || parent.querySelector('.v304-gl-report-btn')) return;
       const btn=document.createElement('button'); btn.className='soft v304-gl-report-btn'; btn.type='button'; btn.textContent='GL Accounting Report'; btn.onclick=window.printGLAccountingReport; parent.insertBefore(btn, b.nextSibling);
       const csv=document.createElement('button'); csv.className='soft v304-gl-report-btn'; csv.type='button'; csv.textContent='Export GL CSV'; csv.onclick=window.exportGLAccountingCSV; parent.insertBefore(csv, btn.nextSibling);
     });
-  }, 800);
+  }, 1200);
 })();
 </script>
 
@@ -22698,7 +22691,7 @@ div[role="option"],
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V408-MAC-FULL-WORKSPACE-POLISH';
+  window.VARDOPHASE_VERSION = 'V411-PERFORMANCE-CLEAN-FINAL';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22718,19 +22711,13 @@ div[role="option"],
     setTimeout(function(){
       try{
         var hasContent = document.body && document.body.innerText && document.body.innerText.trim().length > 20;
-        if(!hasContent && !sessionStorage.getItem('v385ReloadedOnce')){
-          sessionStorage.setItem('v385ReloadedOnce','1');
-          location.reload();
-        } else if(!hasContent){
-          showStableError('Blank screen detected');
+        if(!hasContent){
+          showStableError('Blank screen detected. Reload manually if needed.');
         }
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=396').then(function(reg){
-        try{ reg.update && reg.update(); }catch(e){}
-        if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
-      }).catch(function(e){ console.warn('SW registration failed',e); });
+      navigator.serviceWorker.register('/sw.js?v=411').catch(function(e){ console.warn('SW registration failed',e); });
     }
   });
 })();

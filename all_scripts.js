@@ -11700,7 +11700,7 @@ window.injectDeliveryNoteButton = function(){
   }
 };
 
-setInterval(window.injectDeliveryNoteButton, 600);
+setTimeout(window.injectDeliveryNoteButton, 250); setTimeout(window.injectDeliveryNoteButton, 1500);
 document.addEventListener("click", function(){
   setTimeout(window.injectDeliveryNoteButton, 100);
 });
@@ -11821,9 +11821,7 @@ window.prepareDeliveryNoteMode = function(){
   }
 };
 
-setInterval(function(){
-  if(window.isDeliveryNoteMode()) window.bindDeliveryOrderAutoFill();
-}, 800);
+document.addEventListener('input', function(){ if(window.isDeliveryNoteMode()) setTimeout(window.bindDeliveryOrderAutoFill, 120); }, true);
 
 
 /* === V87.26 Safe Delivery Note Save Validation === */
@@ -12158,9 +12156,7 @@ window.openEntryModal = async function(id=null, forcedMode=""){
   }
 };
 
-setInterval(function(){
-  window.bindInvoiceOrderAutoFill();
-}, 900);
+document.addEventListener('input', function(){ setTimeout(window.bindInvoiceOrderAutoFill, 120); }, true);
 
 
 /* === V87.31 Locks after Invoice + automatic DN numbering === */
@@ -16740,7 +16736,7 @@ window.addTransparencyButtons = function(){
     toolbar.appendChild(b);
   }
 };
-setInterval(window.addTransparencyButtons, 1000);
+setTimeout(window.addTransparencyButtons, 1000);
 
 /* === V269 PRO ACCOUNTING CREDIT NOTE - SEPARATE ROW / LOGIN SAFE === */
 (function(){
@@ -17539,7 +17535,7 @@ window.vpGetAllSupplierRows = async function(){
  function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
  function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} }
  var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}'; document.head.appendChild(st);
- document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
+ document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setTimeout(inject,100); setTimeout(inject,1500);
 })();
 
 

@@ -90,6 +90,6 @@
     document.head.appendChild(st);
   }
   function install(){ injectStyle(); mountButtons(); }
-  setInterval(install, 500);
+  setTimeout(install,500); document.addEventListener('click',()=>setTimeout(install,200),true);
   document.addEventListener('DOMContentLoaded', install);
 })();

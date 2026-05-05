@@ -85,7 +85,7 @@
           if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
             active = false;
             stopRealtime();
-            setTimeout(startRealtime, 2500);
+            setTimeout(startRealtime, 6000);
           }
         });
       return true;
@@ -100,7 +100,7 @@
     setInterval(function(){
       if(document.hidden) return;
       if(!channel || !active) startRealtime();
-    }, 10000);
+    }, 30000);
   }
   window.v394StartRealtime = startRealtime;
   window.v394StopRealtime = stopRealtime;

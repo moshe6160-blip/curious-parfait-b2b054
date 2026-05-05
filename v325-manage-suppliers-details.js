@@ -191,5 +191,5 @@
   }
   function install(){ injectStyle(); wrapListFunctions(); wrapShareButtons(); injectPanel(); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
-  setInterval(install, 650);
+  setTimeout(install,650); document.addEventListener('click',()=>setTimeout(install,250),true);
 })();

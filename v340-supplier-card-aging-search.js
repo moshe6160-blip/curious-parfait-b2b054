@@ -169,5 +169,5 @@
   function install(){ installStyle(); installSearch(); installSupplierReportAging(); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install); else install();
   window.addEventListener('load',()=>setTimeout(install,600));
-  setInterval(installSupplierReportAging,1800);
+  setTimeout(installSupplierReportAging,1800); document.addEventListener('click',()=>setTimeout(installSupplierReportAging,300),true);
 })();

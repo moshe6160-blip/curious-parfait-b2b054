@@ -144,5 +144,5 @@
   function install(){ installSearchCss(); installImprovedSearch(); window.__v341SupplierReportAgingIntegrated=true; }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install); else install();
   window.addEventListener('load',()=>setTimeout(install,700));
-  setInterval(()=>{ install(); window.runSupplierReport = window.runSupplierReport; },1800);
+  setTimeout(()=>{ install(); window.runSupplierReport = window.runSupplierReport; },1800); document.addEventListener('click',()=>setTimeout(install,300),true);
 })();
