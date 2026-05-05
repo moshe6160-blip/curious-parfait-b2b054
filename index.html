@@ -3506,7 +3506,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
@@ -7685,7 +7684,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
       <h1>Supplier Statement</h1>
       <div class="meta">Supplier: ${esc(supplier)} • Period: ${reportMonthLabel()} • Basis: ${getDepositBasis()==="net" ? "Before VAT" : "After VAT / Total"}</div>
@@ -9006,7 +9004,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Credit Statement - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Deposits Added</th><th>Orders</th><th>Invoices Total</th><th>Deposit Applied</th><th>Outstanding</th><th>Carry Forward Credit</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -10240,7 +10237,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -11533,7 +11529,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Project Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Project</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -12908,7 +12903,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Monthly Report - ${reportMonthLabel()}</h1><div class="cards"><div class="card">Invoices Total: ${money(sum.invoiceTotal)}</div><div class="card">Deposits Added: ${money(sum.depositTotal)}</div><div class="card">Deposit Applied: ${money(sum.depositApplied)}</div><div class="card">Outstanding After Deposit: ${money(sum.outstanding)}</div><div class="card">Carry Forward Credit: ${money(sum.carryForward)}</div></div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Process</th><th>Order No</th><th>Invoice No</th><th>Project</th><th>Description</th><th>Net</th><th>VAT</th><th>Total</th><th>Deposit Applied</th><th>Amount Due</th><th>Status</th><th>Created By</th><th>Notes</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(localDateFromAnyV97(r.created_at))}</td><td>${esc(r.supplier||"")}</td><td>${esc(processStatusLabel(r))}</td><td>${esc(r.order_no||"")}</td><td>${esc(r.invoice_no||"")}</td><td>${esc(r.project||"")}</td><td>${esc(r.description||"")}</td><td>${money(r.net_amount||0)}</td><td>${money(r.vat_amount||0)}</td><td>${money(r.total||r.amount||0)}</td><td>${money(r.deposit_applied||0)}</td><td>${money(r.amount_due||0)}</td><td>${esc(r.status||"")}</td><td>${esc(r.created_by||"")}</td><td>${esc(r.notes||"")}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -14363,7 +14357,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Open Orders Report - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Order No</th><th>Project</th><th>Amount</th><th>Days Open</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -15587,7 +15580,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Audit Log</h1><div class="audit-badge">Showing last 200 actions</div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 
 
@@ -19320,7 +19312,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Transparency Report</h1><div>Generated: ${new Date().toLocaleString()}</div>
     <div class="cards">
       <div class="card"><div class="k">Orders</div><div class="v">${money(m.order)}</div></div>
@@ -20900,7 +20891,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Project Transparency Report</h1>${sections}<script>window.onload=()=>window.print()<\/script>
 
 
@@ -21532,7 +21522,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head>")) return h.replace("
 <style id="v303-clean-no-text-shadow-final">
 /* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
@@ -21589,7 +21578,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head>", reportCss + "
 <style id="v303-clean-no-text-shadow-final">
 /* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
@@ -21646,7 +21634,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head>");
     return "<!doctype html><html><head>" + reportCss + "
 <style id="v303-clean-no-text-shadow-final">
@@ -21704,7 +21691,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body>" + h + "</body></html>";
   }
 
@@ -22350,7 +22336,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><div class="sheet"><div class="top"><div><div class="brand">VARDOPHASE</div><div class="sub">Suppliers Cloud Pro · Official Accounting Document</div></div><div class="title"><h1>CREDIT NOTE</h1><div class="pill">${escPdf(cn.cnNo)}</div></div></div><div class="grid"><div class="box"><div class="label">Supplier</div><div class="value">${escPdf(cn.supplier)}</div></div><div class="box"><div class="label">Date</div><div class="value">${escPdf(cn.date)}</div></div><div class="box"><div class="label">Original Invoice</div><div class="value">${escPdf(cn.invoiceRef)}</div></div><div class="box"><div class="label">Order / Project</div><div class="value">${escPdf(cn.orderNo)}${cn.project ? ' · ' + escPdf(cn.project) : ''}</div></div></div><table class="table"><thead><tr><th>Description</th><th>VAT</th><th class="amount">Credit Amount</th></tr></thead><tbody><tr><td>${escPdf(cn.reason)}</td><td>${moneyPdf(vat)}</td><td class="amount negative">-${moneyPdf(total)}</td></tr></tbody></table><div class="totals"><div class="totrow"><span>Subtotal</span><b>-${moneyPdf(subtotal)}</b></div><div class="totrow"><span>VAT</span><b>-${moneyPdf(vat)}</b></div><div class="totrow grand"><span>Total Credit</span><b>-${moneyPdf(total)}</b></div></div><div class="note"><b>Accounting note:</b> This credit note is linked to the original invoice above. It reduces the net payable amount for that invoice and does not create a free supplier credit balance.</div><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print" style="margin-top:28px"><button onclick="window.print()" style="padding:12px 18px;border-radius:12px;border:1px solid #c9a46a;background:#c9a46a;color:#111;font-weight:900">Print / Save PDF</button></p></div><script>setTimeout(function(){window.print()},500)<\/script></body></html>`);
     w.document.close();
   }
@@ -22462,7 +22447,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
 </head><body><div class="sheet"><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back</button><div class="top"><div><div class="brand">VARDOPHASE</div><div class="sub">Suppliers Cloud Pro · Official Accounting Document<br>'+esc(sub||'')+'</div></div><div class="title"><h1>'+esc(title)+'</h1><div class="pill">'+esc(mon())+'</div></div></div>'+body+'<div class="note"><b>Accounting note:</b> Generated from Vardophase Suppliers Cloud Pro.</div><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print"><button class="btn" onclick="window.print()">Print / Save PDF</button></p></div><script>setTimeout(function(){window.print()},450)<\/script></body></html>');w.document.close();}
  function table(h,rs){return '<div class="wide"><table><thead><tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rs.map(r=>'<tr>'+r.map((c,i)=>'<td class="'+(/amount|total|vat|credit|balance|due|applied|order|invoice|delivered|outstanding/i.test(h[i]||'')?'amount':'')+'">'+esc(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
  function cards(a){return '<div class="grid">'+a.map(x=>'<div class="card"><div class="label">'+esc(x[0])+'</div><div class="value">'+esc(x[1])+'</div></div>').join('')+'</div>';}
@@ -22649,8 +22633,7 @@ div[role="option"],
       openR('GL Accounting Report','Orders / invoices grouped by GL code', cards+'<div class="section-title">Summary by GL Code</div>'+printTable(['GL Code','Description','Lines','Total'], tableRows)+'<div class="section-title">Detailed Breakdown</div>'+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'], detail));
     } else {
       const w=window.open('','_blank');
-      w.document.write('<html><head><title>GL Accounting Report</title>  <link rel="stylesheet" href="v416-mac-feel-safe.css?v=416">
-</head><body><h1>GL Accounting Report</h1>'+cards+printTable(['GL Code','Description','Lines','Total'],tableRows)+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'],detail)+'</body></html>'); w.document.close();
+      w.document.write('<html><head><title>GL Accounting Report</title></head><body><h1>GL Accounting Report</h1>'+cards+printTable(['GL Code','Description','Lines','Total'],tableRows)+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'],detail)+'</body></html>'); w.document.close();
     }
   };
   window.exportGLAccountingCSV = async function(){
@@ -22709,7 +22692,6 @@ div[role="option"],
 <script src="v396-anti-duplicate-push.js?v=396"></script>
 <script src="v398-logo-process-flow.js?v=399"></script>
 <script src="v401-mac-dock.js?v=401"></script>
-<script src="v416-mac-feel-safe.js?v=416"></script>
 
 <script>
 (function(){
