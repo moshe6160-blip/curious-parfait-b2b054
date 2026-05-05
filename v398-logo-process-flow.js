@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION = 'V399_PROCESS_FLOW_FIX_FULL';
+  const VERSION = 'V398_LOGO_PROCESS_FLOW';
 
   function norm(v){ return String(v == null ? '' : v).trim().toLowerCase(); }
   function clean(v){ return String(v == null ? '' : v).trim(); }
@@ -14,7 +14,7 @@
   }
   function isSent(row){
     const s = norm(row && row.status);
-    return s.includes('sent') || s.includes('נשלח') || s.includes('sent to supplier') || s === 'order sent';
+    return s.includes('sent') || s.includes('נשלח') || s.includes('sent to supplier');
   }
   function isApprovedOnly(row){
     const s = norm(row && row.status);
@@ -44,7 +44,7 @@
       try{
         const label = window.processStatusLabel(row);
         if(label === 'Pre-Order') return 'unpaid preorder v375-preorder-badge';
-        if(label === 'App order') return 'unpaid v398-app-order-badge v399-app-order-badge';
+        if(label === 'App order') return 'unpaid v398-app-order-badge';
         if(label === 'Order') return 'unpaid v375-order-badge';
       }catch(e){}
       return oldClass ? oldClass(row) : 'unpaid';
@@ -136,7 +136,7 @@
         const t = (b.textContent || '').trim();
         if(t === 'Approved' || t === 'App Order'){
           b.textContent = 'App order';
-          b.classList.add('v398-app-order-badge','v399-app-order-badge');
+          b.classList.add('v398-app-order-badge');
         }
         if(t === 'Sent'){
           b.textContent = 'Order';
@@ -172,6 +172,6 @@
   document.addEventListener('DOMContentLoaded', boot);
   window.addEventListener('load', boot);
   document.addEventListener('click', function(){ setTimeout(boot, 250); }, true);
-  setInterval(boot, 700);
+  setInterval(boot, 1000);
   console.log(VERSION, 'loaded');
 })();

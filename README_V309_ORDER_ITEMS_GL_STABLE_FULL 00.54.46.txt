@@ -1,0 +1,1 @@
+V309 full package based on V304. Added separate v309-order-items-gl.js only. Includes order item table with GL dropdown/autofill, manual columns, qty/price/discount/total, VAT totals, and notes-based persistence without database schema changes.

@@ -1,0 +1,1 @@
+V273: UI-only fix based on V269. Bright white form text/arrows/indicators; bottom Dashboard/Suppliers/Contractors float hides while working and appears on hover/touch. Login, Supabase, Credit Note and accounting logic untouched.
