@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V397-ANTI-DUPLICATE-PUSH';
+const VARDOPHASE_SW_VERSION = 'V396-ANTI-DUPLICATE-PUSH';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();
@@ -34,5 +34,3 @@ self.addEventListener('notificationclick', event => {
     if (clients.openWindow) return clients.openWindow(url);
   })());
 });
-
-// V397 PRO CLEAN cache bump

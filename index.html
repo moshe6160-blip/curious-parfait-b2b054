@@ -3506,12 +3506,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head>
 <body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
 <button class="theme-btn hidden" id="themeBtn">☀︎ / ☾</button>
@@ -7690,12 +7684,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button>
       <h1>Supplier Statement</h1>
       <div class="meta">Supplier: ${esc(supplier)} • Period: ${reportMonthLabel()} • Basis: ${getDepositBasis()==="net" ? "Before VAT" : "After VAT / Total"}</div>
@@ -9016,12 +9004,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Credit Statement - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Deposits Added</th><th>Orders</th><th>Invoices Total</th><th>Deposit Applied</th><th>Outstanding</th><th>Carry Forward Credit</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -10254,12 +10236,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Supplier Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Supplier</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
@@ -11552,12 +11528,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Project Summary - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Project</th><th>Total</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${money(r[1])}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
@@ -12932,12 +12902,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Monthly Report - ${reportMonthLabel()}</h1><div class="cards"><div class="card">Invoices Total: ${money(sum.invoiceTotal)}</div><div class="card">Deposits Added: ${money(sum.depositTotal)}</div><div class="card">Deposit Applied: ${money(sum.depositApplied)}</div><div class="card">Outstanding After Deposit: ${money(sum.outstanding)}</div><div class="card">Carry Forward Credit: ${money(sum.carryForward)}</div></div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Process</th><th>Order No</th><th>Invoice No</th><th>Project</th><th>Description</th><th>Net</th><th>VAT</th><th>Total</th><th>Deposit Applied</th><th>Amount Due</th><th>Status</th><th>Created By</th><th>Notes</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(localDateFromAnyV97(r.created_at))}</td><td>${esc(r.supplier||"")}</td><td>${esc(processStatusLabel(r))}</td><td>${esc(r.order_no||"")}</td><td>${esc(r.invoice_no||"")}</td><td>${esc(r.project||"")}</td><td>${esc(r.description||"")}</td><td>${money(r.net_amount||0)}</td><td>${money(r.vat_amount||0)}</td><td>${money(r.total||r.amount||0)}</td><td>${money(r.deposit_applied||0)}</td><td>${money(r.amount_due||0)}</td><td>${esc(r.status||"")}</td><td>${esc(r.created_by||"")}</td><td>${esc(r.notes||"")}</td></tr>`).join("")}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
@@ -14393,12 +14357,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Open Orders Report - ${reportMonthLabel()}</h1><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Order No</th><th>Project</th><th>Amount</th><th>Days Open</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><script>window.onload=()=>window.print()<\/script>
 
 
@@ -15621,12 +15579,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>Audit Log</h1><div class="audit-badge">Showing last 200 actions</div><div class="report-table-wrap"><table><thead><tr><th>Date</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 
@@ -19360,12 +19312,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Transparency Report</h1><div>Generated: ${new Date().toLocaleString()}</div>
     <div class="cards">
       <div class="card"><div class="k">Orders</div><div class="v">${money(m.order)}</div></div>
@@ -20945,12 +20891,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back to Dashboard</button><h1>VARDOPHASE Project Transparency Report</h1>${sections}<script>window.onload=()=>window.print()<\/script>
 
 
@@ -21582,12 +21522,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head>")) return h.replace("
 <style id="v303-clean-no-text-shadow-final">
 /* V303: remove text shadow from opened menus and description/list pills; keep rose-gold + black regular dropdown text. */
@@ -21643,12 +21577,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head>", reportCss + "
 <style id="v303-clean-no-text-shadow-final">
@@ -21706,12 +21634,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head>");
     return "<!doctype html><html><head>" + reportCss + "
 <style id="v303-clean-no-text-shadow-final">
@@ -21768,12 +21690,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body>" + h + "</body></html>";
   }
@@ -22038,8 +21954,16 @@ window.vpGetAllSupplierRows = async function(){
 
 <script src="contractors-pro.js" defer></script>
 <script>
-/* === V397 UI CLEAN: V266 forced floating Credit Note disabled. Normal Credit Note buttons remain. === */
-(function(){ window.__v266ForceCreditNoteVisible=true; })();
+/* === V266 PRO FORCE VISIBLE CREDIT NOTE BUTTON - NEXT TO CONVERT INVOICE === */
+(function(){
+ if(window.__v266ForceCreditNoteVisible) return; window.__v266ForceCreditNoteVisible=true;
+ function run(){ if(typeof window.openCreditNoteModal==='function') return window.openCreditNoteModal(); alert('Credit Note module is still loading. Refresh and try again.'); }
+ function make(id,txt){ var b=document.getElementById(id); if(!b){b=document.createElement('button');b.id=id;b.type='button';b.textContent=txt;b.onclick=run;} b.className='v266-credit-note-force'; b.style.cssText='display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:42px!important;padding:0 18px!important;border-radius:16px!important;border:1px solid rgba(255,255,255,.55)!important;background:linear-gradient(135deg,#ffe7b3,#d39a55)!important;color:#111!important;font-weight:900!important;font-size:13px!important;box-shadow:0 8px 24px rgba(211,154,85,.28)!important;cursor:pointer!important;white-space:nowrap!important;z-index:999999!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important'; return b;}
+ function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
+ function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} }
+ var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}'; document.head.appendChild(st);
+ document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
+})();
 </script>
 <script>
 /* === V274 PRO LOGIC UPGRADE - CREDIT NOTE LEDGER A: INVOICE ONLY / LOGIN SAFE ===
@@ -22412,12 +22336,6 @@ div[role="option"],
   filter: none !important;
 }
 </style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
 </head><body><div class="sheet"><div class="top"><div><div class="brand">VARDOPHASE</div><div class="sub">Suppliers Cloud Pro · Official Accounting Document</div></div><div class="title"><h1>CREDIT NOTE</h1><div class="pill">${escPdf(cn.cnNo)}</div></div></div><div class="grid"><div class="box"><div class="label">Supplier</div><div class="value">${escPdf(cn.supplier)}</div></div><div class="box"><div class="label">Date</div><div class="value">${escPdf(cn.date)}</div></div><div class="box"><div class="label">Original Invoice</div><div class="value">${escPdf(cn.invoiceRef)}</div></div><div class="box"><div class="label">Order / Project</div><div class="value">${escPdf(cn.orderNo)}${cn.project ? ' · ' + escPdf(cn.project) : ''}</div></div></div><table class="table"><thead><tr><th>Description</th><th>VAT</th><th class="amount">Credit Amount</th></tr></thead><tbody><tr><td>${escPdf(cn.reason)}</td><td>${moneyPdf(vat)}</td><td class="amount negative">-${moneyPdf(total)}</td></tr></tbody></table><div class="totals"><div class="totrow"><span>Subtotal</span><b>-${moneyPdf(subtotal)}</b></div><div class="totrow"><span>VAT</span><b>-${moneyPdf(vat)}</b></div><div class="totrow grand"><span>Total Credit</span><b>-${moneyPdf(total)}</b></div></div><div class="note"><b>Accounting note:</b> This credit note is linked to the original invoice above. It reduces the net payable amount for that invoice and does not create a free supplier credit balance.</div><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print" style="margin-top:28px"><button onclick="window.print()" style="padding:12px 18px;border-radius:12px;border:1px solid #c9a46a;background:#c9a46a;color:#111;font-weight:900">Print / Save PDF</button></p></div><script>setTimeout(function(){window.print()},500)<\/script></body></html>`);
     w.document.close();
   }
@@ -22528,12 +22446,6 @@ div[role="option"],
   -webkit-text-stroke: 0 !important;
   filter: none !important;
 }
-</style>
-
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head><body><div class="sheet"><button class="report-back-btn" onclick="if(window.opener){window.close()}else{history.back()}">← Back</button><div class="top"><div><div class="brand">VARDOPHASE</div><div class="sub">Suppliers Cloud Pro · Official Accounting Document<br>'+esc(sub||'')+'</div></div><div class="title"><h1>'+esc(title)+'</h1><div class="pill">'+esc(mon())+'</div></div></div>'+body+'<div class="note"><b>Accounting note:</b> Generated from Vardophase Suppliers Cloud Pro.</div><div class="sign"><div class="line">Prepared by</div><div class="line">Approved by</div></div><p class="no-print"><button class="btn" onclick="window.print()">Print / Save PDF</button></p></div><script>setTimeout(function(){window.print()},450)<\/script></body></html>');w.document.close();}
  function table(h,rs){return '<div class="wide"><table><thead><tr>'+h.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rs.map(r=>'<tr>'+r.map((c,i)=>'<td class="'+(/amount|total|vat|credit|balance|due|applied|order|invoice|delivered|outstanding/i.test(h[i]||'')?'amount':'')+'">'+esc(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
@@ -22721,13 +22633,7 @@ div[role="option"],
       openR('GL Accounting Report','Orders / invoices grouped by GL code', cards+'<div class="section-title">Summary by GL Code</div>'+printTable(['GL Code','Description','Lines','Total'], tableRows)+'<div class="section-title">Detailed Breakdown</div>'+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'], detail));
     } else {
       const w=window.open('','_blank');
-      w.document.write('<html><head><title>GL Accounting Report</title>
-<style id="v397-pro-clean-final-css">
-/* V397 PRO CLEAN: UI-only cleanup, no logic changes */
-#v395NotifBox,#v395NotifButton,#v395NotifPanel,.v395-open,#v395NotifBadge{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-#v266CreditNoteMainBtn,#v264CreditNoteMainBtn,.v266-credit-note-force,.v264-credit-note-force{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-</style>
-</head><body><h1>GL Accounting Report</h1>'+cards+printTable(['GL Code','Description','Lines','Total'],tableRows)+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'],detail)+'</body></html>'); w.document.close();
+      w.document.write('<html><head><title>GL Accounting Report</title></head><body><h1>GL Accounting Report</h1>'+cards+printTable(['GL Code','Description','Lines','Total'],tableRows)+printTable(['GL Code','Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount'],detail)+'</body></html>'); w.document.close();
     }
   };
   window.exportGLAccountingCSV = async function(){
@@ -22783,11 +22689,12 @@ div[role="option"],
 <script src="v383-safe-approval-notify-user.js?v=390"></script>
 <script src="v392-ui-sync-fix.js?v=392"></script>
 <script src="v394-realtime-full.js?v=394"></script>
-<script src="v396-anti-duplicate-push.js?v=397"></script>
+<script src="v396-anti-duplicate-push.js?v=396"></script>
+<script src="v398-logo-process-flow.js?v=398"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V397-PRO-CLEAN-FROM-V396';
+  window.VARDOPHASE_VERSION = 'V396-ANTI-DUPLICATE-PUSH';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22816,7 +22723,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=397').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=396').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
