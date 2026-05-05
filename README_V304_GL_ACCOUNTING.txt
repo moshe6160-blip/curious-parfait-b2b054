@@ -1,1 +1,0 @@
-V304 GL Accounting: added all GL Codes from Vardo GL Codes.xlsx, GL allocation section on order/invoice form, GL Accounting Report, and CSV export. GL allocations are stored safely inside Notes with a hidden marker to avoid Supabase schema changes.
