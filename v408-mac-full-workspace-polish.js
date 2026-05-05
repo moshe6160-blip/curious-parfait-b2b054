@@ -16,6 +16,8 @@
 :root{--v408-gold:#f6d8a8;--v408-gold2:#c08b4f;--v408-glass:rgba(11,12,15,.78)}
 /* One Dock only */
 #v401MacDock,#windowDock,.windowDock,.dock-old,.floating-dock{display:none!important;visibility:hidden!important;pointer-events:none!important}
+/* V409: keep only the bottom Mac Dock. Hide old side Dock controls/toggles. */
+#v406DockHide,#v408DockToggle,[id*="DockHide"],[id*="DockToggle"],.dock-toggle,.dock-hide,.dock-side-toggle{display:none!important;visibility:hidden!important;pointer-events:none!important}
 #v403Dock{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(10px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%)!important;z-index:2147483600!important;display:flex!important;align-items:flex-end!important;gap:10px!important;padding:10px 13px!important;border-radius:26px!important;background:linear-gradient(180deg,rgba(25,26,30,.72),rgba(7,8,10,.82))!important;border:1px solid rgba(246,216,168,.28)!important;box-shadow:0 22px 70px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.10)!important;backdrop-filter:blur(30px) saturate(1.18)!important;-webkit-backdrop-filter:blur(30px) saturate(1.18)!important;max-width:calc(100vw - 20px)!important;overflow-x:auto!important;direction:ltr!important;scrollbar-width:none!important;transition:transform .28s cubic-bezier(.2,.9,.15,1),opacity .22s ease!important}
 #v403Dock::-webkit-scrollbar{display:none!important}
 #v403Dock .v403-dock-item,#v403Dock .v408-window-chip,#v403Dock .v406-dock-chip{position:relative!important;min-width:50px!important;height:50px!important;border:0!important;border-radius:18px!important;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.045))!important;color:#fff!important;font-size:22px!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 8px 20px rgba(0,0,0,.18)!important;transition:transform .16s cubic-bezier(.2,.9,.2,1.35),filter .16s ease,background .16s ease!important;flex:0 0 auto!important;padding:0 10px!important;white-space:nowrap!important;max-width:132px!important;overflow:hidden!important;text-overflow:ellipsis!important}
@@ -53,12 +55,14 @@ body.v408-dock-hidden #v403Dock{transform:translateX(-50%) translateY(calc(100% 
     return dock;
   }
   function ensureDockToggle(){
-    if(qs('#v408DockToggle')) return;
-    const b=document.createElement('button'); b.id='v408DockToggle'; b.type='button'; b.title='Hide / show Dock';
-    const set=()=>{ b.textContent=document.body.classList.contains('v408-dock-hidden')?'⌃':'⌄'; };
-    b.onclick=()=>{ document.body.classList.toggle('v408-dock-hidden'); localStorage.setItem('v408_dock_hidden',document.body.classList.contains('v408-dock-hidden')?'1':'0'); set(); };
-    document.body.appendChild(b); if(localStorage.getItem('v408_dock_hidden')==='1') document.body.classList.add('v408-dock-hidden'); set();
+    // V409: remove the two side Dock buttons/toggles. Keep only the bottom Mac Dock.
+    qsa('#v406DockHide,#v408DockToggle,[id*="DockHide"],[id*="DockToggle"],.dock-toggle,.dock-hide,.dock-side-toggle').forEach(el=>{
+      try{ el.remove(); }catch(_e){ el.style.display='none'; }
+    });
+    document.body.classList.remove('v408-dock-hidden','v406-dock-hidden');
+    try{ localStorage.removeItem('v408_dock_hidden'); }catch(_e){}
   }
+
   function titleOf(box){
     const t=(qs('h1,h2,h3,.section-title,.title,.modal-title',box)?.textContent||box.getAttribute('data-title')||'Window').trim();
     if(/new order/i.test(t)) return 'Order';
@@ -172,7 +176,7 @@ body.v408-dock-hidden #v403Dock{transform:translateX(-50%) translateY(calc(100% 
 
   function enhanceAll(){
     injectStyle(); ensureDock();
-    qsa('#v401MacDock,#windowDock').forEach(el=>{ try{el.remove()}catch(e){el.style.display='none'} });
+    qsa('#v401MacDock,#windowDock,#v406DockHide,#v408DockToggle,[id*="DockHide"],[id*="DockToggle"]').forEach(el=>{ try{el.remove()}catch(e){el.style.display='none'} });
     qsa('.modal-box,.v403-workspace-window').forEach(enhanceBox);
   }
 
