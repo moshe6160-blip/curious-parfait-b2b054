@@ -68,27 +68,9 @@
   }
 
   function injectUI(){
-    if(document.getElementById('v395NotifButton')) return;
-    const style = document.createElement('style');
-    style.id = 'v395NotifStyle';
-    style.textContent = `
-#v395NotifButton{position:fixed;top:calc(env(safe-area-inset-top,0px) + 62px);right:14px;z-index:1000007;border:1px solid rgba(215,176,108,.58);background:rgba(17,18,22,.92);color:#fff;border-radius:999px;box-shadow:0 12px 35px rgba(0,0,0,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font:900 13px -apple-system,BlinkMacSystemFont,Segoe UI,Arial;padding:10px 12px;display:flex;align-items:center;gap:8px;cursor:pointer}
-#v395NotifBadge{min-width:21px;height:21px;border-radius:999px;background:#a46b18;color:#fff;align-items:center;justify-content:center;font-size:12px;box-shadow:0 0 0 3px rgba(246,219,173,.16)}
-#v395NotifPanel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 108px);right:14px;width:min(380px,calc(100vw - 28px));max-height:min(520px,70vh);overflow:auto;z-index:1000008;background:rgba(15,16,20,.98);color:#fff;border:1px solid rgba(215,176,108,.62);border-radius:22px;box-shadow:0 25px 80px rgba(0,0,0,.58);padding:12px;display:none;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial;direction:ltr}.v395-open #v395NotifPanel{display:block}.v395-head{display:flex;justify-content:space-between;align-items:center;color:#f8dcae;font-weight:900;margin-bottom:8px}.v395-item{border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:10px;margin:8px 0;background:rgba(255,255,255,.035)}.v395-item-title{font-weight:900;color:#f8dcae;margin-bottom:4px}.v395-item-body{font-size:13px;opacity:.94}.v395-item-time{font-size:11px;opacity:.58;margin-top:6px}.v395-actions{display:flex;gap:8px;margin-top:10px}.v395-actions button{flex:1;border:0;border-radius:12px;padding:9px 10px;font-weight:900}.v395-gold{background:linear-gradient(135deg,#f6dbad,#c18a4a);color:#111}.v395-dark{background:#2a2d35;color:#fff}@media(max-width:680px){#v395NotifButton{right:10px;top:calc(env(safe-area-inset-top,0px) + 58px)}#v395NotifPanel{left:10px;right:10px;width:auto;top:calc(env(safe-area-inset-top,0px) + 104px)}}`;
-    document.head.appendChild(style);
-    const box = document.createElement('div');
-    box.id = 'v395NotifBox';
-    box.innerHTML = '<button id="v395NotifButton" type="button">🔔 <span>Live</span><span id="v395NotifBadge">0</span></button><div id="v395NotifPanel"><div class="v395-head"><span>Live Notifications</span><span id="v395NotifClose" style="cursor:pointer">✕</span></div><div id="v395NotifList"></div><div class="v395-actions"><button class="v395-gold" id="v395OpenApprovals">Open Approvals</button><button class="v395-dark" id="v395MarkRead">Mark read</button></div></div>';
-    document.body.appendChild(box);
-    document.getElementById('v395NotifButton').onclick = function(){ box.classList.toggle('v395-open'); renderPanel(); };
-    document.getElementById('v395NotifClose').onclick = function(){ box.classList.remove('v395-open'); };
-    document.getElementById('v395MarkRead').onclick = markAllRead;
-    document.getElementById('v395OpenApprovals').onclick = function(){
-      if(typeof window.showPendingApprovalOrdersV375 === 'function') window.showPendingApprovalOrdersV375(true);
-      else if(typeof window.showPendingApprovalOrdersV372 === 'function') window.showPendingApprovalOrdersV372(true);
-      else location.href='/?approvals=1';
-    };
-    updateBadge();
+    // V397 PRO CLEAN: Live floating notification button/panel removed.
+    // Realtime, push, feed and approval logic remain active.
+    return;
   }
 
   function renderPanel(){

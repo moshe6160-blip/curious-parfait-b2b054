@@ -17531,16 +17531,8 @@ window.vpGetAllSupplierRows = async function(){
 
 ;
 
-/* === V266 PRO FORCE VISIBLE CREDIT NOTE BUTTON - NEXT TO CONVERT INVOICE === */
-(function(){
- if(window.__v266ForceCreditNoteVisible) return; window.__v266ForceCreditNoteVisible=true;
- function run(){ if(typeof window.openCreditNoteModal==='function') return window.openCreditNoteModal(); alert('Credit Note module is still loading. Refresh and try again.'); }
- function make(id,txt){ var b=document.getElementById(id); if(!b){b=document.createElement('button');b.id=id;b.type='button';b.textContent=txt;b.onclick=run;} b.className='v266-credit-note-force'; b.style.cssText='display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:42px!important;padding:0 18px!important;border-radius:16px!important;border:1px solid rgba(255,255,255,.55)!important;background:linear-gradient(135deg,#ffe7b3,#d39a55)!important;color:#111!important;font-weight:900!important;font-size:13px!important;box-shadow:0 8px 24px rgba(211,154,85,.28)!important;cursor:pointer!important;white-space:nowrap!important;z-index:999999!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important'; return b;}
- function canShow(){try{return (typeof canAccountant!=='function')||canAccountant();}catch(e){return true;}}
- function inject(){ if(!canShow()) return; var bars=Array.from(document.querySelectorAll('.toolbar,.supplier-selection-toolbar,div')); var bar=bars.find(function(el){var t=(el.textContent||'').toLowerCase(); return (t.includes('mark selected')&&t.includes('delete selected'))||(t.includes('convert order')&&t.includes('duplicate selected'));}); if(bar&&!document.getElementById('v266CreditNoteMainBtn')){var b=make('v266CreditNoteMainBtn','Credit Note'); var convert=Array.from(bar.querySelectorAll('button')).find(function(x){var t=(x.textContent||'').toLowerCase(); return t.includes('convert order') && t.includes('invoice');}); if(convert && convert.nextSibling){bar.insertBefore(b, convert.nextSibling);} else if(convert){bar.appendChild(b);} else {bar.insertBefore(b,bar.firstElementChild||null);} try{bar.style.gridTemplateColumns='repeat(auto-fit,minmax(145px,1fr))';}catch(e){}} }
- var st=document.createElement('style'); st.textContent='.v266-credit-note-force{opacity:1!important;visibility:visible!important;pointer-events:auto!important}'; document.head.appendChild(st);
- document.addEventListener('DOMContentLoaded',inject); window.addEventListener('load',inject); setInterval(inject,700); setTimeout(inject,100);
-})();
+/* === V397 UI CLEAN: V266 forced floating Credit Note disabled. Normal Credit Note buttons remain. === */
+(function(){ window.__v266ForceCreditNoteVisible=true; })();
 
 
 // V303 runtime style: dropdown/chips no text-shadow
