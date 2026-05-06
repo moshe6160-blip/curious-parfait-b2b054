@@ -17642,3 +17642,109 @@ window.vpGetAllSupplierRows = async function(){
   setInterval(refresh,1000);
   refresh();
 })();
+
+
+
+/* ===== V440 REAL STATUS STATE FIX ===== */
+(function(){
+  if(window.__v440Installed) return;
+  window.__v440Installed = true;
+
+  function resolveStatus(modal){
+    try{
+      if(modal.dataset && modal.dataset.status){
+        return modal.dataset.status;
+      }
+
+      const approvedBtn = modal.querySelector('[data-status="approved"], .approved, .btn-approved');
+      const returnBtn = [...modal.querySelectorAll('button')]
+        .find(b => (b.innerText||'').toLowerCase().includes('return to pre-order'));
+
+      if(returnBtn) return 'ORDER';
+      if(approvedBtn) return 'APP ORDER';
+
+      const statusEl = modal.querySelector('.status,.document-status,.workflow-status');
+      if(statusEl){
+        return (statusEl.innerText || 'PRE-ORDER').trim();
+      }
+    }catch(e){}
+
+    return 'PRE-ORDER';
+  }
+
+  function getTheme(status){
+    status = (status || '').toUpperCase();
+
+    if(status.includes('ORDER') && !status.includes('APP')){
+      return {
+        text:'ORDER',
+        bg:'linear-gradient(180deg,#0e6a43,#08462b)',
+        border:'#69d8a2'
+      };
+    }
+
+    if(status.includes('APP')){
+      return {
+        text:'APP ORDER',
+        bg:'linear-gradient(180deg,#4868a8,#2f4776)',
+        border:'#b9d1ff'
+      };
+    }
+
+    return {
+      text:'PRE-ORDER',
+      bg:'linear-gradient(180deg,#8b5b12,#5f3c06)',
+      border:'#f0c26b'
+    };
+  }
+
+  function renderMedal(modal){
+    const footer =
+      modal.querySelector('.modal-footer') ||
+      modal.querySelector('.actions') ||
+      modal.querySelector('.buttons') ||
+      modal;
+
+    let medal = footer.querySelector('.v440-status-medal');
+
+    if(!medal){
+      medal = document.createElement('div');
+      medal.className = 'v440-status-medal';
+      medal.style.cssText = `
+        margin:10px auto 0 auto;
+        width:max-content;
+        min-width:92px;
+        text-align:center;
+        padding:5px 12px;
+        border-radius:16px;
+        font-size:11px;
+        font-weight:700;
+        color:#fff;
+        border:1.5px solid #fff;
+        box-shadow:0 2px 8px rgba(0,0,0,.28);
+      `;
+      footer.appendChild(medal);
+    }
+
+    const theme = getTheme(resolveStatus(modal));
+
+    medal.innerText = theme.text;
+    medal.style.background = theme.bg;
+    medal.style.borderColor = theme.border;
+  }
+
+  function refreshAll(){
+    document.querySelectorAll('.modal,.entry-modal,.window').forEach(renderMedal);
+  }
+
+  document.addEventListener('click', ()=>{
+    setTimeout(refreshAll,120);
+    setTimeout(refreshAll,400);
+  });
+
+  const mo = new MutationObserver(refreshAll);
+  mo.observe(document.body,{childList:true,subtree:true,attributes:true});
+
+  setInterval(refreshAll,800);
+  refreshAll();
+})();
