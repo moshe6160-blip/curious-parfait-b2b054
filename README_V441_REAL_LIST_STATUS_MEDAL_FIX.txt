@@ -1,0 +1,1 @@
+V441: fixes bottom document status medal when opening documents from home lists. Medal now prefers the saved DB workflow status (Approved/App order/Order Sent) over temporary form defaults like Pending Approval/Unpaid.
