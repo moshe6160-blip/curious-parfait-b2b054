@@ -22640,8 +22640,7 @@ div[role="option"],
     const rows=filteredRows(await (typeof getEntries==='function' ? getEntries() : []));
     const out=[['GL Code','GL Description','Date','Supplier','Order No','Invoice No','Project','Entry Description','Amount']];
     rows.forEach(r=>parseGL(r.notes).forEach(g=>out.push([g.code,g.description || codeText(g.code).replace(/^.*? - /,''),r.created_at?String(r.created_at).slice(0,10):'',r.supplier||'',r.order_no||'',r.invoice_no||'',r.project||'',r.description||'',Number(g.amount||0)])));
-    const csv=out.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('
-');
+    const csv=out.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n');
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='Vardophase_GL_Accounting_Export.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
   setInterval(function(){
@@ -22693,10 +22692,11 @@ div[role="option"],
 <script src="v398-logo-process-flow.js?v=399"></script>
 <script src="v401-mac-dock.js?v=424"></script>
 <script src="v425-order-dock-approved-fix.js?v=425"></script>
+<script src="v428-clean-buttons-window-fix.js?v=428"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V425-ORDER-DOCK-APPROVED-FIX';
+  window.VARDOPHASE_VERSION = 'V428-CLEAN-FULL-FIX';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22725,7 +22725,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=425').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=428').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
