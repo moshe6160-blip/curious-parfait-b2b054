@@ -17550,3 +17550,78 @@ window.vpGetAllSupplierRows = async function(){
     const st = document.createElement('style'); st.id='v303-runtime-no-shadow'; st.textContent=css; document.head.appendChild(st);
   }
 })();
+
+
+/* ===== V436 LIVE STATUS MEDAL PATCH ===== */
+(function(){
+  if(window.__vpStatusMedalInstalled) return;
+  window.__vpStatusMedalInstalled = true;
+
+  function detectStatus(win){
+    const txt = (win.innerText || "").toLowerCase();
+
+    if(txt.includes("approved") || txt.includes("app order")){
+      return "APP ORDER";
+    }
+    if(txt.includes("return to pre-order")){
+      return "ORDER";
+    }
+    return "PRE-ORDER";
+  }
+
+  function ensureMedal(win){
+    let medal = win.querySelector(".vp-live-status-medal");
+
+    if(!medal){
+      medal = document.createElement("div");
+      medal.className = "vp-live-status-medal";
+      medal.style.cssText = `
+        margin-top:10px;
+        width:max-content;
+        padding:4px 12px;
+        border-radius:14px;
+        font-size:11px;
+        font-weight:600;
+        letter-spacing:.5px;
+        background:#111;
+        color:#d4af37;
+        border:1px solid rgba(212,175,55,.45);
+        opacity:.92;
+      `;
+
+      const footerTarget =
+        win.querySelector(".modal-footer") ||
+        win.querySelector(".actions") ||
+        win.querySelector(".buttons") ||
+        win;
+
+      footerTarget.appendChild(medal);
+    }
+
+    const status = detectStatus(win);
+    medal.textContent = status;
+
+    if(status === "PRE-ORDER"){
+      medal.style.color = "#d4af37";
+    }else if(status === "APP ORDER"){
+      medal.style.color = "#7CFC98";
+    }else{
+      medal.style.color = "#8FD3FF";
+    }
+  }
+
+  function refreshAll(){
+    document.querySelectorAll(".modal,.window,.entry-modal").forEach(ensureMedal);
+  }
+
+  setInterval(refreshAll, 700);
+
+  const observer = new MutationObserver(refreshAll);
+  observer.observe(document.body, {
+    childList:true,
+    subtree:true,
+    attributes:true
+  });
+
+  refreshAll();
+})();

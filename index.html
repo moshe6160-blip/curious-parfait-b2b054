@@ -22693,10 +22693,11 @@ div[role="option"],
 <script src="v401-mac-dock.js?v=424"></script>
 <script src="v425-order-dock-approved-fix.js?v=425"></script>
 <script src="v428-clean-buttons-window-fix.js?v=430"></script>
+<script src="v432-document-status-medal-safe.js?v=432"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V428-CLEAN-FULL-FIX';
+  window.VARDOPHASE_VERSION = 'V432-STATUS-MEDAL-SAFE-FROM-V430';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22725,7 +22726,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=428').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=432').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
