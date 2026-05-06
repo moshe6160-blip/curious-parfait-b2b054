@@ -1,0 +1,1 @@
+V424: DN numbering is allocated only on final Save. Opening/minimizing/restoring DN drafts in Mac Dock does not reserve or increment DN numbers. Duplicate DN guard scans invoice_no, delivery_note_no, dn_no and notes.

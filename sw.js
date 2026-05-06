@@ -1,4 +1,4 @@
-const VARDOPHASE_SW_VERSION = 'V396-ANTI-DUPLICATE-PUSH';
+const VARDOPHASE_SW_VERSION = 'V425-ORDER-DOCK-APPROVED-FIX';
 self.addEventListener('install', event => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil((async()=>{
   if (self.clients && self.clients.claim) await self.clients.claim();

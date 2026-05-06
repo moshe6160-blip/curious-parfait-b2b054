@@ -628,3 +628,125 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
   const timer = setInterval(()=>{ install(); if(window.__V422_ENTRY_MULTI_WINDOW_INSTALLED__) clearInterval(timer); }, 250);
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', install); else install();
 })();
+
+/* V424 DN numbering guard
+   DN number is NOT reserved on open/minimize/restore. It is allocated only on final save.
+   This prevents dock sessions and parallel DN drafts from consuming or duplicating DN numbers. */
+(function(){
+  'use strict';
+  if(window.__V424_DN_NUMBER_SAVE_LOCK__) return;
+  window.__V424_DN_NUMBER_SAVE_LOCK__ = true;
+
+  const DN_RE = /\bDN-(\d+)\b/gi;
+
+  function mode(){ return String(document.getElementById('entryMode')?.value || '').trim(); }
+  function invoiceInput(){ return document.getElementById('entryInvoiceNo'); }
+  function editingId(){ return window.editingId || ''; }
+  function isDNMode(){ return mode() === 'delivery_note'; }
+  function setMsg(text, cls){
+    try{
+      const msg = document.getElementById('entryStatusMsg');
+      if(msg){ msg.className = 'status ' + (cls || 'ok'); msg.textContent = text || ''; }
+      else if(typeof window.setEntryStatus === 'function') window.setEntryStatus(text || '', cls || 'ok');
+    }catch(_e){}
+  }
+  function extractDNsFromRow(row){
+    const txt = [row?.invoice_no, row?.delivery_note_no, row?.dn_no, row?.notes].map(x=>String(x||'')).join('\n');
+    const out = [];
+    let m;
+    DN_RE.lastIndex = 0;
+    while((m = DN_RE.exec(txt))){ out.push({ raw:'DN-' + String(Number(m[1])).padStart(4,'0'), num:Number(m[1]||0) }); }
+    return out;
+  }
+  async function fetchDNRows(){
+    if(!window.supabase) return [];
+    const { data, error } = await window.supabase.from('suppliers').select('id, invoice_no, delivery_note_no, dn_no, notes, entry_type');
+    if(error) throw error;
+    return data || [];
+  }
+  async function dnExists(dn, excludeId){
+    const target = String(dn || '').trim().toUpperCase();
+    if(!target) return false;
+    const rows = await fetchDNRows();
+    return rows.some(row=>{
+      if(excludeId && String(row.id) === String(excludeId)) return false;
+      return extractDNsFromRow(row).some(x=>String(x.raw).toUpperCase() === target);
+    });
+  }
+
+  window.nextDeliveryNoteNo = async function(){
+    const rows = await fetchDNRows();
+    let max = 0;
+    rows.forEach(row=>extractDNsFromRow(row).forEach(x=>{ if(x.num > max) max = x.num; }));
+    return 'DN-' + String(max + 1).padStart(4, '0');
+  };
+
+  window.setAutoDeliveryNoteNo = async function(){
+    if(!isDNMode()) return;
+    const input = invoiceInput();
+    if(!input) return;
+    input.readOnly = true;
+    input.style.opacity = '0.85';
+    input.placeholder = 'DN auto on Save';
+    input.title = 'Delivery Note number is created only when you press Save, so dock drafts do not take numbers.';
+    // Important: do not put a new DN number here. Open/minimize/restore must not consume numbering.
+    if(!/^DN-\d+/i.test(String(input.value || '').trim())) input.value = '';
+  };
+
+  async function assignDeliveryNoteNumberForSave(){
+    if(!isDNMode()) return true;
+    const input = invoiceInput();
+    if(!input) return true;
+
+    let current = String(input.value || '').trim().toUpperCase();
+    const exclude = editingId();
+
+    if(current && /^DN-\d+$/i.test(current) && !(await dnExists(current, exclude))){
+      input.value = current.replace(/^DN-(\d+)$/i, (_m,n)=>'DN-' + String(Number(n)).padStart(4,'0'));
+      return true;
+    }
+
+    for(let i=0; i<25; i++){
+      const next = await window.nextDeliveryNoteNo();
+      if(!(await dnExists(next, exclude))){
+        input.value = next;
+        input.dispatchEvent(new Event('input', { bubbles:true }));
+        input.dispatchEvent(new Event('change', { bubbles:true }));
+        setMsg('Delivery Note number locked on save: ' + next, 'ok');
+        return true;
+      }
+      // Very unlikely race: mark the current max as taken locally by continuing the loop after a re-scan.
+    }
+
+    setMsg('Could not lock a unique Delivery Note number. Please save again.', 'error');
+    return false;
+  }
+
+  function install(){
+    if(window.__V424_DN_SAVE_WRAPPED__) return;
+    if(typeof window.saveEntry !== 'function') return;
+    window.__V424_DN_SAVE_WRAPPED__ = true;
+
+    const oldSave = window.saveEntry;
+    window.saveEntry = async function(){
+      if(isDNMode()){
+        const ok = await assignDeliveryNoteNumberForSave();
+        if(!ok) return;
+      }
+      return oldSave.apply(this, arguments);
+    };
+
+    const oldOpen = window.openEntryModal;
+    if(typeof oldOpen === 'function' && !window.__V424_OPEN_ENTRY_DN_NO_RESERVE__){
+      window.__V424_OPEN_ENTRY_DN_NO_RESERVE__ = true;
+      window.openEntryModal = async function(){
+        const res = await oldOpen.apply(this, arguments);
+        if(isDNMode()) setTimeout(()=>window.setAutoDeliveryNoteNo(), 0);
+        return res;
+      };
+    }
+  }
+
+  const timer = setInterval(()=>{ install(); if(window.__V424_DN_SAVE_WRAPPED__) clearInterval(timer); }, 250);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+})();

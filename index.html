@@ -22691,11 +22691,12 @@ div[role="option"],
 <script src="v394-realtime-full.js?v=394"></script>
 <script src="v396-anti-duplicate-push.js?v=396"></script>
 <script src="v398-logo-process-flow.js?v=399"></script>
-<script src="v401-mac-dock.js?v=421"></script>
+<script src="v401-mac-dock.js?v=424"></script>
+<script src="v425-order-dock-approved-fix.js?v=425"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V399-PROCESS-FLOW-FIX';
+  window.VARDOPHASE_VERSION = 'V425-ORDER-DOCK-APPROVED-FIX';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22724,7 +22725,7 @@ div[role="option"],
       }catch(e){}
     }, 2500);
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
-      navigator.serviceWorker.register('/sw.js?v=396').then(function(reg){
+      navigator.serviceWorker.register('/sw.js?v=425').then(function(reg){
         try{ reg.update && reg.update(); }catch(e){}
         if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
       }).catch(function(e){ console.warn('SW registration failed',e); });
