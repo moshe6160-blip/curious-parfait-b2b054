@@ -1,0 +1,1 @@
+V453 Safe Dock/Window Bugfix: removed V451/V452 experimental script loading, prevents Invoice Draft ghost dock icon, one stable Dock session per real document, faster minimize/restore, stable status medal on restore.
