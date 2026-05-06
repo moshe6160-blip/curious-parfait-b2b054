@@ -24,6 +24,7 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
 .v420-dock-item:hover,.v420-dock-item:active{transform:translateY(-10px) scale(1.17)!important;filter:brightness(1.18)!important;background:linear-gradient(180deg,rgba(246,219,173,.25),rgba(255,255,255,.055))!important;}
 .v420-dock-item.v420-primary{background:linear-gradient(135deg,#f8dfb5,#c28b4b)!important;color:#111!important;}
 .v420-dock-item.v420-window::after{content:"";position:absolute;bottom:-6px;left:50%;width:5px;height:5px;transform:translateX(-50%);border-radius:50%;background:#f5d9a6;}
+.v420-dock-separator{align-self:center!important;width:1px!important;min-width:1px!important;height:42px!important;margin:0 4px!important;border-radius:999px!important;background:linear-gradient(180deg,transparent,rgba(246,219,173,.55),transparent)!important;box-shadow:0 0 10px rgba(246,219,173,.22)!important;flex:0 0 1px!important;}
 .v420-badge{position:absolute!important;right:-6px!important;top:-7px!important;min-width:21px!important;height:21px!important;padding:0 6px!important;border-radius:999px!important;background:#9b661b!important;color:#fff!important;font:900 11px -apple-system,BlinkMacSystemFont,Segoe UI,Arial!important;display:none;align-items:center!important;justify-content:center!important;box-shadow:0 0 0 3px rgba(0,0,0,.42)!important;}
 @media(min-width:900px){.v420-dock-item:hover::before{content:attr(title);position:absolute;bottom:62px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(15,16,20,.96);border:1px solid rgba(246,219,173,.25);color:#f8dcae;border-radius:10px;padding:5px 8px;font:800 11px -apple-system,BlinkMacSystemFont,Segoe UI,Arial;pointer-events:none;}}
 .window-bar{display:flex!important;align-items:center!important;gap:8px!important;cursor:grab!important;user-select:none!important;touch-action:none!important;}
@@ -334,7 +335,16 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
   function dock(){ return document.getElementById(DOCK_ID); }
   function uid(){ return 'v422_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7); }
   function val(id){ const el=document.getElementById(id); return el ? (el.type==='checkbox'?el.checked:el.value) : ''; }
-  function set(id,value){ const el=document.getElementById(id); if(!el) return; if(el.type==='checkbox') el.checked=!!value; else el.value=value ?? ''; try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(_e){} }
+  function set(id,value){
+    const el=document.getElementById(id); if(!el) return;
+    const v = value ?? '';
+    if(el.tagName === 'SELECT' && v !== '' && !Array.from(el.options || []).some(o=>o.value===String(v))){
+      const opt = document.createElement('option'); opt.value = String(v); opt.textContent = String(v); el.appendChild(opt);
+    }
+    if(el.type==='checkbox') el.checked=!!value; else el.value=v;
+    try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }catch(_e){}
+    try{ if(typeof el._customRefresh === 'function') el._customRefresh(); }catch(_e){}
+  }
   function money(n){ const x = Number(n||0); return isFinite(x) ? x.toFixed(2) : '0.00'; }
   function captureEntryItems(){
     const rows = qa('#v309OrderItemsBody tr');
@@ -367,8 +377,12 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
     qa('input,select,textarea', modal).forEach((el,idx)=>{
       const key = el.id || el.name || (el.dataset.field ? 'field:'+el.dataset.field+':'+idx : 'idx:'+idx);
       if(!(key in all)) return;
-      if(el.type === 'checkbox') el.checked = !!all[key]; else el.value = all[key] ?? '';
-      try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }catch(_e){}
+      const v = all[key] ?? '';
+      if(el.tagName === 'SELECT' && v !== '' && !Array.from(el.options || []).some(o=>o.value===String(v))){
+        const opt = document.createElement('option'); opt.value = String(v); opt.textContent = String(v); el.appendChild(opt);
+      }
+      if(el.type === 'checkbox') el.checked = !!all[key]; else el.value = v;
+      try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); if(typeof el._customRefresh === 'function') el._customRefresh(); }catch(_e){}
     });
   }
   function lineTotal(x){
@@ -445,6 +459,17 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
     return data;
   }
 
+  function syncDockSeparator(){
+    const d = dock(); if(!d) return null;
+    let sep = q('.v420-dock-separator', d);
+    const hasWindows = !!q('.v420-window,[data-v422-session-id],[data-v420-window-id]', d);
+    if(!hasWindows){ if(sep) sep.remove(); return null; }
+    if(!sep){ sep = document.createElement('div'); sep.className = 'v420-dock-separator'; sep.setAttribute('aria-hidden','true'); }
+    const firstWindow = q('.v420-window,[data-v422-session-id],[data-v420-window-id]', d);
+    if(firstWindow && sep.nextElementSibling !== firstWindow) d.insertBefore(sep, firstWindow);
+    return sep;
+  }
+
   function createDockItem(data){
     const d = dock(); if(!d) return;
     let item = q('[data-v422-session-id="'+data.id+'"]', d);
@@ -454,8 +479,10 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
       item.className = 'v420-dock-item v420-window';
       item.dataset.v422SessionId = data.id;
       item.addEventListener('click',()=>restoreSession(data.id));
-      d.appendChild(item);
+      const sep = syncDockSeparator();
+      d.insertBefore(item, sep ? sep.nextSibling : null);
     }
+    syncDockSeparator();
     item.title = data.title;
     item.innerHTML = iconFor(data.mode)+'<span class="v420-badge"></span>';
     try{ item.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'}); }catch(_e){}
@@ -512,6 +539,7 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
       }
       activeSessionId = id;
       q('[data-v422-session-id="'+id+'"]', dock() || document)?.remove();
+      syncDockSeparator();
     } finally { restoring = false; }
   }
 
@@ -520,6 +548,7 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
     sessions.delete(id);
     q('[data-v422-session-id="'+id+'"]', dock() || document)?.remove();
     if(activeSessionId===id) activeSessionId=null;
+    syncDockSeparator();
   }
 
   function install(){
@@ -593,7 +622,7 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;}
       };
     }
 
-    window.v422EntryDockSessions = { minimizeCurrentEntry, restoreSession, sessions };
+    window.v423EntryDockSessions = window.v422EntryDockSessions = { minimizeCurrentEntry, restoreSession, sessions, syncDockSeparator };
   }
 
   const timer = setInterval(()=>{ install(); if(window.__V422_ENTRY_MULTI_WINDOW_INSTALLED__) clearInterval(timer); }, 250);
