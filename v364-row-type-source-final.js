@@ -70,6 +70,10 @@
   }
   async function fetchRow(id){
     if (!id) return null;
+    try{
+      const cached = window.__VP_ROW_CACHE && window.__VP_ROW_CACHE[String(id)];
+      if (cached) return cached;
+    }catch(e){}
     const db = window.__vpDb || window.vpSupabase || window.supabase;
     if (!db || !db.from) return null;
     try {
@@ -166,6 +170,24 @@
     const base = current;
     const wrapped = async function(id = null, forcedMode = ''){
       id = (id == null || id === '') ? null : id;
+      if(id){
+        try{
+          const modal = document.getElementById('entryModal');
+          if(modal){
+            modal.classList.add('show');
+            modal.dataset.fastOpening = '1';
+            let badge = document.getElementById('vpFastOpenBadge');
+            if(!badge){
+              badge = document.createElement('div');
+              badge.id = 'vpFastOpenBadge';
+              badge.textContent = 'Opening document...';
+              badge.style.cssText = 'position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:999999;background:rgba(10,10,12,.92);color:#f4d2a0;border:1px solid rgba(212,175,127,.75);border-radius:999px;padding:10px 18px;font:800 13px -apple-system,BlinkMacSystemFont,Segoe UI,Arial;box-shadow:0 18px 45px rgba(0,0,0,.38);pointer-events:none';
+              document.body && document.body.appendChild(badge);
+            }
+          }
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        }catch(e){}
+      }
       const row = id ? await fetchRow(id) : null;
       // For edit/from row: the row wins. For new/top buttons: forced mode wins.
       const kind = id ? decideKind(row, '') : decideKind(null, forcedMode);
@@ -176,6 +198,12 @@
       window.__VP_ENTRY_KIND_LOCK = kind;
       window.ACTIVE_ENTRY_TYPE = kind;
       const result = await base.call(this, id, kind);
+      try{
+        const modal = document.getElementById('entryModal');
+        if(modal) delete modal.dataset.fastOpening;
+        const badge = document.getElementById('vpFastOpenBadge');
+        if(badge) badge.remove();
+      }catch(e){}
       pulse(kind, !!id, row);
       return result;
     };

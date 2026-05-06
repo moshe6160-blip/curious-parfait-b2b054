@@ -770,7 +770,13 @@ async function getEntries(){
     return String(b.created_at || "").localeCompare(String(a.created_at || ""));
   });
 
-  return rows.slice(0, PERFORMANCE_CONFIG.defaultLimit || 300);
+  const __vpSlicedRows = rows.slice(0, PERFORMANCE_CONFIG.defaultLimit || 300);
+  try{
+    window.__VP_ROW_CACHE = window.__VP_ROW_CACHE || {};
+    __vpSlicedRows.forEach(r => { if(r && r.id != null) window.__VP_ROW_CACHE[String(r.id)] = r; });
+    window.__VP_ROW_CACHE_TS = Date.now();
+  }catch(e){}
+  return __vpSlicedRows;
 }
 
 function computeLedger(rows){
