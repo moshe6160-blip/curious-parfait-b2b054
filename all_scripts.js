@@ -2214,9 +2214,12 @@ window.recalcFromTotal = function(){
 
 window.openEntryModal = async function(id=null, forcedMode=""){
   editingId = id;
-  await render();
+  // V449 performance fix: existing documents must not re-render the whole dashboard before opening.
+  // New documents still render to ensure fresh empty form/options; existing documents use the already-mounted modal.
+  const needsFullRender = !id || !document.getElementById("entryModal");
+  if(needsFullRender) await render();
   const modal = document.getElementById("entryModal");
-  modal.classList.add("show");
+  if(modal) modal.classList.add("show");
 
   let row = {
     supplier:"",
@@ -2233,8 +2236,15 @@ window.openEntryModal = async function(id=null, forcedMode=""){
   };
 
   if(id){
-    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
-    if(!error && data) row = data;
+    // V449 performance fix: v364 already fetches the row to decide document type.
+    // Reuse it here to avoid a second Supabase request on every existing-order open.
+    const cachedRow = window.__VP_FAST_OPEN_ROW;
+    if(cachedRow && String(cachedRow.id) === String(id)){
+      row = cachedRow;
+    } else {
+      const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+      if(!error && data) row = data;
+    }
   }
 
   const detectedMode = forcedMode || (row.invoice_no ? "invoice" : (row.order_no ? "order" : "invoice"));

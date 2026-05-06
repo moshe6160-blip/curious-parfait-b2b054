@@ -1,0 +1,1 @@
+V449: Faster existing document open. Existing orders no longer force full dashboard render before modal opens; v364 row fetch is reused to avoid duplicate Supabase select. No save/status/items logic changed.

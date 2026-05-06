@@ -170,6 +170,8 @@
       // For edit/from row: the row wins. For new/top buttons: forced mode wins.
       const kind = id ? decideKind(row, '') : decideKind(null, forcedMode);
       STATE.kind = kind; STATE.id = id; STATE.row = row; STATE.edit = !!id;
+      // V449 performance fix: pass the already-fetched row into the main opener.
+      window.__VP_FAST_OPEN_ROW = row;
       window.__VARDOPHASE_ACTIVE_ENTRY_TYPE = kind;
       window.__VP_ENTRY_KIND_LOCK = kind;
       window.ACTIVE_ENTRY_TYPE = kind;

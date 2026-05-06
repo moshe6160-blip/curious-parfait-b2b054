@@ -59,11 +59,12 @@
     const modal=q('#entryModal'); if(!modal || !modal.classList.contains('show')) return;
     const actions=q('.modal-actions',modal) || q('.modal-footer',modal) || q('.window-actions',modal);
     if(actions && isOrderMode()){
-      if(!q('.v425-approve-btn',actions)){
-        const b=document.createElement('button'); b.type='button'; b.className='soft v425-approve-btn'; b.textContent='Approve / App order'; b.onclick=window.v425ApproveCurrentOrderManual; actions.insertBefore(b, actions.firstChild);
-      }
+      // V448: do not add the duplicate left approval button. The existing central "Approve Order" button remains the only approval action.
+      qa('.v425-approve-btn', actions).forEach(el=>el.remove());
       if(!q('.v425-convert-btn',actions)){
-        const b=document.createElement('button'); b.type='button'; b.className='soft v425-convert-btn'; b.textContent='Change to Order'; b.onclick=window.v425ConvertCurrentAppOrderToOrder; actions.insertBefore(b, actions.children[1] || actions.firstChild);
+        const b=document.createElement('button'); b.type='button'; b.className='soft gold v425-convert-btn'; b.textContent='Change to Order'; b.onclick=window.v425ConvertCurrentAppOrderToOrder;
+        const approveOrderBtn = qa('button', actions).find(x=>String(x.textContent||'').trim().toLowerCase()==='approve order');
+        actions.insertBefore(b, approveOrderBtn || actions.firstChild);
       }
     }
     applyApprovedStamp();

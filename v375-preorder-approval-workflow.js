@@ -112,10 +112,8 @@
     const btn=modal.querySelector('.v372-approve-current,.v375-approve-current');
     if(btn){ btn.textContent='Approve Order'; btn.classList.add('v375-approve-current'); btn.onclick=window.v375ApproveCurrentOrder; }
     const actions=modal.querySelector('.modal-actions');
-    if(actions && !actions.querySelector('.v375-open-pending')){
-      const b=document.createElement('button'); b.type='button'; b.className='soft v375-open-pending'; b.textContent='Pending Pre-Orders'; b.onclick=()=>showPopup(true);
-      actions.insertBefore(b, actions.firstChild);
-    }
+    // V448: remove the duplicate Pending Pre-Orders button from inside the order document.
+    if(actions){ actions.querySelectorAll('.v375-open-pending').forEach(el=>el.remove()); }
   }
   function patchOpenModal(){
     if(!window.openEntryModal || window.openEntryModal.__v375) return;
