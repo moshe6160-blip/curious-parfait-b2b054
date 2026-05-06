@@ -1,12 +1,20 @@
-
 (function(){
   'use strict';
-  if(window.__V428_CLEAN_BUTTONS_WINDOW_FIX__) return;
-  window.__V428_CLEAN_BUTTONS_WINDOW_FIX__=true;
+  if(window.__V430_RETURN_BUTTON_DUPLICATE_FIX__) return;
+  window.__V430_RETURN_BUTTON_DUPLICATE_FIX__=true;
+
   var z=50000;
   function q(s,r){return (r||document).querySelector(s)}
   function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
   function txt(el){return String(el&&el.textContent||'').replace(/\s+/g,' ').trim()}
+  function isReturnBtn(b){return /return\s+to\s+pre[-\s]*order/i.test(txt(b)) || (b.classList&&b.classList.contains('v428-return-preorder-btn'))}
+  function isApproveBtn(b){return /approve\s*\/?\s*app\s*order|approve\s*order/i.test(txt(b)) || (b.classList&&b.classList.contains('v425-approve-btn'))}
+  function isPreOrderMode(){
+    var sel=q('#entryStatus');
+    var val=String(sel&&sel.value||'').toLowerCase();
+    var title=String(q('#entryTitle')&&q('#entryTitle').textContent||q('.modal-title')&&q('.modal-title').textContent||'').toLowerCase();
+    return /pre[-\s]*order|pending/.test(val) || /new\s+order/.test(title);
+  }
   function setStatus(v){
     var sel=q('#entryStatus');
     if(sel){
@@ -18,27 +26,53 @@
     setStatus('Pending Pre-Order');
     var stamp=q('.v425-approved-stamp'); if(stamp) stamp.remove();
     if(typeof window.toast==='function') window.toast('Returned to Pre-Order');
+    setTimeout(cleanOrderButtons,30);
   };
+
   function cleanOrderButtons(){
     var modal=q('#entryModal'); if(!modal || !modal.classList.contains('show')) return;
     var actions=q('.modal-actions',modal)||q('.modal-footer',modal)||q('.window-actions',modal); if(!actions) return;
+
     var buttons=qa('button',actions);
-    var approveBtns=buttons.filter(function(b){return /approve\s*\/?\s*app\s*order|approve\s*order/i.test(txt(b))});
-    if(approveBtns.length>1){
-      // keep the right/gold approve button, convert the left/first duplicate to Return To Pre-Order
+    var returnBtns=buttons.filter(isReturnBtn);
+
+    // HARD STOP: never allow many Return To Pre-Order buttons.
+    if(returnBtns.length>1){
+      returnBtns.slice(1).forEach(function(b){b.remove()});
+      buttons=qa('button',actions);
+      returnBtns=buttons.filter(isReturnBtn);
+    }
+
+    // In normal Pre-Order / new order mode the return button is not needed at all.
+    if(isPreOrderMode()){
+      returnBtns.forEach(function(b){b.remove()});
+      buttons=qa('button',actions);
+      returnBtns=[];
+    }
+
+    var approveBtns=buttons.filter(isApproveBtn);
+
+    // If there are two approve buttons, keep the right/gold approve button and convert only ONE left button.
+    if(!isPreOrderMode() && approveBtns.length>1 && returnBtns.length===0){
       var left=approveBtns[0];
       left.textContent='Return To Pre-Order';
       left.classList.remove('v425-approve-btn');
       left.classList.add('soft','v428-return-preorder-btn');
       left.onclick=window.v428ReturnToPreOrder;
       approveBtns.slice(1,-1).forEach(function(b){b.remove()});
-    } else if(approveBtns.length===1 && /approve\s*\/?\s*app\s*order/i.test(txt(approveBtns[0])) && q('.v425-approve-btn',actions)){
-      // if the injected left button is the only visible duplicate candidate, make it return action
-      var b=approveBtns[0]; b.textContent='Return To Pre-Order'; b.onclick=window.v428ReturnToPreOrder; b.classList.add('v428-return-preorder-btn');
+    } else if(returnBtns.length===1){
+      returnBtns[0].onclick=window.v428ReturnToPreOrder;
+      returnBtns[0].classList.add('v428-return-preorder-btn');
     }
-    var convert=buttons.find(function(b){return /change\s+to\s+order/i.test(txt(b))});
+
+    // Final safety pass after conversion.
+    var allReturns=qa('button',actions).filter(isReturnBtn);
+    allReturns.slice(1).forEach(function(b){b.remove()});
+
+    var convert=qa('button',actions).find(function(b){return /change\s+to\s+order/i.test(txt(b))});
     if(convert) convert.title='Change approved/pre-order document to Order status';
   }
+
   function enableWindowLayers(){
     qa('#entryModal.show,.modal.show,[data-window].show,.vard-window.show,.app-window.show').forEach(function(w){
       if(w.__v428LayerReady) return; w.__v428LayerReady=true;

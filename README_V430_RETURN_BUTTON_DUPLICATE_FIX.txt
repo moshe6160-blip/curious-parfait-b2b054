@@ -1,0 +1,1 @@
+V430 full package: fixes duplicate Return To Pre-Order buttons, hides return button in Pre-Order mode, keeps one return button only for approved/order documents, and preserves window manager behavior.
