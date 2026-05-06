@@ -3773,24 +3773,23 @@ function processStatusLabel(row){
   const hasDN = !!extractDeliveryNoteNo(row);
   const hasInvoice = !!String(row.invoice_no || "").trim();
   const statusText = String(row.status || "").toLowerCase();
-  const approvedOrder = statusText.includes("approved") || statusText.includes("sent") || statusText.includes("מאושר");
+  const notesText = String(row.notes || "").toLowerCase();
+  const sentOrder = statusText.includes("sent") || statusText.includes("order sent") || statusText.includes("נשלח") || notesText.includes("order sent");
+  const approvedOrder = statusText.includes("approved") || statusText.includes("app order") || statusText.includes("מאושר") || notesText.includes("app order") || notesText.includes("approved");
 
   // Approval workflow:
-  // before approval = Pre-Order
-  // approved but not sent = App order
-  // sent to supplier = Order
+  // before approval = Pre-Order; approved but not sent = App order; sent to supplier = Order.
   if(hasOrder && !hasDN && !hasInvoice){
-    const sentOrder = statusText.includes("sent") || statusText.includes("order sent");
-    const approvedOnly = statusText.includes("approved") || statusText.includes("app order") || statusText.includes("מאושר");
     if(sentOrder) return "Order";
-    if(approvedOnly) return "App order";
+    if(approvedOrder) return "App order";
     return "Pre-Order";
   }
   if(hasOrder && hasDN && !hasInvoice) return "Delivery Note";
   if(hasOrder && hasDN && hasInvoice) return "Invoice";
   if(hasInvoice && !hasOrder) return "Done";
   if(hasOrder && hasInvoice) return "Invoice";
-  return approvedOrder ? "Order" : "Pre-Order";
+  if(sentOrder) return "Order";
+  return approvedOrder ? "App order" : "Pre-Order";
 }
 
 function processStatusClass(row){
@@ -22699,12 +22698,11 @@ div[role="option"],
 <script src="v401-mac-dock.js?v=424"></script>
 <script src="v425-order-dock-approved-fix.js?v=425"></script>
 <script src="v428-clean-buttons-window-fix.js?v=430"></script>
-<script src="v432-document-status-medal-safe.js?v=432"></script>
-<script src="v445-stable-document-status-medal.js?v=445"></script>
+<script src="v432-document-status-medal-safe.js?v=446"></script>
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V445-STABLE-STATUS-MEDAL-NO-FLICKER';
+  window.VARDOPHASE_VERSION = 'V432-STATUS-MEDAL-SAFE-FROM-V430';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
