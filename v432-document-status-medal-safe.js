@@ -12,35 +12,13 @@
   function txt(el){ return String(el && el.textContent || '').replace(/\s+/g,' ').trim(); }
   function norm(v){ return String(v||'').trim().toLowerCase(); }
 
-  function isStrongWorkflowStatus(v){
-    var s = norm(v);
-    return s.indexOf('approved') >= 0 || s.indexOf('app order') >= 0 || s.indexOf('sent') >= 0 || s.indexOf('order sent') >= 0 || s.indexOf('מאושר') >= 0 || s.indexOf('נשלח') >= 0;
-  }
-
-  function isWeakFormStatus(v){
-    var s = norm(v);
-    return !s || s === 'unpaid' || s === 'pending' || s === 'pending approval' || s === 'process' || s === 'pre-order' || s === 'pre order';
-  }
-
   function rowFromForm(){
     var base = currentRow ? Object.assign({}, currentRow) : {};
     base.supplier = val('entrySupplier') || base.supplier || '';
     base.project = val('entryProject') || base.project || '';
     base.order_no = val('entryOrderNo') || base.order_no || '';
     base.invoice_no = val('entryInvoiceNo') || base.invoice_no || '';
-
-    // Critical fix: when an existing document is opened from the home lists,
-    // the form select can temporarily reset to Pending/Unpaid because the
-    // approval options are injected after the modal opens. In that case keep
-    // the real saved DB status, so the bottom medal shows App order / Order.
-    var formStatus = val('entryStatus');
-    var savedStatus = base.status || '';
-    if(currentRow && isStrongWorkflowStatus(savedStatus) && isWeakFormStatus(formStatus)){
-      base.status = savedStatus;
-    } else {
-      base.status = formStatus || savedStatus || '';
-    }
-
+    base.status = val('entryStatus') || base.status || '';
     base.entry_type = val('entryMode') || val('entryType') || base.entry_type || currentMode || '';
     base.notes = val('entryNotes') || base.notes || '';
     return base;
@@ -66,6 +44,7 @@
 
   function labelFor(row){
     try{
+      if(currentRow && currentId) return fallbackLabel(currentRow);
       if(typeof window.processStatusLabel === 'function') return window.processStatusLabel(row || rowFromForm()) || fallbackLabel(row);
     }catch(e){}
     return fallbackLabel(row);
