@@ -1,0 +1,1 @@
+V442: bottom document medal now reads the real saved DB row status when opening from home lists. It disables the older V439/V440 text-based medals that could force Pre-Order. Flow: Pending Approval/Unpaid = Pre-Order, Approved/App Order = App Order, Sent/Order Sent = Order.
