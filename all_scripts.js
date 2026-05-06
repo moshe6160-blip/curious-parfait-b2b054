@@ -17552,76 +17552,93 @@ window.vpGetAllSupplierRows = async function(){
 })();
 
 
-/* ===== V436 LIVE STATUS MEDAL PATCH ===== */
+
+/* ===== V439 TRUE LIVE STATUS MEDAL ===== */
 (function(){
-  if(window.__vpStatusMedalInstalled) return;
-  window.__vpStatusMedalInstalled = true;
+  if(window.__vpLiveStatusFixed) return;
+  window.__vpLiveStatusFixed = true;
 
-  function detectStatus(win){
-    const txt = (win.innerText || "").toLowerCase();
+  function getDocStatus(modal){
+    const txt = (modal.innerText || "").toLowerCase();
 
-    if(txt.includes("approved") || txt.includes("app order")){
-      return "APP ORDER";
-    }
-    if(txt.includes("return to pre-order")){
-      return "ORDER";
-    }
+    if(txt.includes("return to pre-order")) return "ORDER";
+    if(txt.includes("app order")) return "APP ORDER";
     return "PRE-ORDER";
   }
 
-  function ensureMedal(win){
-    let medal = win.querySelector(".vp-live-status-medal");
+  function medalStyle(status){
+    if(status === "ORDER"){
+      return {
+        bg:"linear-gradient(180deg,#0d5f39,#0a3f26)",
+        border:"#6dd6a6"
+      };
+    }
+    if(status === "APP ORDER"){
+      return {
+        bg:"linear-gradient(180deg,#334f88,#22345e)",
+        border:"#a9c8ff"
+      };
+    }
+    return {
+      bg:"linear-gradient(180deg,#7a4c00,#5c3900)",
+      border:"#f1c36d"
+    };
+  }
+
+  function ensureMedal(modal){
+    let footer =
+      modal.querySelector(".modal-footer") ||
+      modal.querySelector(".actions") ||
+      modal.querySelector(".buttons") ||
+      modal;
+
+    let medal = footer.querySelector(".vp-status-medal-live");
 
     if(!medal){
       medal = document.createElement("div");
-      medal.className = "vp-live-status-medal";
+      medal.className = "vp-status-medal-live";
       medal.style.cssText = `
-        margin-top:10px;
+        margin:12px auto 0 auto;
         width:max-content;
-        padding:4px 12px;
-        border-radius:14px;
-        font-size:11px;
-        font-weight:600;
-        letter-spacing:.5px;
-        background:#111;
-        color:#d4af37;
-        border:1px solid rgba(212,175,55,.45);
-        opacity:.92;
+        min-width:110px;
+        text-align:center;
+        padding:6px 14px;
+        border-radius:18px;
+        font-size:13px;
+        font-weight:700;
+        color:#fff;
+        border:2px solid #fff;
+        box-shadow:0 0 10px rgba(0,0,0,.35);
       `;
-
-      const footerTarget =
-        win.querySelector(".modal-footer") ||
-        win.querySelector(".actions") ||
-        win.querySelector(".buttons") ||
-        win;
-
-      footerTarget.appendChild(medal);
+      footer.appendChild(medal);
     }
 
-    const status = detectStatus(win);
-    medal.textContent = status;
+    const status = getDocStatus(modal);
+    const style = medalStyle(status);
 
-    if(status === "PRE-ORDER"){
-      medal.style.color = "#d4af37";
-    }else if(status === "APP ORDER"){
-      medal.style.color = "#7CFC98";
-    }else{
-      medal.style.color = "#8FD3FF";
-    }
+    medal.innerText = status;
+    medal.style.background = style.bg;
+    medal.style.borderColor = style.border;
   }
 
-  function refreshAll(){
-    document.querySelectorAll(".modal,.window,.entry-modal").forEach(ensureMedal);
+  function refresh(){
+    document.querySelectorAll(".modal,.entry-modal,.window").forEach(ensureMedal);
   }
 
-  setInterval(refreshAll, 700);
+  document.addEventListener("click", function(){
+    setTimeout(refresh, 120);
+  });
 
-  const observer = new MutationObserver(refreshAll);
-  observer.observe(document.body, {
+  const observer = new MutationObserver(function(){
+    refresh();
+  });
+
+  observer.observe(document.body,{
     childList:true,
     subtree:true,
     attributes:true
   });
 
-  refreshAll();
+  setInterval(refresh,1000);
+  refresh();
 })();
