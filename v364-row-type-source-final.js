@@ -197,13 +197,17 @@
       window.__VARDOPHASE_ACTIVE_ENTRY_TYPE = kind;
       window.__VP_ENTRY_KIND_LOCK = kind;
       window.ACTIVE_ENTRY_TYPE = kind;
-      const result = await base.call(this, id, kind);
+      let result;
       try{
-        const modal = document.getElementById('entryModal');
-        if(modal) delete modal.dataset.fastOpening;
-        const badge = document.getElementById('vpFastOpenBadge');
-        if(badge) badge.remove();
-      }catch(e){}
+        result = await base.call(this, id, kind);
+      } finally {
+        try{
+          const modal = document.getElementById('entryModal');
+          if(modal) delete modal.dataset.fastOpening;
+          const badge = document.getElementById('vpFastOpenBadge');
+          if(badge) badge.remove();
+        }catch(e){}
+      }
       pulse(kind, !!id, row);
       return result;
     };

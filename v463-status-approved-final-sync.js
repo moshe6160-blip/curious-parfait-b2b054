@@ -43,15 +43,16 @@
   }
   function labelFromRowText(row){
     if(!row) return '';
-    // Prefer small status badges/chips/cells rather than the whole row, because the row can include action buttons.
-    var candidates=qa('.badge,.chip,.status-badge,.process-badge,.status,.document-status,td,span,b', row).map(function(x){return text(x);}).filter(Boolean);
-    var exact='';
-    candidates.some(function(t){ var lab=normalizeLabel(t); if(lab){ exact=lab; return true; } return false; });
-    if(exact) return exact;
-    var joined=text(row);
-    // In full row text, Order must win over App Order only when a clear Order badge/action exists.
-    if(/(^|\s|\|)Order(\s|\||$)/i.test(joined) && low(joined).indexOf('app order')<0 && low(joined).indexOf('pre-order')<0) return 'Order';
-    return normalizeLabel(joined);
+    // V464 clean rule: read ONLY the Process column cell from the clicked/home row.
+    // Other badges in the row (Month Status, VAT, financial Status, notes) are ignored.
+    try{
+      var cells=qa('td',row), idx=-1, table=row.closest && row.closest('table');
+      if(table){ qa('thead th',table).some(function(th,i){ if(low(text(th))==='process'){ idx=i; return true; } return false; }); }
+      var processText = (idx>=0 && cells[idx]) ? text(cells[idx]) : (cells[4] ? text(cells[4]) : '');
+      var lab=normalizeLabel(processText);
+      if(lab) return lab;
+    }catch(e){}
+    return '';
   }
   function captureClickedRow(e){
     var row=e.target && e.target.closest && e.target.closest('tr,[onclick*="openEntryModal"],.order-row,.list-row,.dashboard-row,[data-id],[data-order-no]');
@@ -98,19 +99,15 @@
   function authoritativeLabel(){
     var m=modal(), id=currentId(), no=currentNo(), key=currentKey();
     var ds=clean(m && (m.dataset.v463RealStatus || m.dataset.v462RealStatus));
-    // If clicked/opened from row as Order, it is more reliable than old modal text/buttons.
-    if(id && clickedStatusById[id]==='Order') return 'Order';
-    if(no && clickedStatusByNo[no]==='Order') return 'Order';
     var fromList=rowLabelByIdOrNo(id,no);
-    if(fromList==='Order') return 'Order';
-    if(ds==='Order') return 'Order';
+    // V464: the visible Process column is the only authority for an opened row.
+    if(fromList) return fromList;
     if(id && clickedStatusById[id]) return clickedStatusById[id];
     if(no && clickedStatusByNo[no]) return clickedStatusByNo[no];
+    if(lastKey===key && lastLabel) return lastLabel;
     if(ds) return ds;
-    if(fromList) return fromList;
     var f=labelFromFieldsStrict();
     if(f) return f;
-    if(lastKey===key && lastLabel) return lastLabel;
     return '';
   }
 

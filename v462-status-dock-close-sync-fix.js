@@ -29,8 +29,14 @@
   function text(el){return clean(el && (el.innerText || el.textContent || ''));}
 
   function labelFromRow(row){
-    try{ if(row && typeof window.processStatusLabel==='function') return clean(window.processStatusLabel(row)); }catch(e){}
     row=row||{};
+    var explicit=low(row.process || row.process_status || row.workflow_status || row.document_process || row.status || '');
+    if(explicit==='pre-order' || explicit==='pre order' || explicit==='preorder') return 'Pre-Order';
+    if(explicit==='app order' || explicit==='approved order' || explicit==='approved') return 'App order';
+    if(explicit==='order' || explicit==='order sent' || explicit==='sent' || explicit==='sent to supplier') return 'Order';
+    if(explicit==='dn' || explicit==='delivery note' || explicit==='delivery-note') return 'Delivery Note';
+    if(explicit==='invoice' || explicit==='invoiced' || explicit==='done') return 'Invoice';
+    try{ if(row && typeof window.processStatusLabel==='function') return clean(window.processStatusLabel(row)); }catch(e){}
     var hasOrder=!!clean(row.order_no), hasInv=!!clean(row.invoice_no);
     var s=low(row.status+' '+row.notes);
     if(s.indexOf('order sent')>=0 || s.indexOf('sent to supplier')>=0 || s.indexOf('נשלח')>=0 || s==='sent') return 'Order';
@@ -56,12 +62,21 @@
       var tx=text(el);
       var hit=(id && oc.indexOf(id)>=0) || (no && tx.indexOf(no)>=0);
       if(!hit) return false;
-      // Prefer the actual Process badge cell if present, not action buttons text.
-      var badge=q('.badge',el), b=text(badge)||tx;
+      // V464: read ONLY the Process column cell from this row. Do not scan other badges in the row.
+      var cells=qa('td',el);
+      var b='';
+      try{
+        var table=el.closest('table'), idx=-1;
+        if(table){ qa('thead th',table).some(function(th,i){ if(low(text(th))==='process'){ idx=i; return true; } return false; }); }
+        if(idx>=0 && cells[idx]) b=text(cells[idx]);
+      }catch(e){}
+      if(!b && cells[4]) b=text(cells[4]);
       var l=low(b);
-      if(l.indexOf('order sent')>=0 || l==='order' || /\border\b/.test(l) && l.indexOf('app order')<0 && l.indexOf('pre-order')<0 && l.indexOf('pre order')<0){ found='Order'; return true; }
-      if(l.indexOf('app order')>=0){ found='App order'; return true; }
-      if(l.indexOf('pre-order')>=0 || l.indexOf('pre order')>=0){ found='Pre-Order'; return true; }
+      if(l==='order' || l==='order sent' || l==='sent' || l==='sent to supplier'){ found='Order'; return true; }
+      if(l==='app order' || l==='approved order' || l==='approved'){ found='App order'; return true; }
+      if(l==='pre-order' || l==='pre order' || l==='preorder'){ found='Pre-Order'; return true; }
+      if(l==='dn' || l==='delivery note' || l==='delivery-note'){ found='Delivery Note'; return true; }
+      if(l==='invoice' || l==='invoiced' || l==='done'){ found='Invoice'; return true; }
       return false;
     });
     return found;

@@ -2223,6 +2223,15 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+}
+
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -3768,6 +3777,17 @@ function processStatusLabel(row){
   // Credit Note / Deposit are their own processes.
   if(displayEntryKind(row) === "credit_note") return "Credit Note";
   if(displayEntryKind(row) === "deposit") return "Deposit";
+
+  const explicitProcessText = String(row?.process || row?.process_status || row?.workflow_status || row?.document_process || "").trim().toLowerCase();
+  const explicitStatusText = String(row?.status || "").trim().toLowerCase();
+  const explicitSource = explicitProcessText || explicitStatusText;
+  // V464 clean rule: if the row has an explicit Process/Status value, it is the authority for the badge.
+  // This prevents old approval/invoice heuristics from changing Order back to App order.
+  if(["pre-order","pre order","preorder"].includes(explicitSource)) return "Pre-Order";
+  if(["app order","approved order","approved"].includes(explicitSource)) return "App order";
+  if(["order","order sent","sent","sent to supplier"].includes(explicitSource)) return "Order";
+  if(["dn","delivery note","delivery-note"].includes(explicitSource)) return "Delivery Note";
+  if(["invoice","invoiced","done"].includes(explicitSource)) return "Invoice";
 
   const hasOrder = !!String(row.order_no || "").trim();
   const hasDN = !!extractDeliveryNoteNo(row);
@@ -6776,6 +6796,15 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+}
+
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -8096,6 +8125,15 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+}
+
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -9327,6 +9365,15 @@ button.add-deposit-btn:hover,
 #app button.add-deposit-btn:hover {
   filter: brightness(1.08) saturate(1.05) !important;
   transform: translateY(-1px) !important;
+}
+
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
 }
 
 /* Delete Selected: designed red button with black text */
@@ -10619,6 +10666,15 @@ button.add-deposit-btn:hover,
 #app button.add-deposit-btn:hover {
   filter: brightness(1.08) saturate(1.05) !important;
   transform: translateY(-1px) !important;
+}
+
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
 }
 
 /* Delete Selected: designed red button with black text */
@@ -11993,6 +12049,15 @@ button.add-deposit-btn:hover,
 #app button.add-deposit-btn:hover {
   filter: brightness(1.08) saturate(1.05) !important;
   transform: translateY(-1px) !important;
+}
+
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
 }
 
 /* Delete Selected: designed red button with black text */
@@ -13449,6 +13514,15 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+}
+
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -14670,6 +14744,15 @@ button.add-deposit-btn:hover,
 #app button.add-deposit-btn:hover {
   filter: brightness(1.08) saturate(1.05) !important;
   transform: translateY(-1px) !important;
+}
+
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
 }
 
 /* Delete Selected: designed red button with black text */
@@ -18404,6 +18487,15 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+}
+
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -19981,6 +20073,15 @@ button.add-deposit-btn:hover,
 #app button.add-deposit-btn:hover {
   filter: brightness(1.08) saturate(1.05) !important;
   transform: translateY(-1px) !important;
+}
+
+
+button.reverse-dn-btn,
+#app button.reverse-dn-btn {
+  background: linear-gradient(135deg, #7b8794 0%, #5f6f86 50%, #4b5d73 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
 }
 
 /* Delete Selected: designed red button with black text */
@@ -22708,7 +22809,7 @@ div[role="option"],
 
 <script>
 (function(){
-  window.VARDOPHASE_VERSION = 'V465-MAC-WINDOW-STATUS-DOCK-SYNC-FINAL';
+  window.VARDOPHASE_VERSION = 'V463-FINAL-STATUS-APPROVED-SYNC';
   function showStableError(msg){
     try{
       var box=document.createElement('div');
@@ -22754,7 +22855,6 @@ div[role="option"],
 <script src="v461-approved-static-border-fix.js?v=461"></script>
 <script src="v462-status-dock-close-sync-fix.js?v=462"></script>
 <script src="v463-status-approved-final-sync.js?v=463"></script>
-<script src="v465-mac-window-status-dock-sync-final.js?v=465"></script>
 </body>
 </html>
 <!-- V266 marker -->
