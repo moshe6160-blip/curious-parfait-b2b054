@@ -516,10 +516,10 @@ function renderSelectionButtons(){
   const btn = [];
   if(canEditAnyEntry()) btn.push('<button class="soft" onclick="window.duplicateEntry()">Duplicate Selected</button>');
   if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.convertOrderToDN()">Convert Order → DN</button>');
-  if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert to Invoice</button>');
+  if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert Order → Invoice</button>');
   if(canAccountant()) btn.push('<button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canAccountant()) btn.push('<button class="green" onclick="window.bulkMarkPaid()">Mark Selected Paid</button>');
-  if(canEditAnyEntry()) btn.push('<button class="reverse-dn-btn" data-v468-reverse-dn="1" onclick="window.reverseDN()">Reverse DN</button>');
+  if(canDeleteRows()) btn.push('');
   if(canDeleteRows()) btn.push('<button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>');
   btn.push('<button class="ghost" onclick="window.clearSelection()">Clear Selection</button>');
   return btn.join('');
@@ -1331,7 +1331,6 @@ async function render(){
 <button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>
 <button class="green" onclick="window.bulkMarkPaid()">Mark Selected</button>
 <button onclick="window.duplicateEntry()">Duplicate Selected</button>
-<button class="reverse-dn-btn" data-v468-reverse-dn="1" onclick="window.reverseDN()">Reverse DN</button>
 <button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>
 </div>
         <div class="helper" style="margin-bottom:10px">Tip: drag the table left/right or swipe sideways to see all columns.</div>
@@ -17921,61 +17920,4 @@ window.vpGetAllSupplierRows = async function(){
   if (typeof document !== 'undefined' && !document.getElementById('v303-runtime-no-shadow')) {
     const st = document.createElement('style'); st.id='v303-runtime-no-shadow'; st.textContent=css; document.head.appendChild(st);
   }
-})();
-
-
-/* === V468 SAFE REVERSE DN - visible button + logic (login untouched) === */
-window.reverseDN = async function(){
-  try{
-    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
-    if(typeof selectedIds === "undefined") return alert("Selection is not ready. Refresh and try again.");
-    if(selectedIds.length !== 1) return alert("Select one DN row to reverse.");
-
-    const { data, error } = await supabase.from("suppliers").select("*").eq("id", selectedIds[0]).single();
-    if(error || !data) return alert(error?.message || "Selected row not found.");
-
-    const dnNo = (typeof extractDeliveryNoteNo === "function" ? extractDeliveryNoteNo(data) : "") || String(data.delivery_note_no || data.dn_no || "").trim();
-    if(!dnNo) return alert("This row has no DN to reverse.");
-
-    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists. Reverse/cancel the invoice first.");
-    if(!confirm("Reverse DN " + dnNo + " and return this row to Order?")) return;
-
-    let notes = String(data.notes || "");
-    if(typeof stripDeliveryNoteTags === "function") notes = stripDeliveryNoteTags(notes); else notes = notes.replace(/\n?\[\[DN:[^\]]+\]\]/g, "").trim();
-    ["DNAMT","CLOSE","CANCELAMT","CREDIT","CREDITNO","CREDITDATE","CREDITREASON","CREDITLINK","CREDITPARENT"].forEach(function(tag){
-      if(typeof stripNoteTag === "function") notes = stripNoteTag(notes, tag); else notes = notes.replace(new RegExp("\\n?\\[\\[" + tag + ":[^\\]]*\\]\\]", "g"), "").trim();
-    });
-
-    const { error: updateError } = await supabase.from("suppliers").update({ notes:notes, status:"Order", entry_type:"order", invoice_no:"" }).eq("id", data.id);
-    if(updateError) return alert(updateError.message);
-    try{ if(typeof logAudit === "function") await logAudit("reverse_dn", (data.supplier || "") + " | " + (data.order_no || "") + " | " + dnNo); }catch(e){}
-    selectedIds = [];
-    alert("DN reversed. Status returned to Order.");
-    if(typeof render === "function") await render();
-  }catch(err){ alert(err?.message || "Reverse DN error"); }
-};
-
-window.injectReverseDNButton = function(){
-  try{
-    document.querySelectorAll('.supplier-selection-toolbar').forEach(function(bar){
-      if(bar.querySelector('[data-v468-reverse-dn]')) return;
-      var del = Array.from(bar.querySelectorAll('button')).find(function(b){ return /delete selected/i.test(b.textContent || ''); });
-      var btn = document.createElement('button');
-      btn.type='button'; btn.className='reverse-dn-btn'; btn.setAttribute('data-v468-reverse-dn','1'); btn.setAttribute('onclick','window.reverseDN()'); btn.textContent='Reverse DN';
-      if(del) bar.insertBefore(btn, del); else bar.appendChild(btn);
-    });
-  }catch(e){}
-};
-(function(){
-  if(!document.getElementById('v468ReverseDNStyle')){
-    var st=document.createElement('style'); st.id='v468ReverseDNStyle';
-    st.textContent='#app button.reverse-dn-btn,button.reverse-dn-btn{background:linear-gradient(135deg,#d6e0ea 0%,#91a7bb 48%,#5f7488 100%)!important;background-image:linear-gradient(135deg,#d6e0ea 0%,#91a7bb 48%,#5f7488 100%)!important;color:#071018!important;-webkit-text-fill-color:#071018!important;border:1px solid rgba(210,225,238,.78)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 24px rgba(0,0,0,.30)!important;font-weight:850!important;border-radius:15px!important;min-height:48px!important}#app button.reverse-dn-btn:hover,button.reverse-dn-btn:hover{filter:brightness(1.06)!important}';
-    document.head.appendChild(st);
-  }
-  const oldRender=window.render;
-  if(typeof oldRender==='function' && !oldRender.__v468ReverseDN){
-    const wrapped=async function(){ const res=await oldRender.apply(this,arguments); setTimeout(window.injectReverseDNButton,0); return res; };
-    wrapped.__v468ReverseDN=true; window.render=wrapped;
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(window.injectReverseDNButton,0);}); else setTimeout(window.injectReverseDNButton,0);
 })();

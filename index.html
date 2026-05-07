@@ -1703,24 +1703,6 @@ input.premium-check:checked::after,
 /* V240 keep entire system English direction */
 html, body, input, select, textarea, button, table{direction:ltr !important;}
 
-
-
-/* === V468 Reverse DN button color - grey blue, before Delete === */
-#app button.reverse-dn-btn,
-button.reverse-dn-btn{
-  background:linear-gradient(135deg,#d6e0ea 0%,#91a7bb 48%,#5f7488 100%)!important;
-  background-image:linear-gradient(135deg,#d6e0ea 0%,#91a7bb 48%,#5f7488 100%)!important;
-  color:#071018!important;
-  -webkit-text-fill-color:#071018!important;
-  border:1px solid rgba(210,225,238,.78)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 24px rgba(0,0,0,.30)!important;
-  font-weight:850!important;
-  border-radius:15px!important;
-  min-height:48px!important;
-}
-#app button.reverse-dn-btn:hover,
-button.reverse-dn-btn:hover{ filter:brightness(1.06)!important; }
-
 </style>
 
 <style>
@@ -2241,6 +2223,17 @@ button.add-deposit-btn:hover,
   transform: translateY(-1px) !important;
 }
 
+
+/* V471 Reverse DN button - blue gray, before Delete */
+.reverse-dn-btn{
+  background:linear-gradient(180deg,#667789,#344454)!important;
+  color:#fff!important;
+  border:1px solid rgba(184,205,224,.55)!important;
+  border-radius:18px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 22px rgba(0,0,0,.28)!important;
+  font-weight:800!important;
+}
+.reverse-dn-btn:hover{filter:brightness(1.08);}
 /* Delete Selected: designed red button with black text */
 button.delete-selected-btn,
 #app button.delete-selected-btn {
@@ -3671,14 +3664,24 @@ function depositBaseAmount(row){
   return gross > 0 ? calcNetFromGross(gross) : 0;
 }
 function extractDeliveryNoteNo(row){
-  const notes = String(row.notes || "");
+  if(row){
+    const direct = String(row.delivery_note_no || row.dn_no || row.delivery_no || "").trim();
+    if(direct) return direct;
+  }
+  const notes = String(row?.notes || "");
   const m = notes.match(/\[\[DN:([^\]]+)\]\]/);
   if(m) return m[1].trim();
-  const m2 = notes.match(/Delivery Note:\s*([^\n]+)/i);
+  const mAlt = notes.match(/\[\[(?:DELIVERY_NOTE|DELIVERYNO|DNNO):([^\]]+)\]\]/i);
+  if(mAlt) return mAlt[1].trim();
+  const m2 = notes.match(/Delivery\s*Note\s*:?\s*([^\n\r]+)/i);
   return m2 ? m2[1].trim() : "";
 }
 function stripDeliveryNoteTags(notes){
-  return String(notes || "").replace(/\n?\[\[DN:[^\]]+\]\]/g, "").trim();
+  return String(notes || "")
+    .replace(/\n?\[\[DN:[^\]]+\]\]/gi, "")
+    .replace(/\n?\[\[(?:DELIVERY_NOTE|DELIVERYNO|DNNO):[^\]]+\]\]/gi, "")
+    .replace(/\n?Delivery\s*Note\s*:?\s*[^\n\r]+/gi, "")
+    .trim();
 }
 function upsertDeliveryNoteTag(notes, dn){
   const clean = stripDeliveryNoteTags(notes);
@@ -3799,7 +3802,7 @@ function processStatusLabel(row){
   if(["invoice","invoiced","done"].includes(explicitSource)) return "Invoice";
 
   const hasOrder = !!String(row.order_no || "").trim();
-  const hasDN = !!extractDeliveryNoteNo(row);
+  const hasDN = !!extractDeliveryNoteNo(row) || extractDeliveredAmount(row) > 0 || ["delivery_note","dn"].includes(String(row.entry_type || "").toLowerCase());
   const hasInvoice = !!String(row.invoice_no || "").trim();
   const statusText = String(row.status || "").toLowerCase();
   const notesText = String(row.notes || "").toLowerCase();
@@ -4186,7 +4189,7 @@ function renderSelectionButtons(){
   if(canAccountant()) btn.push('<button class="primary main-action convert-order" onclick="window.openConvertOrderModal()">Convert to Invoice</button>');
   if(canAccountant()) btn.push('<button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>');
   if(canAccountant()) btn.push('<button class="green" onclick="window.bulkMarkPaid()">Mark Selected Paid</button>');
-  if(canEditAnyEntry()) btn.push('<button class="reverse-dn-btn" data-v468-reverse-dn="1" onclick="window.reverseDN()">Reverse DN</button>');
+  if(canAccountant()) btn.push('<button class="reverse-dn-btn" onclick="window.reverseSelectedDN()">Reverse DN</button>');
   if(canDeleteRows()) btn.push('<button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>');
   btn.push('<button class="ghost" onclick="window.clearSelection()">Clear Selection</button>');
   return btn.join('');
@@ -5010,7 +5013,7 @@ async function render(){
 <button class="credit-note-btn-pro main-action" onclick="window.openCreditNoteModal()">Credit Note</button>
 <button class="green" onclick="window.bulkMarkPaid()">Mark Selected</button>
 <button onclick="window.duplicateEntry()">Duplicate Selected</button>
-<button class="reverse-dn-btn" data-v468-reverse-dn="1" onclick="window.reverseDN()">Reverse DN</button>
+<button class="reverse-dn-btn" onclick="window.reverseSelectedDN()">Reverse DN</button>
 <button class="red delete-selected-btn" onclick="window.bulkDelete()">Delete Selected</button>
 </div>
         <div class="helper" style="margin-bottom:10px">Tip: drag the table left/right or swipe sideways to see all columns.</div>
@@ -16164,6 +16167,46 @@ window.clearDeliveryNoteFromSelected = async function(){
   await render();
 };
 
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
+
 window.autofillInvoiceFromOrder = async function(){
   const mode = document.getElementById("entryMode")?.value || "";
   if(mode !== "invoice") return;
@@ -16934,6 +16977,46 @@ window.updateOrderRowWithDeliveryNote = async function(){
 };
 
 const __oldAutofillInvoiceFromOrderV38 = window.autofillInvoiceFromOrder;
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
+
 window.autofillInvoiceFromOrder = async function(){
   if(typeof __oldAutofillInvoiceFromOrderV38 === "function") await __oldAutofillInvoiceFromOrderV38();
   if((document.getElementById("entryMode")?.value || "") !== "invoice") return;
@@ -17131,6 +17214,46 @@ window.convertOrderToDN = window.openSmartConvertDN;
 
 // Ensure Invoice always uses Delivered Amount if exists
 const __oldAutofillInvoiceFromOrder_FIX = window.autofillInvoiceFromOrder;
+
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
 
 window.autofillInvoiceFromOrder = async function(){
   if(typeof __oldAutofillInvoiceFromOrder_FIX === "function"){
@@ -17356,6 +17479,46 @@ window.forceInvoiceFromDN = async function(){
 
 // override autofill
 const __oldAutoV393 = window.autofillInvoiceFromOrder;
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
+
 window.autofillInvoiceFromOrder = async function(){
   if(__oldAutoV393) await __oldAutoV393();
   if((document.getElementById("entryMode")?.value || "") === "invoice"){
@@ -17441,6 +17604,46 @@ window.forceInvoiceFromDN = async function(){
 
 // override autofill
 const __oldAutoV394 = window.autofillInvoiceFromOrder;
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
+
 window.autofillInvoiceFromOrder = async function(){
   if(__oldAutoV394) await __oldAutoV394();
 
@@ -17618,6 +17821,46 @@ window.openConvertOrderModal = async function(){
 
 // When opening Invoice manually and entering Order No, copy DN decision.
 const __oldAutofillInvoiceFromOrderV395 = window.autofillInvoiceFromOrder;
+
+
+/* === V471 REVERSE DN - single source Process = actual document state === */
+window.reverseSelectedDN = async function(){
+  try{
+    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
+    if(!selectedIds || selectedIds.length !== 1) return alert("Select one row with Delivery Note.");
+
+    const id = selectedIds[0];
+    const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
+    if(error || !data) return alert(error?.message || "Row not found.");
+
+    const dn = extractDeliveryNoteNo(data);
+    const hasDN = !!dn || extractDeliveredAmount(data) > 0 || ["delivery_note","dn"].includes(String(data.entry_type || "").toLowerCase());
+    if(!hasDN) return alert("This row is not in DN state.");
+    if(String(data.invoice_no || "").trim()) return alert("Cannot reverse DN after Invoice exists.");
+
+    if(!confirm("Reverse Delivery Note" + (dn ? " " + dn : "") + " back to Order?")) return;
+
+    let notes = stripDeliveryNoteTags(data.notes || "");
+    ["DNAMT","CLOSE","CANCELAMT","CREDIT"].forEach(function(tag){ notes = stripNoteTag(notes, tag); });
+
+    const payload = {
+      notes: notes,
+      status: "Order",
+      entry_type: "order"
+    };
+
+    const { error: updError } = await supabase.from("suppliers").update(payload).eq("id", id);
+    if(updError) return alert(updError.message);
+
+    selectedIds = [];
+    try{ await logAudit("reverse_dn", `order=${data.order_no || ""}, dn=${dn || ""}`); }catch(e){}
+    if(typeof render === "function") await render();
+    alert("DN reversed back to Order.");
+  }catch(err){
+    alert(err?.message || "Reverse DN failed.");
+  }
+};
+
 window.autofillInvoiceFromOrder = async function(){
   if(typeof __oldAutofillInvoiceFromOrderV395 === "function"){
     await __oldAutofillInvoiceFromOrderV395();
@@ -22783,88 +23026,7 @@ div[role="option"],
 <script src="v459-approved-stamp-print-stable.js?v=459"></script>
 <script src="v461-approved-static-border-fix.js?v=461"></script>
 <script src="v462-status-dock-close-sync-fix.js?v=462"></script>
-<script src="v463-status-approved-final-sync.js?v=463">
-
-/* === V468 SAFE REVERSE DN - visible button + logic (login untouched) === */
-window.reverseDN = async function(){
-  try{
-    if(typeof canAccountant === "function" && !canAccountant()) return alert("Only accountant / manager / admin can reverse DN.");
-    if(!window.selectedIds && typeof selectedIds === "undefined") return alert("Selection is not ready. Refresh and try again.");
-    if(selectedIds.length !== 1) return alert("Select one DN row to reverse.");
-
-    const { data, error } = await supabase.from("suppliers").select("*").eq("id", selectedIds[0]).single();
-    if(error || !data) return alert(error?.message || "Selected row not found.");
-
-    const dnNo = (typeof extractDeliveryNoteNo === "function" ? extractDeliveryNoteNo(data) : "") || String(data.delivery_note_no || data.dn_no || "").trim();
-    if(!dnNo) return alert("This row has no DN to reverse.");
-
-    if(String(data.invoice_no || "").trim()){
-      return alert("Cannot reverse DN after Invoice exists. Reverse/cancel the invoice first.");
-    }
-
-    if(!confirm("Reverse DN " + dnNo + " and return this row to Order?")) return;
-
-    let notes = String(data.notes || "");
-    if(typeof stripDeliveryNoteTags === "function") notes = stripDeliveryNoteTags(notes);
-    else notes = notes.replace(/\n?\[\[DN:[^\]]+\]\]/g, "").trim();
-
-    ["DNAMT","CLOSE","CANCELAMT","CREDIT","CREDITNO","CREDITDATE","CREDITREASON","CREDITLINK","CREDITPARENT"].forEach(function(tag){
-      if(typeof stripNoteTag === "function") notes = stripNoteTag(notes, tag);
-      else notes = notes.replace(new RegExp("\\n?\\[\\[" + tag + ":[^\\]]*\\]\\]", "g"), "").trim();
-    });
-
-    const updatePayload = {
-      notes: notes,
-      status: "Order",
-      entry_type: "order",
-      invoice_no: ""
-    };
-
-    const { error: updateError } = await supabase.from("suppliers").update(updatePayload).eq("id", data.id);
-    if(updateError) return alert(updateError.message);
-
-    try{ if(typeof logAudit === "function") await logAudit("reverse_dn", (data.supplier || "") + " | " + (data.order_no || "") + " | " + dnNo); }catch(e){}
-
-    selectedIds = [];
-    alert("DN reversed. Status returned to Order.");
-    if(typeof render === "function") await render();
-  }catch(err){
-    alert(err?.message || "Reverse DN error");
-  }
-};
-
-window.injectReverseDNButton = function(){
-  try{
-    document.querySelectorAll('.supplier-selection-toolbar').forEach(function(bar){
-      if(bar.querySelector('[data-v468-reverse-dn]')) return;
-      var del = Array.from(bar.querySelectorAll('button')).find(function(b){ return /delete selected/i.test(b.textContent || ''); });
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'reverse-dn-btn';
-      btn.setAttribute('data-v468-reverse-dn','1');
-      btn.setAttribute('onclick','window.reverseDN()');
-      btn.textContent = 'Reverse DN';
-      if(del) bar.insertBefore(btn, del); else bar.appendChild(btn);
-    });
-  }catch(e){}
-};
-
-(function(){
-  const oldRender = window.render;
-  if(typeof oldRender === 'function' && !oldRender.__v468ReverseDN){
-    const wrapped = async function(){
-      const res = await oldRender.apply(this, arguments);
-      setTimeout(window.injectReverseDNButton, 0);
-      return res;
-    };
-    wrapped.__v468ReverseDN = true;
-    window.render = wrapped;
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(window.injectReverseDNButton, 0); });
-  else setTimeout(window.injectReverseDNButton, 0);
-})();
-
-</script>
+<script src="v463-status-approved-final-sync.js?v=463"></script>
 </body>
 </html>
 <!-- V266 marker -->
